@@ -80,10 +80,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { title: "Ereuka — ERP scolaire pour établissements privés" },
       { name: "description", content: "Ereuka digitalise la gestion académique, financière et administrative des écoles privées : élèves, classes, notes, bulletins, paiements Mobile Money." },
       { name: "author", content: "Ereuka" },
-      { property: "og:title", content: "Ereuka — ERP scolaire" },
-      { property: "og:description", content: "La plateforme SaaS de gestion des établissements privés en Afrique." },
+      { property: "og:title", content: "Ereuka — ERP scolaire pour établissements privés" },
+      { property: "og:description", content: "Ereuka digitalise la gestion académique, financière et administrative des écoles privées : élèves, classes, notes, bulletins, paiements Mobile Money." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Ereuka — ERP scolaire pour établissements privés" },
+      { name: "twitter:description", content: "Ereuka digitalise la gestion académique, financière et administrative des écoles privées : élèves, classes, notes, bulletins, paiements Mobile Money." },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/736d7f4a-1dde-43b8-81de-de2298ba9418" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/attachments/og-images/736d7f4a-1dde-43b8-81de-de2298ba9418" },
     ],
     links: [
       {
