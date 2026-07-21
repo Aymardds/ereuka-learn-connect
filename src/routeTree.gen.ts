@@ -9,8 +9,38 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as NotesRouteImport } from './routes/notes'
+import { Route as MatieresRouteImport } from './routes/matieres'
+import { Route as ElevesRouteImport } from './routes/eleves'
+import { Route as ClassesRouteImport } from './routes/classes'
+import { Route as BulletinsRouteImport } from './routes/bulletins'
 import { Route as IndexRouteImport } from './routes/index'
 
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatieresRoute = MatieresRouteImport.update({
+  id: '/matieres',
+  path: '/matieres',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ElevesRoute = ElevesRouteImport.update({
+  id: '/eleves',
+  path: '/eleves',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ClassesRoute = ClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BulletinsRoute = BulletinsRouteImport.update({
+  id: '/bulletins',
+  path: '/bulletins',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -19,28 +49,96 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/bulletins': typeof BulletinsRoute
+  '/classes': typeof ClassesRoute
+  '/eleves': typeof ElevesRoute
+  '/matieres': typeof MatieresRoute
+  '/notes': typeof NotesRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/bulletins': typeof BulletinsRoute
+  '/classes': typeof ClassesRoute
+  '/eleves': typeof ElevesRoute
+  '/matieres': typeof MatieresRoute
+  '/notes': typeof NotesRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/bulletins': typeof BulletinsRoute
+  '/classes': typeof ClassesRoute
+  '/eleves': typeof ElevesRoute
+  '/matieres': typeof MatieresRoute
+  '/notes': typeof NotesRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/bulletins'
+    | '/classes'
+    | '/eleves'
+    | '/matieres'
+    | '/notes'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/bulletins' | '/classes' | '/eleves' | '/matieres' | '/notes'
+  id:
+    | '__root__'
+    | '/'
+    | '/bulletins'
+    | '/classes'
+    | '/eleves'
+    | '/matieres'
+    | '/notes'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BulletinsRoute: typeof BulletinsRoute
+  ClassesRoute: typeof ClassesRoute
+  ElevesRoute: typeof ElevesRoute
+  MatieresRoute: typeof MatieresRoute
+  NotesRoute: typeof NotesRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/matieres': {
+      id: '/matieres'
+      path: '/matieres'
+      fullPath: '/matieres'
+      preLoaderRoute: typeof MatieresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/eleves': {
+      id: '/eleves'
+      path: '/eleves'
+      fullPath: '/eleves'
+      preLoaderRoute: typeof ElevesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/classes': {
+      id: '/classes'
+      path: '/classes'
+      fullPath: '/classes'
+      preLoaderRoute: typeof ClassesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bulletins': {
+      id: '/bulletins'
+      path: '/bulletins'
+      fullPath: '/bulletins'
+      preLoaderRoute: typeof BulletinsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -53,6 +151,11 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BulletinsRoute: BulletinsRoute,
+  ClassesRoute: ClassesRoute,
+  ElevesRoute: ElevesRoute,
+  MatieresRoute: MatieresRoute,
+  NotesRoute: NotesRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
