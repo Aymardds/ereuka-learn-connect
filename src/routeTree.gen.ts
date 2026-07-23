@@ -9,31 +9,29 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as NotesRouteImport } from './routes/notes'
-import { Route as MatieresRouteImport } from './routes/matieres'
-import { Route as ElevesRouteImport } from './routes/eleves'
-import { Route as ClassesRouteImport } from './routes/classes'
-import { Route as BulletinsRouteImport } from './routes/bulletins'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BulletinsRouteImport } from './routes/bulletins'
+import { Route as ClassesRouteImport } from './routes/classes'
+import { Route as ElevesRouteImport } from './routes/eleves'
+import { Route as EquipeRouteImport } from './routes/equipe'
+import { Route as InviteRouteImport } from './routes/invite'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MatieresRouteImport } from './routes/matieres'
+import { Route as ModalitesRouteImport } from './routes/modalites'
+import { Route as NotesRouteImport } from './routes/notes'
+import { Route as PaiementRouteImport } from './routes/paiement'
+import { Route as ParametresRouteImport } from './routes/parametres'
+import { Route as PresencesRouteImport } from './routes/presences'
+import { Route as RegisterRouteImport } from './routes/register'
+import { Route as SuperadminRouteImport } from './routes/superadmin'
+import { Route as SuperadminIndexRouteImport } from './routes/superadmin/index'
+import { Route as SuperadminEtablissementsRouteImport } from './routes/superadmin/etablissements'
+import { Route as SuperadminKycIndexRouteImport } from './routes/superadmin/kyc.index'
+import { Route as SuperadminKycIdRouteImport } from './routes/superadmin/kyc.$id'
 
-const NotesRoute = NotesRouteImport.update({
-  id: '/notes',
-  path: '/notes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const MatieresRoute = MatieresRouteImport.update({
-  id: '/matieres',
-  path: '/matieres',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ElevesRoute = ElevesRouteImport.update({
-  id: '/eleves',
-  path: '/eleves',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ClassesRoute = ClassesRouteImport.update({
-  id: '/classes',
-  path: '/classes',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const BulletinsRoute = BulletinsRouteImport.update({
@@ -41,10 +39,91 @@ const BulletinsRoute = BulletinsRouteImport.update({
   path: '/bulletins',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
+const ClassesRoute = ClassesRouteImport.update({
+  id: '/classes',
+  path: '/classes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ElevesRoute = ElevesRouteImport.update({
+  id: '/eleves',
+  path: '/eleves',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipeRoute = EquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InviteRoute = InviteRouteImport.update({
+  id: '/invite',
+  path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatieresRoute = MatieresRouteImport.update({
+  id: '/matieres',
+  path: '/matieres',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ModalitesRoute = ModalitesRouteImport.update({
+  id: '/modalites',
+  path: '/modalites',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PaiementRoute = PaiementRouteImport.update({
+  id: '/paiement',
+  path: '/paiement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ParametresRoute = ParametresRouteImport.update({
+  id: '/parametres',
+  path: '/parametres',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PresencesRoute = PresencesRouteImport.update({
+  id: '/presences',
+  path: '/presences',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminRoute = SuperadminRouteImport.update({
+  id: '/superadmin',
+  path: '/superadmin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SuperadminIndexRoute = SuperadminIndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
+  getParentRoute: () => SuperadminRoute,
+} as any)
+const SuperadminEtablissementsRoute =
+  SuperadminEtablissementsRouteImport.update({
+    id: '/etablissements',
+    path: '/etablissements',
+    getParentRoute: () => SuperadminRoute,
+  } as any)
+const SuperadminKycIndexRoute = SuperadminKycIndexRouteImport.update({
+  id: '/kyc/',
+  path: '/kyc/',
+  getParentRoute: () => SuperadminRoute,
+} as any)
+const SuperadminKycIdRoute = SuperadminKycIdRouteImport.update({
+  id: '/kyc/$id',
+  path: '/kyc/$id',
+  getParentRoute: () => SuperadminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -52,16 +131,41 @@ export interface FileRoutesByFullPath {
   '/bulletins': typeof BulletinsRoute
   '/classes': typeof ClassesRoute
   '/eleves': typeof ElevesRoute
+  '/equipe': typeof EquipeRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
+  '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
+  '/paiement': typeof PaiementRoute
+  '/parametres': typeof ParametresRoute
+  '/presences': typeof PresencesRoute
+  '/register': typeof RegisterRoute
+  '/superadmin': typeof SuperadminRouteWithChildren
+  '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
+  '/superadmin/': typeof SuperadminIndexRoute
+  '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
+  '/superadmin/kyc/': typeof SuperadminKycIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
   '/classes': typeof ClassesRoute
   '/eleves': typeof ElevesRoute
+  '/equipe': typeof EquipeRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
+  '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
+  '/paiement': typeof PaiementRoute
+  '/parametres': typeof ParametresRoute
+  '/presences': typeof PresencesRoute
+  '/register': typeof RegisterRoute
+  '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
+  '/superadmin': typeof SuperadminIndexRoute
+  '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
+  '/superadmin/kyc': typeof SuperadminKycIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -69,8 +173,21 @@ export interface FileRoutesById {
   '/bulletins': typeof BulletinsRoute
   '/classes': typeof ClassesRoute
   '/eleves': typeof ElevesRoute
+  '/equipe': typeof EquipeRoute
+  '/invite': typeof InviteRoute
+  '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
+  '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
+  '/paiement': typeof PaiementRoute
+  '/parametres': typeof ParametresRoute
+  '/presences': typeof PresencesRoute
+  '/register': typeof RegisterRoute
+  '/superadmin': typeof SuperadminRouteWithChildren
+  '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
+  '/superadmin/': typeof SuperadminIndexRoute
+  '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
+  '/superadmin/kyc/': typeof SuperadminKycIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -79,18 +196,62 @@ export interface FileRouteTypes {
     | '/bulletins'
     | '/classes'
     | '/eleves'
+    | '/equipe'
+    | '/invite'
+    | '/login'
     | '/matieres'
+    | '/modalites'
     | '/notes'
+    | '/paiement'
+    | '/parametres'
+    | '/presences'
+    | '/register'
+    | '/superadmin'
+    | '/superadmin/etablissements'
+    | '/superadmin/'
+    | '/superadmin/kyc/$id'
+    | '/superadmin/kyc/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/bulletins' | '/classes' | '/eleves' | '/matieres' | '/notes'
+  to:
+    | '/'
+    | '/bulletins'
+    | '/classes'
+    | '/eleves'
+    | '/equipe'
+    | '/invite'
+    | '/login'
+    | '/matieres'
+    | '/modalites'
+    | '/notes'
+    | '/paiement'
+    | '/parametres'
+    | '/presences'
+    | '/register'
+    | '/superadmin/etablissements'
+    | '/superadmin'
+    | '/superadmin/kyc/$id'
+    | '/superadmin/kyc'
   id:
     | '__root__'
     | '/'
     | '/bulletins'
     | '/classes'
     | '/eleves'
+    | '/equipe'
+    | '/invite'
+    | '/login'
     | '/matieres'
+    | '/modalites'
     | '/notes'
+    | '/paiement'
+    | '/parametres'
+    | '/presences'
+    | '/register'
+    | '/superadmin'
+    | '/superadmin/etablissements'
+    | '/superadmin/'
+    | '/superadmin/kyc/$id'
+    | '/superadmin/kyc/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -98,38 +259,26 @@ export interface RootRouteChildren {
   BulletinsRoute: typeof BulletinsRoute
   ClassesRoute: typeof ClassesRoute
   ElevesRoute: typeof ElevesRoute
+  EquipeRoute: typeof EquipeRoute
+  InviteRoute: typeof InviteRoute
+  LoginRoute: typeof LoginRoute
   MatieresRoute: typeof MatieresRoute
+  ModalitesRoute: typeof ModalitesRoute
   NotesRoute: typeof NotesRoute
+  PaiementRoute: typeof PaiementRoute
+  ParametresRoute: typeof ParametresRoute
+  PresencesRoute: typeof PresencesRoute
+  RegisterRoute: typeof RegisterRoute
+  SuperadminRoute: typeof SuperadminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/notes': {
-      id: '/notes'
-      path: '/notes'
-      fullPath: '/notes'
-      preLoaderRoute: typeof NotesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/matieres': {
-      id: '/matieres'
-      path: '/matieres'
-      fullPath: '/matieres'
-      preLoaderRoute: typeof MatieresRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/eleves': {
-      id: '/eleves'
-      path: '/eleves'
-      fullPath: '/eleves'
-      preLoaderRoute: typeof ElevesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/classes': {
-      id: '/classes'
-      path: '/classes'
-      fullPath: '/classes'
-      preLoaderRoute: typeof ClassesRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/bulletins': {
@@ -139,24 +288,173 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BulletinsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/classes': {
+      id: '/classes'
+      path: '/classes'
+      fullPath: '/classes'
+      preLoaderRoute: typeof ClassesRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/eleves': {
+      id: '/eleves'
+      path: '/eleves'
+      fullPath: '/eleves'
+      preLoaderRoute: typeof ElevesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipe': {
+      id: '/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof EquipeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/invite': {
+      id: '/invite'
+      path: '/invite'
+      fullPath: '/invite'
+      preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/matieres': {
+      id: '/matieres'
+      path: '/matieres'
+      fullPath: '/matieres'
+      preLoaderRoute: typeof MatieresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/modalites': {
+      id: '/modalites'
+      path: '/modalites'
+      fullPath: '/modalites'
+      preLoaderRoute: typeof ModalitesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/paiement': {
+      id: '/paiement'
+      path: '/paiement'
+      fullPath: '/paiement'
+      preLoaderRoute: typeof PaiementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/parametres': {
+      id: '/parametres'
+      path: '/parametres'
+      fullPath: '/parametres'
+      preLoaderRoute: typeof ParametresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/presences': {
+      id: '/presences'
+      path: '/presences'
+      fullPath: '/presences'
+      preLoaderRoute: typeof PresencesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/superadmin': {
+      id: '/superadmin'
+      path: '/superadmin'
+      fullPath: '/superadmin'
+      preLoaderRoute: typeof SuperadminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/superadmin/': {
+      id: '/superadmin/'
+      path: '/'
+      fullPath: '/superadmin/'
+      preLoaderRoute: typeof SuperadminIndexRouteImport
+      parentRoute: typeof SuperadminRoute
+    }
+    '/superadmin/etablissements': {
+      id: '/superadmin/etablissements'
+      path: '/etablissements'
+      fullPath: '/superadmin/etablissements'
+      preLoaderRoute: typeof SuperadminEtablissementsRouteImport
+      parentRoute: typeof SuperadminRoute
+    }
+    '/superadmin/kyc/': {
+      id: '/superadmin/kyc/'
+      path: '/kyc'
+      fullPath: '/superadmin/kyc/'
+      preLoaderRoute: typeof SuperadminKycIndexRouteImport
+      parentRoute: typeof SuperadminRoute
+    }
+    '/superadmin/kyc/$id': {
+      id: '/superadmin/kyc/$id'
+      path: '/kyc/$id'
+      fullPath: '/superadmin/kyc/$id'
+      preLoaderRoute: typeof SuperadminKycIdRouteImport
+      parentRoute: typeof SuperadminRoute
     }
   }
 }
+
+interface SuperadminRouteChildren {
+  SuperadminEtablissementsRoute: typeof SuperadminEtablissementsRoute
+  SuperadminIndexRoute: typeof SuperadminIndexRoute
+  SuperadminKycIdRoute: typeof SuperadminKycIdRoute
+  SuperadminKycIndexRoute: typeof SuperadminKycIndexRoute
+}
+
+const SuperadminRouteChildren: SuperadminRouteChildren = {
+  SuperadminEtablissementsRoute: SuperadminEtablissementsRoute,
+  SuperadminIndexRoute: SuperadminIndexRoute,
+  SuperadminKycIdRoute: SuperadminKycIdRoute,
+  SuperadminKycIndexRoute: SuperadminKycIndexRoute,
+}
+
+const SuperadminRouteWithChildren = SuperadminRoute._addFileChildren(
+  SuperadminRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BulletinsRoute: BulletinsRoute,
   ClassesRoute: ClassesRoute,
   ElevesRoute: ElevesRoute,
+  EquipeRoute: EquipeRoute,
+  InviteRoute: InviteRoute,
+  LoginRoute: LoginRoute,
   MatieresRoute: MatieresRoute,
+  ModalitesRoute: ModalitesRoute,
   NotesRoute: NotesRoute,
+  PaiementRoute: PaiementRoute,
+  ParametresRoute: ParametresRoute,
+  PresencesRoute: PresencesRoute,
+  RegisterRoute: RegisterRoute,
+  SuperadminRoute: SuperadminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

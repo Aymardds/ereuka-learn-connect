@@ -15,6 +15,9 @@ dist-ssr
 .tanstack/**
 .nitro
 *.local
+.env
+.env.*
+my-ereuka-parent/.env
 
 # Wrangler / Cloudflare
 .wrangler/

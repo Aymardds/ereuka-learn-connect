@@ -1,20 +1,49 @@
-import { Link, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, GraduationCap, Users, BookOpen, ClipboardList, FileText, Bell, Search, Settings } from "lucide-react";
-import type { ReactNode } from "react";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
+import { LayoutDashboard, GraduationCap, Users, BookOpen, ClipboardList, FileText, Bell, Search, Settings, LogOut, DollarSign, CreditCard } from "lucide-react";
+import { useEffect, type ReactNode } from "react";
 import { school } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/hooks/useAuth";
 
-const nav = [
-  { to: "/", label: "Tableau de bord", icon: LayoutDashboard },
-  { to: "/eleves", label: "Élèves", icon: GraduationCap },
-  { to: "/classes", label: "Classes", icon: Users },
-  { to: "/matieres", label: "Matières", icon: BookOpen },
-  { to: "/notes", label: "Notes & Évaluations", icon: ClipboardList },
-  { to: "/bulletins", label: "Bulletins", icon: FileText },
-] as const;
+type NavItem = { to: string; label: string; icon: React.ElementType; roles?: string[] };
+
+const ALL_NAV_ITEMS: NavItem[] = [
+  { to: "/", label: "Tableau de bord", icon: LayoutDashboard, roles: ['admin', 'director', 'accountant'] },
+  { to: "/modalites", label: "Modalités Scolarité", icon: DollarSign, roles: ['admin', 'accountant'] },
+  { to: "/paiement", label: "Portail Paiements", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible'] },
+  { to: "/eleves", label: "Élèves", icon: GraduationCap, roles: ['admin', 'director', 'accountant', 'teacher'] },
+  { to: "/classes", label: "Classes", icon: Users, roles: ['admin', 'director', 'accountant', 'teacher'] },
+  { to: "/matieres", label: "Matières", icon: BookOpen, roles: ['admin', 'director', 'teacher'] },
+  { to: "/notes", label: "Notes & Évaluations", icon: ClipboardList, roles: ['admin', 'director', 'teacher'] },
+  { to: "/bulletins", label: "Bulletins", icon: FileText, roles: ['admin', 'director'] },
+  { to: "/equipe", label: "Équipe & Rôles", icon: Users, roles: ['admin', 'director'] },
+];
 
 export function AppShell({ children, title, subtitle, actions }: { children: ReactNode; title: string; subtitle?: string; actions?: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { user, profile, isLoading, signOut } = useAuth();
+
+  // Redirect logic inside useEffect to avoid updating state during render
+  useEffect(() => {
+    if (!isLoading && !user) {
+      navigate({ to: "/login" });
+    } else if (!isLoading && profile?.role === 'superadmin') {
+      navigate({ to: "/superadmin" });
+    }
+  }, [isLoading, user, profile?.role, navigate]);
+
+  // Show loading state while fetching auth
+  if (isLoading || (!user && !isLoading) || (profile?.role === 'superadmin' && !isLoading)) {
+    return <div className="min-h-screen flex items-center justify-center bg-background text-foreground">Chargement...</div>;
+  }
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate({ to: "/login" });
+  };
+
+  const nav = ALL_NAV_ITEMS.filter(item => !item.roles || (profile?.role && item.roles.includes(profile.role)));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -60,17 +89,29 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
           </nav>
 
           <div className="p-3">
-            <button className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground">
-              <Settings className="h-4 w-4" />
-              Paramètres
+            {(profile?.role === 'admin' || profile?.role === 'director') && (
+              <Link 
+                to="/parametres" 
+                className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground"
+              >
+                <Settings className="h-4 w-4" />
+                Paramètres
+              </Link>
+            )}
+            <button 
+              onClick={handleSignOut}
+              className="mt-1 flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-destructive hover:bg-destructive/10"
+            >
+              <LogOut className="h-4 w-4" />
+              Se déconnecter
             </button>
             <div className="mt-3 flex items-center gap-3 rounded-lg bg-sidebar-accent/50 px-3 py-2.5">
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-semibold">
-                KM
+              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-primary text-sidebar-primary-foreground text-sm font-semibold uppercase">
+                {profile?.full_name ? profile.full_name.substring(0, 2) : user?.email?.substring(0, 2) || 'U'}
               </div>
               <div className="min-w-0">
-                <div className="truncate text-sm font-medium">Konan Michel</div>
-                <div className="truncate text-xs text-sidebar-foreground/60">Directeur</div>
+                <div className="truncate text-sm font-medium">{profile?.full_name || user?.email}</div>
+                <div className="truncate text-xs text-sidebar-foreground/60 capitalize">{profile?.role || 'Utilisateur'}</div>
               </div>
             </div>
           </div>
