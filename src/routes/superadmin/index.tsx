@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import { 
   Building2, Users, FileCheck, Clock, CheckCircle2, XCircle, 
-  TrendingUp, DollarSign, Percent, ArrowUpRight, ShieldCheck, Eye, RefreshCw
+  TrendingUp, DollarSign, Percent, ArrowUpRight, ShieldCheck, Eye, RefreshCw, CreditCard
 } from 'lucide-react'
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
@@ -90,6 +90,14 @@ function SuperAdminDashboard() {
         <div>
           <h1 className="text-3xl font-bold tracking-tight text-gray-900">Tableau de bord Global</h1>
           <p className="text-gray-500 text-sm mt-1">Supervision complète, statistiques KYC et revenus de la plateforme.</p>
+        </div>
+
+        <div className="flex items-center gap-3">
+          <Link to={'/superadmin/abonnements' as any}>
+            <Button variant="outline" size="sm" className="text-xs gap-1.5 border-primary text-primary hover:bg-primary/10">
+              <CreditCard className="w-3.5 h-3.5" /> Forfaits SaaS & Licences
+            </Button>
+          </Link>
         </div>
 
         {/* Commission Configuration Widget */}

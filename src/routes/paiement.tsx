@@ -221,6 +221,9 @@ function ParentPaymentPage() {
       receipt_number: receiptNo,
       parent_email: parentEmail,
       phone_number: phoneNumber,
+      cinetpay_trans_id: txRef,
+      operator_name: methodObj?.name || selectedMethod,
+      gateway_provider: 'cinetpay',
     })
 
     setIsProcessing(false)

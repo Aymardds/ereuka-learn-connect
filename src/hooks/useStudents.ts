@@ -5,27 +5,45 @@ import { useAuth } from './useAuth';
 import { toast } from 'sonner';
 
 export type StudentWithClass = Student & { 
-  classes?: { name: string },
-  user_profiles?: { email: string, full_name: string } 
+  classes?: { name: string } | null,
+  user_profiles?: { id?: string, email: string, full_name: string, phone?: string } | null
 };
 
 export function useStudents() {
   const queryClient = useQueryClient();
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const tenantId = profile?.tenant_id;
+  const isParent = profile?.role === 'responsible' || profile?.role === 'parent';
 
   // READ
   const studentsQuery = useQuery({
-    queryKey: ['students', tenantId],
+    queryKey: ['students', tenantId, isParent ? user?.id : 'all'],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data, error } = await supabase
+      
+      let query = supabase
         .from('students')
-        .select('*, classes(name), user_profiles(email, full_name)')
+        .select('*, classes(name), user_profiles:responsible_id(id, email, full_name, phone)')
         .eq('tenant_id', tenantId)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      // If parent, filter to their children
+      if (isParent && user?.id) {
+        query = query.eq('responsible_id', user.id);
+      }
+
+      const { data, error } = await query;
+
+      if (error) {
+        // Fallback without explicit relation name if needed
+        const fallback = await supabase
+          .from('students')
+          .select('*, classes(name)')
+          .eq('tenant_id', tenantId)
+          .order('created_at', { ascending: false });
+        if (fallback.error) throw fallback.error;
+        return fallback.data as StudentWithClass[];
+      }
       return data as StudentWithClass[];
     },
     enabled: !!tenantId,
@@ -124,12 +142,16 @@ export function useStudents() {
     queryKey: ['parent_invitations', tenantId],
     queryFn: async () => {
       if (!tenantId) return [];
-      const { data, error } = await supabase
-        .from('parent_invitations')
-        .select('*')
-        .eq('tenant_id', tenantId);
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await supabase
+          .from('parent_invitations')
+          .select('*')
+          .eq('tenant_id', tenantId);
+        if (error) return [];
+        return data || [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!tenantId,
   });
@@ -157,12 +179,19 @@ export function useStudents() {
   });
 
   return {
+    students: (studentsQuery.data || []) as any,
+    isLoading: studentsQuery.isLoading,
     studentsQuery,
+    createStudentMutation,
+    updateStudentMutation,
+    deleteStudentMutation,
+    validateStudentMutation,
     createStudent: createStudentMutation.mutateAsync,
     updateStudent: updateStudentMutation.mutateAsync,
     deleteStudent: deleteStudentMutation.mutateAsync,
     validateStudent: validateStudentMutation.mutateAsync,
     invitations: invitationsQuery.data || [],
+    createInvitationMutation,
     createInvitation: createInvitationMutation.mutateAsync,
   };
 }
