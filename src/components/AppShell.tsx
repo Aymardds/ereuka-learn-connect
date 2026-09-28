@@ -3,7 +3,7 @@ import {
   LayoutDashboard, GraduationCap, Users, BookOpen, ClipboardList, 
   FileText, Bell, Search, Settings, LogOut, DollarSign, CreditCard,
   CalendarDays, BookCheck, Briefcase, MessageSquare, BarChart3, 
-  Building, UserCheck, Wifi, WifiOff, RefreshCw, Award
+  Building, UserCheck, Wifi, WifiOff, RefreshCw, Award, QrCode
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { school } from "@/lib/mock-data";
@@ -20,6 +20,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
   { to: "/lmd", label: "Système LMD (Supérieur)", icon: Award, roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head', 'student'], badge: 'LMD' },
   { to: "/modalites", label: "Modalités Scolarité", icon: DollarSign, roles: ['admin', 'director', 'accountant'] },
   { to: "/paiement", label: "Caisse & CinetPay", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'] },
+  { to: "/terminaux-paiement", label: "Terminaux QR", icon: QrCode, roles: ['admin', 'director', 'accountant', 'cashier'], badge: 'QR' },
   { to: "/eleves", label: "Élèves & Inscriptions", icon: GraduationCap, roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean'] },
   { to: "/classes", label: "Classes & Niveaux", icon: Users, roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head'] },
   { to: "/emploi-du-temps", label: "Emploi du Temps", icon: CalendarDays, roles: ['admin', 'director', 'teacher', 'student', 'parent', 'surveillance', 'dean', 'secretary'] },

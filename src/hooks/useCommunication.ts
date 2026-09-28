@@ -49,19 +49,18 @@ export function useCommunication() {
   });
 
   const notificationsQuery = useQuery({
-    queryKey: ['notifications', tenantId, userId],
+    queryKey: ['notifications', userId],
     queryFn: async () => {
-      if (!tenantId || !userId) return [];
+      if (!userId) return [];
       const { data, error } = await supabase
         .from('notifications')
         .select('*')
-        .eq('tenant_id', tenantId)
         .eq('user_id', userId)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as AppNotification[];
     },
-    enabled: !!tenantId && !!userId,
+    enabled: !!userId,
   });
 
   const sendMessageMutation = useMutation({

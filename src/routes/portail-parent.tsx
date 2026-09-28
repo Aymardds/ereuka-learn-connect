@@ -1,16 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useStudents } from '@/hooks/useStudents';
 import { useClasses } from '@/hooks/useClasses';
 import { useCinetPay } from '@/hooks/useCinetPay';
 import { useAuth } from '@/hooks/useAuth';
+import { useParentSchools, useParentChildrenAllSchools, useParentPendingInvitations, ParentChildAllSchools } from '@/hooks/useParentMultiSchool';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import { 
   UserCheck, GraduationCap, CreditCard, Calendar, Clock, 
   CheckCircle2, AlertCircle, FileText, Download, Phone, ArrowRight,
-  UserPlus, HeartPulse, Sparkles, ShieldCheck
+  UserPlus, HeartPulse, Sparkles, ShieldCheck, Building2, RefreshCw,
+  Globe2, School, ChevronRight, ExternalLink, Mail, Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -24,7 +26,7 @@ export const Route = createFileRoute('/portail-parent')({
   head: () => ({
     meta: [
       { title: "Espace Parents — Eurêka" },
-      { name: "description", content: "Portail parent : scolarité, inscriptions d'enfants et paiements mobiles." },
+      { name: "description", content: "Portail parent : suivi multi-école, inscriptions d'enfants et paiements mobiles sécurisés." },
     ],
   }),
   component: ParentPortalPage,
@@ -44,9 +46,18 @@ function ParentPortalPage() {
   const { user, profile } = useAuth();
   const { initiatePayment, isProcessing } = useCinetPay();
   const queryClient = useQueryClient();
+
+  // Multi-school hooks
+  const { schools, isLoading: isLoadingSchools } = useParentSchools();
+  const { children: allChildren, isLoading: isLoadingChildren } = useParentChildrenAllSchools();
+  const { invitations: pendingInvitations, acceptInvitation, declineInvitation } = useParentPendingInvitations();
+  const [processingToken, setProcessingToken] = useState<string | null>(null);
+
+  // Filter school — 'all' shows children from all schools
+  const [selectedSchoolFilter, setSelectedSchoolFilter] = useState<string>('all');
   
   // Selected child state
-  const [selectedStudentId, setSelectedStudentId] = useState<string>(students[0]?.id || '');
+  const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
   const [isEnrollModalOpen, setIsEnrollModalOpen] = useState(false);
   const [isSubmittingEnrollment, setIsSubmittingEnrollment] = useState(false);
@@ -68,7 +79,32 @@ function ParentPortalPage() {
   const [parentSurname, setParentSurname] = useState(profile?.full_name?.split(' ').slice(1).join(' ') || '');
   const [parentPhone, setParentPhone] = useState(profile?.phone || '0708091011');
 
-  const currentStudent = students.find((s: any) => s.id === (selectedStudentId || students[0]?.id)) || students[0];
+  // Merge allChildren from RPC + local students (fallback)
+  const displayChildren = useMemo(() => {
+    if (allChildren.length > 0) {
+      // Filter by selected school
+      if (selectedSchoolFilter === 'all') return allChildren;
+      return allChildren.filter(c => c.tenant_id === selectedSchoolFilter);
+    }
+    // Fallback to useStudents hook data
+    return students.map((s: any) => ({
+      student_id: s.id,
+      first_name: s.first_name,
+      last_name: s.last_name,
+      class_name: s.classes?.name || null,
+      tenant_id: profile?.tenant_id || '',
+      school_name: 'Mon établissement',
+      status: s.status,
+    }));
+  }, [allChildren, selectedSchoolFilter, students, profile]);
+
+  const currentChild = useMemo((): ParentChildAllSchools | null => {
+    if (!selectedStudentId && displayChildren.length > 0) return displayChildren[0];
+    return displayChildren.find((c: ParentChildAllSchools) => c.student_id === selectedStudentId) || displayChildren[0] || null;
+  }, [selectedStudentId, displayChildren]);
+
+  // For payment we still use the "currentStudent" from local useStudents if possible
+  const currentStudentLocal = students.find((s: any) => s.id === currentChild?.student_id);
 
   // Submit Child Enrollment
   const handleEnrollChild = async (e: React.FormEvent) => {
@@ -94,7 +130,7 @@ function ParentPortalPage() {
         medical_notes: enrollForm.medicalNotes || null,
         responsible_id: user.id,
         tenant_id: profile.tenant_id,
-        status: 'pending', // En attente de validation par l'administration
+        status: 'pending',
         guardian_name: profile.full_name || `${parentName} ${parentSurname}`.trim(),
         guardian_phone: profile.phone || parentPhone || null,
         guardian_email: profile.email || user.email || null,
@@ -103,15 +139,11 @@ function ParentPortalPage() {
       if (error) throw error;
 
       toast.success(`Demande d'inscription enregistrée pour ${enrollForm.firstName} !`);
-      
-      // Refresh students
       await queryClient.invalidateQueries({ queryKey: ['students'] });
+      await queryClient.invalidateQueries({ queryKey: ['parent_children_all'] });
       
-      if (data?.id) {
-        setSelectedStudentId(data.id);
-      }
+      if (data?.id) setSelectedStudentId(data.id);
 
-      // Reset form
       setEnrollForm({
         firstName: '',
         lastName: profile?.full_name?.split(' ').slice(1).join(' ') || '',
@@ -129,12 +161,12 @@ function ParentPortalPage() {
   };
 
   const handlePay = async () => {
-    if (!currentStudent) return;
+    if (!currentChild) return;
     try {
       await initiatePayment({
-        studentId: currentStudent.id,
+        studentId: currentChild.student_id,
         amount: parseFloat(amount),
-        description: `Scolarité — ${currentStudent.first_name} ${currentStudent.last_name}`,
+        description: `Scolarité — ${currentChild.first_name} ${currentChild.last_name}`,
         customerName: parentName,
         customerSurname: parentSurname,
         customerPhone: parentPhone,
@@ -142,16 +174,20 @@ function ParentPortalPage() {
       });
       setIsPayModalOpen(false);
     } catch (e) {
-      // Error is handled in hook toast
+      // handled in hook
     }
   };
 
-  const isPendingValidation = currentStudent?.status === 'pending';
+  const isPendingValidation = currentChild?.status === 'pending';
+  const hasMultipleSchools = schools.length > 1;
 
   return (
     <AppShell
       title="Espace Parents d'Élèves"
-      subtitle="Suivi de scolarité, inscriptions d'enfants et paiement direct en ligne"
+      subtitle={hasMultipleSchools 
+        ? `Compte lié à ${schools.length} établissements · ${allChildren.length} enfant(s) suivi(s)`
+        : "Suivi de scolarité, inscriptions d'enfants et paiement direct en ligne"
+      }
       actions={
         <div className="flex items-center gap-2">
           <Button 
@@ -163,23 +199,175 @@ function ParentPortalPage() {
         </div>
       }
     >
-      {/* Child selector if multiple children */}
-      {students.length > 0 && (
+      {/* ── Pending Invitations Banner ── */}
+      {pendingInvitations.length > 0 && (
+        <div className="mb-6 rounded-2xl border-2 border-indigo-200 bg-gradient-to-r from-indigo-50/90 via-blue-50/80 to-purple-50/60 p-5 shadow-sm">
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-3">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold shadow-sm">
+                <Mail className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                  Nouvelle{pendingInvitations.length > 1 ? 's' : ''} invitation{pendingInvitations.length > 1 ? 's' : ''} d'établissement scolaire
+                  <span className="px-2 py-0.5 text-[10px] font-bold bg-indigo-600 text-white rounded-full">
+                    {pendingInvitations.length}
+                  </span>
+                </h3>
+                <p className="text-xs text-slate-600">
+                  Un ou plusieurs établissements vous invitent à synchroniser vos enfants sur votre compte Eurêka.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            {pendingInvitations.map((inv) => (
+              <div
+                key={inv.invitation_id}
+                className="bg-white rounded-xl p-4 border border-indigo-100 shadow-sm flex flex-col justify-between gap-3 hover:border-indigo-300 transition-all"
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-indigo-700 font-bold text-xs mb-1">
+                      <School className="w-3.5 h-3.5" />
+                      <span>{inv.school_name}</span>
+                    </div>
+                    <h4 className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+                      <GraduationCap className="w-4 h-4 text-emerald-600" />
+                      {inv.student_name}
+                    </h4>
+                    <p className="text-xs text-slate-500 mt-0.5">
+                      Classe : <span className="font-semibold text-slate-700">{inv.class_name}</span>
+                    </p>
+                  </div>
+                  <span className="px-2 py-1 text-[10px] font-semibold bg-amber-50 text-amber-700 border border-amber-200 rounded-lg shrink-0">
+                    En attente
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-2 border-t border-slate-100">
+                  <Button
+                    size="sm"
+                    disabled={processingToken === inv.invitation_token}
+                    onClick={async () => {
+                      setProcessingToken(inv.invitation_token);
+                      try {
+                        await acceptInvitation(inv.invitation_token);
+                        toast.success(`Élève ${inv.student_name} rattaché avec succès !`);
+                      } catch (err: any) {
+                        toast.error(err.message || "Erreur lors de l'acceptation");
+                      } finally {
+                        setProcessingToken(null);
+                      }
+                    }}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold gap-1.5 flex-1 shadow-sm"
+                  >
+                    {processingToken === inv.invitation_token ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle2 className="w-3.5 h-3.5" />
+                    )}
+                    Accepter l'association
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={processingToken === inv.invitation_token}
+                    onClick={async () => {
+                      if (!confirm(`Refuser l'invitation pour ${inv.student_name} ?`)) return;
+                      setProcessingToken(inv.invitation_token);
+                      try {
+                        await declineInvitation(inv.invitation_token);
+                        toast.info("Invitation refusée");
+                      } catch (err: any) {
+                        toast.error(err.message || "Erreur lors du refus");
+                      } finally {
+                        setProcessingToken(null);
+                      }
+                    }}
+                    className="text-xs text-slate-500 hover:text-red-600 hover:border-red-200"
+                  >
+                    Refuser
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* ── Multi-school banner ── */}
+      {hasMultipleSchools && (
+        <div className="mb-4 rounded-2xl border border-primary/20 bg-primary/5 p-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
+              <Globe2 className="w-5 h-5 text-primary" />
+            </div>
+            <div>
+              <p className="text-sm font-bold text-foreground">Compte multi-établissement</p>
+              <p className="text-xs text-muted-foreground">
+                Vous êtes inscrit dans {schools.length} écoles sur Eurêka
+              </p>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {schools.map(school => (
+              <button
+                key={school.tenant_id}
+                onClick={() => setSelectedSchoolFilter(
+                  selectedSchoolFilter === school.tenant_id ? 'all' : school.tenant_id
+                )}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
+                  selectedSchoolFilter === school.tenant_id
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-white text-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                <School className="w-3 h-3" />
+                {school.school_name}
+                <span className="opacity-70">· {school.child_count} enfant{school.child_count > 1 ? 's' : ''}</span>
+              </button>
+            ))}
+            {selectedSchoolFilter !== 'all' && (
+              <button
+                onClick={() => setSelectedSchoolFilter('all')}
+                className="text-xs text-muted-foreground px-2 py-1.5 hover:text-foreground"
+              >
+                Voir tout
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Child selector */}
+      {displayChildren.length > 0 && (
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
           <div className="flex items-center gap-3">
             <GraduationCap className="w-5 h-5 text-accent" />
             <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Mon enfant :</span>
             <Select 
-              value={selectedStudentId || (students[0]?.id || '')} 
+              value={selectedStudentId || (displayChildren[0]?.student_id || '')} 
               onValueChange={setSelectedStudentId}
             >
-              <SelectTrigger className="w-64 h-9 text-xs bg-white">
+              <SelectTrigger className="w-72 h-9 text-xs bg-white">
                 <SelectValue placeholder="Sélectionner l'enfant" />
               </SelectTrigger>
               <SelectContent>
-                {students.map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.first_name} {s.last_name} ({s.classes?.name || 'Classe'}) {s.status === 'pending' ? '⏳ En attente' : '✅ Actif'}
+                {displayChildren.map((c: ParentChildAllSchools) => (
+                  <SelectItem key={c.student_id} value={c.student_id}>
+                    <span className="flex items-center gap-2">
+                      {hasMultipleSchools && (
+                        <span className="text-[10px] text-muted-foreground bg-secondary px-1.5 py-0.5 rounded font-mono">
+                          {c.school_name.slice(0, 8)}…
+                        </span>
+                      )}
+                      {c.first_name} {c.last_name}
+                      {c.class_name && <span className="text-muted-foreground">({c.class_name})</span>}
+                      {c.status === 'pending' ? ' ⏳' : ' ✅'}
+                    </span>
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -207,10 +395,10 @@ function ParentPortalPage() {
         </div>
       )}
 
-      {currentStudent ? (
+      {currentChild ? (
         <div className="space-y-6">
 
-          {/* Pending Banner if student is pending validation */}
+          {/* Pending Banner */}
           {isPendingValidation && (
             <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 text-amber-900 flex items-start gap-3 shadow-sm animate-in fade-in">
               <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
@@ -219,7 +407,7 @@ function ParentPortalPage() {
                   Dossier d'inscription en attente de validation administrative
                 </h4>
                 <p className="text-xs text-amber-800">
-                  La demande d'inscription pour <strong>{currentStudent.first_name} {currentStudent.last_name}</strong> a bien été enregistrée. L'administration procède à la vérification des pièces. Dès validation, les notes et bulletins seront débloqués. Vous pouvez d'ores et déjà régler les frais de scolarité ci-dessous.
+                  La demande d'inscription pour <strong>{currentChild.first_name} {currentChild.last_name}</strong> a bien été enregistrée. L'administration procède à la vérification des pièces. Dès validation, les notes et bulletins seront débloqués.
                 </p>
               </div>
             </div>
@@ -231,13 +419,13 @@ function ParentPortalPage() {
               <div>
                 <div className="flex items-center gap-4 border-b border-border pb-5">
                   <div className="h-16 w-16 rounded-2xl bg-primary/10 text-primary flex items-center justify-center font-display text-2xl font-bold">
-                    {currentStudent.first_name[0]}{currentStudent.last_name[0]}
+                    {currentChild.first_name[0]}{currentChild.last_name[0]}
                   </div>
                   <div>
                     <h2 className="font-display text-lg font-bold text-foreground">
-                      {currentStudent.first_name} {currentStudent.last_name}
+                      {currentChild.first_name} {currentChild.last_name}
                     </h2>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-col gap-1">
                       {isPendingValidation ? (
                         <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-100 text-amber-800 border border-amber-200">
                           ⏳ En attente de validation
@@ -247,9 +435,11 @@ function ParentPortalPage() {
                           <CheckCircle2 className="w-3 h-3 mr-1" /> Dossier Validé
                         </span>
                       )}
-                      <span className="text-xs font-mono text-muted-foreground">
-                        {currentStudent.classes?.name || 'Classe'}
-                      </span>
+                      {hasMultipleSchools && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-semibold bg-primary/10 text-primary border border-primary/20">
+                          <Building2 className="w-3 h-3" /> {currentChild.school_name}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -257,16 +447,8 @@ function ParentPortalPage() {
                 <div className="mt-5 space-y-3 text-xs">
                   <div className="flex justify-between py-1.5 border-b border-border/50">
                     <span className="text-muted-foreground">Classe actuelle :</span>
-                    <span className="font-bold text-foreground">{currentStudent.classes?.name || 'Affectation en cours'}</span>
+                    <span className="font-bold text-foreground">{currentChild.class_name || 'Affectation en cours'}</span>
                   </div>
-                  {currentStudent.date_of_birth && (
-                    <div className="flex justify-between py-1.5 border-b border-border/50">
-                      <span className="text-muted-foreground">Date de naissance :</span>
-                      <span className="font-semibold text-foreground font-mono">
-                        {new Date(currentStudent.date_of_birth).toLocaleDateString('fr-FR')}
-                      </span>
-                    </div>
-                  )}
                   <div className="flex justify-between py-1.5 border-b border-border/50">
                     <span className="text-muted-foreground">Assiduité (Présences) :</span>
                     <span className="font-bold text-emerald-600">96.5% de présence</span>
@@ -292,7 +474,7 @@ function ParentPortalPage() {
               </div>
             </div>
 
-            {/* Tuition Fee Breakdown & Payment Due Card */}
+            {/* Tuition Fee Breakdown */}
             <div className="rounded-2xl border border-border bg-card p-6 lg:col-span-2 shadow-sm">
               <div className="flex items-center justify-between border-b border-border pb-4">
                 <div>
@@ -397,14 +579,14 @@ function ParentPortalPage() {
           </div>
         </div>
       ) : (
-        /* Empty State : No children yet */
+        /* Empty State */
         <div className="p-12 text-center bg-white rounded-3xl border border-dashed max-w-2xl mx-auto shadow-sm space-y-4">
           <div className="w-16 h-16 rounded-2xl bg-emerald-100 text-emerald-800 flex items-center justify-center mx-auto">
             <GraduationCap className="w-8 h-8" />
           </div>
           <h3 className="text-xl font-bold text-gray-900">Bienvenue sur votre Espace Parent Eurêka</h3>
           <p className="text-xs text-gray-500 max-w-md mx-auto leading-relaxed">
-            Vous n'avez pas encore d'enfant rattaché à votre compte. Vous pouvez effectuer une nouvelle inscription en ligne directement en quelques clics.
+            Vous n'avez pas encore d'enfant rattaché à votre compte. Vous pouvez effectuer une nouvelle inscription en ligne directement en quelques clics, ou attendre une invitation de l'établissement.
           </p>
           <div className="pt-2">
             <Button 
@@ -417,7 +599,7 @@ function ParentPortalPage() {
         </div>
       )}
 
-      {/* ── MODAL INSCRIPTION D'UN ENFANT PAR LE PARENT ── */}
+      {/* ── MODAL INSCRIPTION D'UN ENFANT ── */}
       <Dialog open={isEnrollModalOpen} onOpenChange={setIsEnrollModalOpen}>
         <DialogContent className="sm:max-w-md">
           <form onSubmit={handleEnrollChild}>
@@ -539,7 +721,7 @@ function ParentPortalPage() {
         </DialogContent>
       </Dialog>
 
-      {/* CinetPay Payment Modal */}
+      {/* ── MODAL PAIEMENT ── */}
       <Dialog open={isPayModalOpen} onOpenChange={setIsPayModalOpen}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -547,6 +729,12 @@ function ParentPortalPage() {
               <CreditCard className="w-5 h-5 text-accent" />
               Paiement Sécurisé CinetPay
             </DialogTitle>
+            {currentChild && (
+              <DialogDescription>
+                Pour : <strong>{currentChild.first_name} {currentChild.last_name}</strong>
+                {hasMultipleSchools && <span className="text-muted-foreground"> · {currentChild.school_name}</span>}
+              </DialogDescription>
+            )}
           </DialogHeader>
 
           <div className="space-y-4 py-2 text-xs">

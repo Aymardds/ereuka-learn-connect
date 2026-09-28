@@ -33,6 +33,8 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RhRouteImport } from './routes/rh'
 import { Route as StatistiquesRouteImport } from './routes/statistiques'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
+import { Route as TerminauxPaiementRouteImport } from './routes/terminaux-paiement'
+import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as SuperadminIndexRouteImport } from './routes/superadmin/index'
 import { Route as SuperadminAbonnementsRouteImport } from './routes/superadmin/abonnements'
 import { Route as SuperadminEtablissementsRouteImport } from './routes/superadmin/etablissements'
@@ -159,6 +161,16 @@ const SuperadminRoute = SuperadminRouteImport.update({
   path: '/superadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TerminauxPaiementRoute = TerminauxPaiementRouteImport.update({
+  id: '/terminaux-paiement',
+  path: '/terminaux-paiement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayTokenRoute = PayTokenRouteImport.update({
+  id: '/pay/$token',
+  path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperadminIndexRoute = SuperadminIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -211,6 +223,8 @@ export interface FileRoutesByFullPath {
   '/rh': typeof RhRoute
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin/': typeof SuperadminIndexRoute
@@ -241,6 +255,8 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/rh': typeof RhRoute
   '/statistiques': typeof StatistiquesRoute
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin': typeof SuperadminIndexRoute
@@ -273,6 +289,8 @@ export interface FileRoutesById {
   '/rh': typeof RhRoute
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin/': typeof SuperadminIndexRoute
@@ -306,6 +324,8 @@ export interface FileRouteTypes {
     | '/rh'
     | '/statistiques'
     | '/superadmin'
+    | '/terminaux-paiement'
+    | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin/'
@@ -336,6 +356,8 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/rh'
     | '/statistiques'
+    | '/terminaux-paiement'
+    | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin'
@@ -367,6 +389,8 @@ export interface FileRouteTypes {
     | '/rh'
     | '/statistiques'
     | '/superadmin'
+    | '/terminaux-paiement'
+    | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin/'
@@ -399,6 +423,8 @@ export interface RootRouteChildren {
   RhRoute: typeof RhRoute
   StatistiquesRoute: typeof StatistiquesRoute
   SuperadminRoute: typeof SuperadminRouteWithChildren
+  TerminauxPaiementRoute: typeof TerminauxPaiementRoute
+  PayTokenRoute: typeof PayTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -571,6 +597,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperadminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terminaux-paiement': {
+      id: '/terminaux-paiement'
+      path: '/terminaux-paiement'
+      fullPath: '/terminaux-paiement'
+      preLoaderRoute: typeof TerminauxPaiementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/$token': {
+      id: '/pay/$token'
+      path: '/pay/$token'
+      fullPath: '/pay/$token'
+      preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/superadmin/': {
       id: '/superadmin/'
       path: '/'
@@ -654,6 +694,8 @@ const rootRouteChildren: RootRouteChildren = {
   RhRoute: RhRoute,
   StatistiquesRoute: StatistiquesRoute,
   SuperadminRoute: SuperadminRouteWithChildren,
+  TerminauxPaiementRoute: TerminauxPaiementRoute,
+  PayTokenRoute: PayTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

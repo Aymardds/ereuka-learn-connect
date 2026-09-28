@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, Link, useNavigate, useSearch } from '@tanstack/react-router'
+import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { Button } from '../components/ui/button'
 import { Input } from '../components/ui/input'
@@ -18,12 +18,22 @@ function LoginRoute() {
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const search = useSearch({ strict: false }) as any
+  const redirectTo = search?.redirectTo || null
+  const { session, profile } = useAuth()
 
   // Redirect if already logged in
-  if (session) {
-    navigate({ to: '/' })
-  }
+  useEffect(() => {
+    if (session) {
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else if (profile?.role === 'responsible' || profile?.role === 'parent') {
+        navigate({ to: '/portail-parent' })
+      } else {
+        navigate({ to: '/' })
+      }
+    }
+  }, [session, profile, redirectTo, navigate])
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -41,7 +51,11 @@ function LoginRoute() {
       }
 
       toast.success('Connexion réussie')
-      navigate({ to: '/' })
+      if (redirectTo) {
+        window.location.href = redirectTo;
+      } else {
+        navigate({ to: '/' })
+      }
     } catch (error) {
       toast.error('Une erreur est survenue lors de la connexion')
     } finally {

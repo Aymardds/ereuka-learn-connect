@@ -2,12 +2,14 @@ import { createFileRoute } from "@tanstack/react-router";
 import { 
   Search, Plus, MoreHorizontal, Edit2, Trash2, Mail, UserPlus, 
   CheckCircle2, Copy, Users, Phone, UserCheck, Key, AlertCircle, Unlink,
-  ExternalLink, UserX
+  ExternalLink, UserX, Globe, Loader2, Building2, Link2
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useStudents, StudentWithClass } from "@/hooks/useStudents";
 import { useClasses } from "@/hooks/useClasses";
 import { useParents, ParentWithChildren } from "@/hooks/useParents";
+import { useParentSearch } from "@/hooks/useParentSearch";
+import { InvitationSuccessDialog, InvitationSuccessData } from "@/components/InvitationSuccessDialog";
 import { useState } from "react";
 import { Student } from "@/types/database";
 import { toast } from "sonner";
@@ -73,7 +75,12 @@ function ElevesPage() {
   const { classesQuery } = useClasses();
   const { parents, createParentMutation, linkParentMutation, unlinkParentMutation } = useParents();
   const { profile } = useAuth();
+  const { results: globalParents, isSearching: isGlobalSearching, search: searchGlobal, clear: clearGlobalSearch, inviteExistingParent, linkExistingParentDirectly } = useParentSearch();
   
+  // State for Invitation Success Share Dialog
+  const [invitationSuccessData, setInvitationSuccessData] = useState<InvitationSuccessData | null>(null);
+  const [isInvitationSuccessOpen, setIsInvitationSuccessOpen] = useState(false);
+
   // Active Tab: 'students' or 'parents'
   const [activeTab, setActiveTab] = useState<'students' | 'parents'>('students');
 
@@ -104,11 +111,17 @@ function ElevesPage() {
 
   // State for Link Parent to Student Modal
   const [linkStudentTarget, setLinkStudentTarget] = useState<StudentWithClass | null>(null);
-  const [linkParentMode, setLinkParentMode] = useState<"existing" | "new">("existing");
+  const [linkParentMode, setLinkParentMode] = useState<"existing" | "new" | "global">("existing");
   const [selectedParentId, setSelectedParentId] = useState<string>("");
   const [quickParentName, setQuickParentName] = useState("");
   const [quickParentEmail, setQuickParentEmail] = useState("");
   const [quickParentPhone, setQuickParentPhone] = useState("");
+  const [globalSearchQuery, setGlobalSearchQuery] = useState("");
+  const [isInvitingGlobal, setIsInvitingGlobal] = useState(false);
+  // Also for the standalone create parent modal global search
+  const [createParentMode, setCreateParentMode] = useState<"new" | "global">("new");
+  const [cpGlobalSearchQuery, setCpGlobalSearchQuery] = useState("");
+  const [cpGlobalSelectedStudentId, setCpGlobalSelectedStudentId] = useState(""); // élève cible pour l'invitation
 
   // State for Standalone Create Parent Modal
   const [isCreateParentOpen, setIsCreateParentOpen] = useState(false);
@@ -956,109 +969,312 @@ function ElevesPage() {
       </Dialog>
 
       {/* ── MODAL 2 : INSCRIRE UN PARENT DIRECTEMENT ── */}
-      <Dialog open={isCreateParentOpen} onOpenChange={setIsCreateParentOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleCreateParentSubmit}>
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-emerald-800">
-                <UserPlus className="w-5 h-5 text-emerald-600" /> Inscrire un Nouveau Parent
-              </DialogTitle>
-              <DialogDescription>
-                Créez un compte parent tuteur pour lui donner accès au portail de paiement et au suivi de scolarité.
-              </DialogDescription>
-            </DialogHeader>
+      <Dialog open={isCreateParentOpen} onOpenChange={(open) => { setIsCreateParentOpen(open); if (!open) { setCreateParentMode('new'); setCpGlobalSearchQuery(''); clearGlobalSearch(); } }}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-800">
+              <UserPlus className="w-5 h-5 text-emerald-600" /> Inscrire un Parent
+            </DialogTitle>
+            <DialogDescription>
+              Créez un nouveau compte ou recherchez un parent déjà sur Eurêka pour l'inviter dans votre école.
+            </DialogDescription>
+          </DialogHeader>
 
-            <div className="grid gap-3.5 py-4 text-xs">
-              <div className="grid gap-1.5">
-                <Label htmlFor="parent_fullname">Nom et Prénom du parent *</Label>
-                <Input 
-                  id="parent_fullname"
-                  required
-                  placeholder="Ex: Kouamé Affoué Marie"
-                  value={parentFormData.fullName}
-                  onChange={(e) => setParentFormData({...parentFormData, fullName: e.target.value})}
-                  className="h-9 text-xs"
-                />
-              </div>
+          {/* Mode toggle */}
+          <div className="grid grid-cols-2 gap-1.5 mb-1">
+            <button
+              type="button"
+              onClick={() => setCreateParentMode('new')}
+              className={`p-2.5 rounded-xl border text-center font-bold transition-all text-xs ${
+                createParentMode === 'new'
+                  ? 'bg-emerald-600 text-white border-emerald-600'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Plus className="w-3.5 h-3.5 mx-auto mb-0.5" />
+              Nouveau Parent
+            </button>
+            <button
+              type="button"
+              onClick={() => setCreateParentMode('global')}
+              className={`p-2.5 rounded-xl border text-center font-bold transition-all text-xs ${
+                createParentMode === 'global'
+                  ? 'bg-blue-600 text-white border-blue-600'
+                  : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5 mx-auto mb-0.5" />
+              Rechercher sur Eurêka
+            </button>
+          </div>
 
-              <div className="grid grid-cols-2 gap-3">
+          {createParentMode === 'new' ? (
+            <form onSubmit={handleCreateParentSubmit}>
+              <div className="grid gap-3.5 py-2 text-xs">
                 <div className="grid gap-1.5">
-                  <Label htmlFor="p_email">Email du parent *</Label>
+                  <Label htmlFor="parent_fullname">Nom et Prénom du parent *</Label>
                   <Input 
-                    id="p_email"
-                    type="email"
+                    id="parent_fullname"
                     required
-                    placeholder="email@example.com"
-                    value={parentFormData.email}
-                    onChange={(e) => setParentFormData({...parentFormData, email: e.target.value})}
+                    placeholder="Ex: Kouamé Affoué Marie"
+                    value={parentFormData.fullName}
+                    onChange={(e) => setParentFormData({...parentFormData, fullName: e.target.value})}
                     className="h-9 text-xs"
                   />
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="p_email">Email du parent *</Label>
+                    <Input 
+                      id="p_email"
+                      type="email"
+                      required
+                      placeholder="email@example.com"
+                      value={parentFormData.email}
+                      onChange={(e) => setParentFormData({...parentFormData, email: e.target.value})}
+                      className="h-9 text-xs"
+                    />
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="p_phone">Téléphone Mobile Money</Label>
+                    <Input 
+                      id="p_phone"
+                      placeholder="0708091011"
+                      value={parentFormData.phone}
+                      onChange={(e) => setParentFormData({...parentFormData, phone: e.target.value})}
+                      className="h-9 text-xs font-mono"
+                    />
+                  </div>
+                </div>
+
                 <div className="grid gap-1.5">
-                  <Label htmlFor="p_phone">Téléphone Mobile Money</Label>
+                  <Label htmlFor="p_pass">Mot de passe temporaire (laisser vide pour auto-génération)</Label>
                   <Input 
-                    id="p_phone"
-                    placeholder="0708091011"
-                    value={parentFormData.phone}
-                    onChange={(e) => setParentFormData({...parentFormData, phone: e.target.value})}
+                    id="p_pass"
+                    type="text"
+                    placeholder="Ex: Eureka2026!"
+                    value={parentFormData.password}
+                    onChange={(e) => setParentFormData({...parentFormData, password: e.target.value})}
                     className="h-9 text-xs font-mono"
                   />
                 </div>
+
+                <div className="grid gap-1.5 pt-1">
+                  <Label>Associer immédiatement un élève (optionnel)</Label>
+                  <Select 
+                    value={parentFormData.associateStudentId} 
+                    onValueChange={(val) => setParentFormData({...parentFormData, associateStudentId: val})}
+                  >
+                    <SelectTrigger className="h-9 text-xs">
+                      <SelectValue placeholder="Aucun pour le moment" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Aucun pour le moment</SelectItem>
+                      {studentsList.map(s => (
+                        <SelectItem key={s.id} value={s.id}>
+                          {s.first_name} {s.last_name} ({s.classes?.name || 'Classe'})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
-              <div className="grid gap-1.5">
-                <Label htmlFor="p_pass">Mot de passe temporaire (laisser vide pour auto-génération)</Label>
-                <Input 
-                  id="p_pass"
-                  type="text"
-                  placeholder="Ex: Eureka2026!"
-                  value={parentFormData.password}
-                  onChange={(e) => setParentFormData({...parentFormData, password: e.target.value})}
-                  className="h-9 text-xs font-mono"
-                />
-              </div>
-
-              <div className="grid gap-1.5 pt-1">
-                <Label>Associer immédiatement un élève (optionnel)</Label>
-                <Select 
-                  value={parentFormData.associateStudentId} 
-                  onValueChange={(val) => setParentFormData({...parentFormData, associateStudentId: val})}
+              <DialogFooter className="mt-2">
+                <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateParentOpen(false)}>
+                  Annuler
+                </Button>
+                <Button 
+                  type="submit" 
+                  size="sm"
+                  disabled={createParentMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700 font-bold"
                 >
-                  <SelectTrigger className="h-9 text-xs">
-                    <SelectValue placeholder="Aucun pour le moment" />
+                  {createParentMutation.isPending ? "Création en cours..." : "Créer le Compte Parent"}
+                </Button>
+              </DialogFooter>
+            </form>
+          ) : (
+            /* ── Recherche globale dans modal "Inscrire Parent" ── */
+            <div className="space-y-3 py-2 text-xs">
+
+              {/* Sélection de l'élève cible — OBLIGATOIRE car student_id est NOT NULL */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <Label className="text-amber-800 font-semibold mb-1.5 block">
+                  📌 Élève à rattacher au parent *
+                </Label>
+                <Select
+                  value={cpGlobalSelectedStudentId}
+                  onValueChange={setCpGlobalSelectedStudentId}
+                >
+                  <SelectTrigger className="h-9 text-xs bg-white border-amber-300">
+                    <SelectValue placeholder="Sélectionner un élève..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Aucun pour le moment</SelectItem>
                     {studentsList.map(s => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.first_name} {s.last_name} ({s.classes?.name || 'Classe'})
+                        {s.first_name} {s.last_name} — {s.classes?.name || 'Classe non assignée'}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                {!cpGlobalSelectedStudentId && (
+                  <p className="text-[10px] text-amber-700 mt-1">L'invitation sera liée à cet élève.</p>
+                )}
               </div>
-            </div>
 
-            <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateParentOpen(false)}>
-                Annuler
-              </Button>
-              <Button 
-                type="submit" 
-                size="sm"
-                disabled={createParentMutation.isPending}
-                className="bg-emerald-600 hover:bg-emerald-700 font-bold"
-              >
-                {createParentMutation.isPending ? "Création en cours..." : "Créer le Compte Parent"}
-              </Button>
-            </DialogFooter>
-          </form>
+              <div className="relative">
+                <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-blue-400" />
+                {isGlobalSearching && <Loader2 className="absolute right-3 top-2.5 h-3.5 w-3.5 text-blue-400 animate-spin" />}
+                <input
+                  type="text"
+                  placeholder="Nom, email ou téléphone du parent..."
+                  value={cpGlobalSearchQuery}
+                  onChange={(e) => { setCpGlobalSearchQuery(e.target.value); searchGlobal(e.target.value); }}
+                  className="w-full pl-9 pr-9 py-2 border border-blue-200 rounded-lg bg-blue-50 text-xs outline-none focus:border-blue-400 transition-colors"
+                />
+              </div>
+
+              {cpGlobalSearchQuery.length >= 2 ? (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {globalParents.length === 0 && !isGlobalSearching ? (
+                    <div className="text-center py-6 text-gray-400">
+                      <UserX className="w-7 h-7 mx-auto mb-1.5 text-gray-300" />
+                      <p>Aucun parent trouvé pour « {cpGlobalSearchQuery} »</p>
+                    </div>
+                  ) : (
+                    globalParents.map(gp => (
+                      <div
+                        key={gp.id}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border ${
+                          gp.already_in_school ? 'bg-emerald-50 border-emerald-200' : 'bg-white border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <div className={`w-9 h-9 rounded-lg flex items-center justify-center font-bold text-sm ${
+                            gp.already_in_school ? 'bg-emerald-200 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                          }`}>
+                            {(gp.full_name || gp.email)[0].toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="font-semibold text-gray-900 leading-tight">{gp.full_name || '—'}</p>
+                            <p className="text-gray-500 font-mono text-[10px]">{gp.email}</p>
+                            {gp.phone && <p className="text-gray-400 text-[10px]">{gp.phone}</p>}
+                            <div className="flex items-center gap-1 mt-0.5">
+                              <Building2 className="w-2.5 h-2.5 text-gray-400" />
+                              <span className="text-[10px] text-gray-400">{gp.tenant_name || 'Autre école'}</span>
+                              {gp.children_count > 0 && (
+                                <span className="text-[10px] text-gray-400">• {gp.children_count} enfant(s)</span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          {gp.already_in_school ? (
+                            <span className="px-2 py-1 text-[10px] font-bold bg-emerald-100 text-emerald-700 rounded-lg">
+                              Déjà inscrit
+                            </span>
+                          ) : (
+                            <div className="flex items-center gap-1.5">
+                              <button
+                                type="button"
+                                disabled={isInvitingGlobal || !cpGlobalSelectedStudentId}
+                                title={!cpGlobalSelectedStudentId ? "Sélectionnez d'abord un élève" : "Lier directement sans délai d'attente"}
+                                onClick={async () => {
+                                  if (!cpGlobalSelectedStudentId) {
+                                    toast.error("Veuillez sélectionner un élève à rattacher au parent.");
+                                    return;
+                                  }
+                                  setIsInvitingGlobal(true);
+                                  try {
+                                    await linkExistingParentDirectly(gp.id, cpGlobalSelectedStudentId);
+                                    toast.success(`Élève rattaché avec succès au parent ${gp.full_name} !`);
+                                    await studentsQuery.refetch();
+                                    setIsCreateParentOpen(false);
+                                    clearGlobalSearch();
+                                    setCpGlobalSearchQuery('');
+                                    setCpGlobalSelectedStudentId('');
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Erreur lors de la liaison directe");
+                                  } finally {
+                                    setIsInvitingGlobal(false);
+                                  }
+                                }}
+                                className="px-2 py-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {isInvitingGlobal ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}
+                                Lier
+                              </button>
+
+                              <button
+                                type="button"
+                                disabled={isInvitingGlobal || !cpGlobalSelectedStudentId}
+                                title={!cpGlobalSelectedStudentId ? "Sélectionnez d'abord un élève" : "Générer une invitation avec lien & WhatsApp"}
+                                onClick={async () => {
+                                  if (!cpGlobalSelectedStudentId) {
+                                    toast.error("Veuillez sélectionner un élève à rattacher au parent.");
+                                    return;
+                                  }
+                                  setIsInvitingGlobal(true);
+                                  try {
+                                    const res = await inviteExistingParent(gp.id, cpGlobalSelectedStudentId);
+                                    const targetStudent = studentsList.find(s => s.id === cpGlobalSelectedStudentId);
+                                    const stName = targetStudent ? `${targetStudent.first_name} ${targetStudent.last_name}` : res.studentName;
+
+                                    setInvitationSuccessData({
+                                      token: res.token,
+                                      parentName: gp.full_name,
+                                      parentEmail: res.email,
+                                      parentPhone: gp.phone,
+                                      studentName: stName,
+                                      schoolName: res.schoolName,
+                                      isExistingUser: true,
+                                    });
+                                    setIsInvitationSuccessOpen(true);
+                                    setIsCreateParentOpen(false);
+                                    clearGlobalSearch();
+                                    setCpGlobalSearchQuery('');
+                                    setCpGlobalSelectedStudentId('');
+                                  } catch (err: any) {
+                                    toast.error(err.message || "Erreur lors de l'invitation");
+                                  } finally {
+                                    setIsInvitingGlobal(false);
+                                  }
+                                }}
+                                className="px-2 py-1 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1 disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                {isInvitingGlobal ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                                Inviter
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              ) : (
+                <div className="text-center py-4 text-gray-400 text-[11px]">
+                  <Globe className="w-7 h-7 mx-auto mb-1.5 text-gray-300" />
+                  <p>Recherchez un parent par son <strong>nom</strong>, son <strong>email</strong> ou son <strong>numéro de téléphone</strong>.</p>
+                  <p className="mt-1">La recherche s'effectue sur l'ensemble des comptes parents Eurêka.</p>
+                </div>
+              )}
+
+              <DialogFooter className="mt-1">
+                <Button type="button" variant="outline" size="sm" onClick={() => { setIsCreateParentOpen(false); clearGlobalSearch(); setCpGlobalSearchQuery(''); setCpGlobalSelectedStudentId(''); }}>
+                  Fermer
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
 
       {/* ── MODAL 3 : ASSOCIER UN PARENT À UN ÉLÈVE CIBLÉ ── */}
-      <Dialog open={!!linkStudentTarget} onOpenChange={(open) => !open && setLinkStudentTarget(null)}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={!!linkStudentTarget} onOpenChange={(open) => { if (!open) { setLinkStudentTarget(null); clearGlobalSearch(); setGlobalSearchQuery(''); }}}>
+        <DialogContent className="sm:max-w-lg">
           <form onSubmit={handleLinkParentSubmit}>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
@@ -1066,37 +1282,53 @@ function ElevesPage() {
                 Associer un Parent à {linkStudentTarget?.first_name} {linkStudentTarget?.last_name}
               </DialogTitle>
               <DialogDescription>
-                Liez cet élève à un parent existant ou créez un nouveau compte parent sur le champ.
+                Liez cet élève à un parent de votre école, créez un nouveau compte, ou recherchez un parent déjà inscrit dans une autre école Eurêka.
               </DialogDescription>
             </DialogHeader>
 
             <div className="space-y-4 py-3 text-xs">
-              <div className="grid grid-cols-2 gap-2">
+              {/* Mode selector: 3 tabs */}
+              <div className="grid grid-cols-3 gap-1.5">
                 <button
                   type="button"
                   onClick={() => setLinkParentMode("existing")}
-                  className={`p-2.5 rounded-xl border text-center font-bold transition-all ${
+                  className={`p-2 rounded-xl border text-center font-bold transition-all text-[11px] ${
                     linkParentMode === "existing"
                       ? 'bg-emerald-600 text-white border-emerald-600'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  Choisir un parent existant
+                  <UserCheck className="w-3.5 h-3.5 mx-auto mb-1" />
+                  Dans cette école
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setLinkParentMode("global"); }}
+                  className={`p-2 rounded-xl border text-center font-bold transition-all text-[11px] ${
+                    linkParentMode === "global"
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                  }`}
+                >
+                  <Globe className="w-3.5 h-3.5 mx-auto mb-1" />
+                  Rechercher sur Eurêka
                 </button>
                 <button
                   type="button"
                   onClick={() => setLinkParentMode("new")}
-                  className={`p-2.5 rounded-xl border text-center font-bold transition-all ${
+                  className={`p-2 rounded-xl border text-center font-bold transition-all text-[11px] ${
                     linkParentMode === "new"
                       ? 'bg-emerald-600 text-white border-emerald-600'
                       : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                   }`}
                 >
-                  Créer un nouveau parent
+                  <Plus className="w-3.5 h-3.5 mx-auto mb-1" />
+                  Nouveau parent
                 </button>
               </div>
 
-              {linkParentMode === "existing" ? (
+              {/* ─── Tab: parents existants dans l'école ─── */}
+              {linkParentMode === "existing" && (
                 <div className="space-y-2">
                   <Label>Parent responsable</Label>
                   <Select value={selectedParentId} onValueChange={setSelectedParentId}>
@@ -1112,7 +1344,151 @@ function ElevesPage() {
                     </SelectContent>
                   </Select>
                 </div>
-              ) : (
+              )}
+
+              {/* ─── Tab: Recherche globale cross-école ─── */}
+              {linkParentMode === "global" && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-2.5 h-3.5 w-3.5 text-blue-400" />
+                    {isGlobalSearching && <Loader2 className="absolute right-3 top-2.5 h-3.5 w-3.5 text-blue-400 animate-spin" />}
+                    <input
+                      type="text"
+                      placeholder="Nom, email ou téléphone du parent..."
+                      value={globalSearchQuery}
+                      onChange={(e) => { setGlobalSearchQuery(e.target.value); searchGlobal(e.target.value); }}
+                      className="w-full pl-9 pr-9 py-2 border border-blue-200 rounded-lg bg-blue-50 text-xs outline-none focus:border-blue-400 transition-colors"
+                    />
+                  </div>
+
+                  {globalSearchQuery.length >= 2 && (
+                    <div className="space-y-2 max-h-52 overflow-y-auto">
+                      {globalParents.length === 0 && !isGlobalSearching ? (
+                        <div className="text-center py-6 text-gray-400">
+                          <UserX className="w-7 h-7 mx-auto mb-1.5 text-gray-300" />
+                          <p>Aucun parent trouvé pour « {globalSearchQuery} »</p>
+                        </div>
+                      ) : (
+                        globalParents.map(gp => (
+                          <div
+                            key={gp.id}
+                            className={`flex items-center justify-between p-2.5 rounded-xl border transition-all ${
+                              gp.already_in_school
+                                ? 'bg-emerald-50 border-emerald-200'
+                                : 'bg-white border-gray-200 hover:border-blue-300 hover:bg-blue-50'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2.5">
+                              <div className={`w-8 h-8 rounded-lg flex items-center justify-center font-bold text-xs ${
+                                gp.already_in_school ? 'bg-emerald-200 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                              }`}>
+                                {(gp.full_name || gp.email)[0].toUpperCase()}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-900 leading-tight">{gp.full_name || '—'}</p>
+                                <p className="text-gray-500 font-mono text-[10px]">{gp.email}</p>
+                                {gp.phone && <p className="text-gray-400 text-[10px]">{gp.phone}</p>}
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <Building2 className="w-2.5 h-2.5 text-gray-400" />
+                                  <span className="text-[10px] text-gray-400">{gp.tenant_name || 'Autre école'}</span>
+                                  {gp.children_count > 0 && (
+                                    <span className="text-[10px] text-gray-400">• {gp.children_count} enfant(s)</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div>
+                              {gp.already_in_school ? (
+                                <button
+                                  type="button"
+                                  onClick={() => { setSelectedParentId(gp.id); setLinkParentMode('existing'); }}
+                                  className="px-2 py-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg"
+                                >
+                                  Choisir
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  <button
+                                    type="button"
+                                    disabled={isInvitingGlobal}
+                                    title="Lier directement sans délai d'attente"
+                                    onClick={async () => {
+                                      if (!linkStudentTarget) return;
+                                      setIsInvitingGlobal(true);
+                                      try {
+                                        await linkExistingParentDirectly(gp.id, linkStudentTarget.id);
+                                        toast.success(`Élève ${linkStudentTarget.first_name} rattaché avec succès au parent ${gp.full_name} !`);
+                                        await studentsQuery.refetch();
+                                        setLinkStudentTarget(null);
+                                        clearGlobalSearch();
+                                        setGlobalSearchQuery('');
+                                      } catch (err: any) {
+                                        toast.error(err.message || "Erreur lors de la liaison directe");
+                                      } finally {
+                                        setIsInvitingGlobal(false);
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg flex items-center gap-1 disabled:opacity-60"
+                                  >
+                                    {isInvitingGlobal ? <Loader2 className="w-3 h-3 animate-spin" /> : <Link2 className="w-3 h-3" />}
+                                    Lier
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    disabled={isInvitingGlobal}
+                                    title="Générer une invitation avec lien & WhatsApp"
+                                    onClick={async () => {
+                                      if (!linkStudentTarget) return;
+                                      setIsInvitingGlobal(true);
+                                      try {
+                                        const res = await inviteExistingParent(gp.id, linkStudentTarget.id);
+                                        const stName = `${linkStudentTarget.first_name} ${linkStudentTarget.last_name}`;
+
+                                        setInvitationSuccessData({
+                                          token: res.token,
+                                          parentName: gp.full_name,
+                                          parentEmail: res.email,
+                                          parentPhone: gp.phone,
+                                          studentName: stName,
+                                          schoolName: res.schoolName,
+                                          isExistingUser: true,
+                                        });
+                                        setIsInvitationSuccessOpen(true);
+                                        setLinkStudentTarget(null);
+                                        clearGlobalSearch();
+                                        setGlobalSearchQuery('');
+                                      } catch (err: any) {
+                                        toast.error(err.message || "Erreur lors de l'invitation");
+                                      } finally {
+                                        setIsInvitingGlobal(false);
+                                      }
+                                    }}
+                                    className="px-2 py-1 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1 disabled:opacity-60"
+                                  >
+                                    {isInvitingGlobal ? <Loader2 className="w-3 h-3 animate-spin" /> : <Mail className="w-3 h-3" />}
+                                    Inviter
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
+
+                  {globalSearchQuery.length < 2 && (
+                    <div className="text-center py-4 text-gray-400 text-[11px]">
+                      <Globe className="w-6 h-6 mx-auto mb-1 text-gray-300" />
+                      Tapez au moins 2 caractères pour lancer la recherche sur toute la plateforme Eurêka
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* ─── Tab: Nouveau parent ─── */}
+              {linkParentMode === "new" && (
                 <div className="space-y-3 bg-gray-50 p-3.5 rounded-xl border">
                   <div className="grid gap-1.5">
                     <Label htmlFor="quick_name">Nom complet du parent *</Label>
@@ -1154,17 +1530,19 @@ function ElevesPage() {
             </div>
 
             <DialogFooter>
-              <Button type="button" variant="outline" size="sm" onClick={() => setLinkStudentTarget(null)}>
+              <Button type="button" variant="outline" size="sm" onClick={() => { setLinkStudentTarget(null); clearGlobalSearch(); setGlobalSearchQuery(''); }}>
                 Annuler
               </Button>
-              <Button 
-                type="submit" 
-                size="sm"
-                disabled={linkParentMutation.isPending || createParentMutation.isPending}
-                className="bg-emerald-600 hover:bg-emerald-700 font-bold"
-              >
-                {linkParentMutation.isPending || createParentMutation.isPending ? "Association..." : "Confirmer l'Association"}
-              </Button>
+              {linkParentMode !== 'global' && (
+                <Button 
+                  type="submit" 
+                  size="sm"
+                  disabled={linkParentMutation.isPending || createParentMutation.isPending}
+                  className="bg-emerald-600 hover:bg-emerald-700 font-bold"
+                >
+                  {linkParentMutation.isPending || createParentMutation.isPending ? "Association..." : "Confirmer l'Association"}
+                </Button>
+              )}
             </DialogFooter>
           </form>
         </DialogContent>
@@ -1290,6 +1668,16 @@ function ElevesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Boîte de dialogue Partage d'Invitation */}
+      <InvitationSuccessDialog
+        isOpen={isInvitationSuccessOpen}
+        onClose={() => {
+          setIsInvitationSuccessOpen(false);
+          setInvitationSuccessData(null);
+        }}
+        data={invitationSuccessData}
+      />
 
     </AppShell>
   );
