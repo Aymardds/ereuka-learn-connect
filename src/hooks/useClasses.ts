@@ -141,6 +141,8 @@ export function useClasses() {
   });
 
   return {
+    classes: classesQuery.data || [],
+    isLoading: classesQuery.isLoading,
     classesQuery,
     createClassMutation,
     updateClassMutation,

@@ -3,12 +3,13 @@ import { AppShell } from '@/components/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/hooks/useSettings';
 import { useState, useEffect, useRef } from 'react';
-import { Building2, Save, Upload, MapPin, Phone, GraduationCap, Loader2 } from 'lucide-react';
+import { Building2, Save, Upload, MapPin, Phone, GraduationCap, Loader2, Lock, KeyRound } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
+import { supabase } from '@/lib/supabase';
 
 export const Route = createFileRoute('/parametres')({
   component: ParametresPage,
@@ -27,6 +28,11 @@ function ParametresPage() {
   const [phone, setPhone] = useState('');
   const [schoolTypes, setSchoolTypes] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Password change states
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
 
   useEffect(() => {
     if (tenantQuery.data) {
@@ -193,8 +199,8 @@ function ParametresPage() {
           
           <div className="p-6">
             <p className="text-sm text-gray-600 mb-4">Sélectionnez les niveaux d'enseignement dispensés par votre établissement. Cela adaptera les fonctionnalités (ex: professeurs principaux vs professeurs par matière).</p>
-            <div className="flex flex-wrap gap-6">
-              {['Maternelle', 'Primaire', 'Secondaire'].map((type) => (
+            <div className="flex flex-wrap gap-4">
+              {['Maternelle', 'Primaire', 'Secondaire', 'Supérieur'].map((type) => (
                 <div key={type} className="flex items-center space-x-2 bg-gray-50 px-4 py-3 rounded-lg border">
                   <Checkbox 
                     id={`type-${type}`} 
@@ -202,11 +208,85 @@ function ParametresPage() {
                     onCheckedChange={(checked) => handleCheckboxChange(type, checked as boolean)}
                   />
                   <label htmlFor={`type-${type}`} className="text-sm font-medium leading-none cursor-pointer">
-                    {type}
+                    {type === 'Supérieur' ? 'Supérieur (Université / LMD)' : type}
                   </label>
                 </div>
               ))}
             </div>
+
+            {schoolTypes.includes('Supérieur') && (
+              <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2">
+                <span className="font-bold">Mode Supérieur actif :</span> Le module Système LMD est opérationnel (Licence/Master/Doctorat, UEs, crédits ECTS, sessions normales et rattrapages).
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* SECTION SÉCURITÉ & MOT DE PASSE */}
+        <section className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="border-b bg-gray-50/50 px-6 py-4 flex items-center gap-3">
+            <Lock className="w-5 h-5 text-gray-500" />
+            <h2 className="text-lg font-semibold">Sécurité du compte</h2>
+          </div>
+          
+          <div className="p-6 max-w-xl space-y-4">
+            <p className="text-sm text-gray-600">
+              Modifiez le mot de passe associé à votre compte ({profile?.email || 'votre adresse email'}).
+            </p>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="param-new-password">Nouveau mot de passe</Label>
+              <Input
+                id="param-new-password"
+                type="password"
+                placeholder="Au moins 6 caractères"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+              />
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="param-confirm-password">Confirmer le nouveau mot de passe</Label>
+              <Input
+                id="param-confirm-password"
+                type="password"
+                placeholder="Répétez le mot de passe"
+                value={confirmPassword}
+                onChange={(e) => setConfirmPassword(e.target.value)}
+              />
+            </div>
+
+            <Button
+              type="button"
+              variant="outline"
+              onClick={async () => {
+                if (newPassword.length < 6) {
+                  toast.error('Le mot de passe doit comporter au moins 6 caractères');
+                  return;
+                }
+                if (newPassword !== confirmPassword) {
+                  toast.error('Les mots de passe ne correspondent pas');
+                  return;
+                }
+                setIsChangingPassword(true);
+                try {
+                  const { error } = await supabase.auth.updateUser({ password: newPassword });
+                  if (error) throw error;
+                  toast.success('Mot de passe mis à jour avec succès');
+                  setNewPassword('');
+                  setConfirmPassword('');
+                } catch (err: any) {
+                  toast.error(err?.message || 'Erreur lors de la modification');
+                } finally {
+                  setIsChangingPassword(false);
+                }
+              }}
+              disabled={isChangingPassword || !newPassword || !confirmPassword}
+              className="gap-2 mt-2"
+            >
+              {isChangingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <KeyRound className="w-4 h-4" />}
+              Changer mon mot de passe
+            </Button>
           </div>
         </section>
 

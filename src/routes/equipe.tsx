@@ -1,13 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useTeam } from '@/hooks/useTeam';
 import { useAuth } from '@/hooks/useAuth';
 import { UserProfile, UserRole } from '@/types/database';
-import { Users, Shield, UserPlus, Mail, Calendar, Edit2, Trash2, CheckCircle2, Key } from 'lucide-react';
+import { Users, Shield, UserPlus, Mail, Calendar, Edit2, Trash2, CheckCircle2, Key, GraduationCap, BookOpen, X, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { useTeacherAssignments } from '@/hooks/useTeacherAssignments';
+import { useClasses } from '@/hooks/useClasses';
+import { useSubjects } from '@/hooks/useSubjects';
+import { supabase } from '@/lib/supabase';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Dialog,
@@ -37,7 +41,13 @@ const ROLE_LABELS: Record<UserRole, { label: string; badge: string }> = {
   accountant: { label: 'Comptable / Économe', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   cashier: { label: 'Caissier', badge: 'bg-amber-100 text-amber-800 border-amber-200' },
   teacher: { label: 'Enseignant', badge: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
-  responsible: { label: 'Parent / Tuteur', badge: 'bg-gray-100 text-gray-800 border-gray-200' },
+  responsible: { label: 'Tuteur Légal', badge: 'bg-gray-100 text-gray-800 border-gray-200' },
+  dean: { label: 'Doyen de Faculté', badge: 'bg-teal-100 text-teal-800 border-teal-200' },
+  department_head: { label: 'Chef de Département', badge: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  secretary: { label: 'Secrétariat', badge: 'bg-pink-100 text-pink-800 border-pink-200' },
+  surveillance: { label: 'Surveillant Général', badge: 'bg-orange-100 text-orange-800 border-orange-200' },
+  student: { label: 'Élève / Étudiant', badge: 'bg-sky-100 text-sky-800 border-sky-200' },
+  parent: { label: 'Parent d\'élève', badge: 'bg-rose-100 text-rose-800 border-rose-200' },
   superadmin: { label: 'Super Admin', badge: 'bg-red-100 text-red-800 border-red-200' },
 };
 
@@ -62,6 +72,9 @@ function EquipeRoute() {
 
   // Delete Alert state
   const [deletingMember, setDeletingMember] = useState<UserProfile | null>(null);
+
+  // Teacher class management state
+  const [managingTeacher, setManagingTeacher] = useState<UserProfile | null>(null);
 
   const filteredStaff = staff.filter((member) => {
     if (selectedRoleFilter === 'all') return true;
@@ -209,6 +222,17 @@ function EquipeRoute() {
                       {canManageStaff && (
                         <td className="px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-2">
+                            {member.role === 'teacher' && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-8 gap-1.5 text-xs text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+                                onClick={() => setManagingTeacher(member)}
+                              >
+                                <GraduationCap className="w-3.5 h-3.5" />
+                                Classes
+                              </Button>
+                            )}
                             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(member)}>
                               <Edit2 className="w-4 h-4 text-muted-foreground" />
                             </Button>
@@ -386,6 +410,218 @@ function EquipeRoute() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* TEACHER CLASSES MANAGEMENT DIALOG */}
+      {managingTeacher && (
+        <TeacherClassesDialog
+          teacher={managingTeacher}
+          isOpen={!!managingTeacher}
+          onClose={() => setManagingTeacher(null)}
+        />
+      )}
     </AppShell>
+  );
+}
+
+// ─── Teacher Classes Dialog ──────────────────────────────────────────────────
+
+function TeacherClassesDialog({
+  teacher,
+  isOpen,
+  onClose,
+}: {
+  teacher: UserProfile;
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const { useTeacherAssignmentsForTeacher, createAssignmentMutation, deleteAssignmentMutation } =
+    useTeacherAssignments();
+  const { classes } = useClasses();
+  const { subjects } = useSubjects();
+
+  const assignmentsQuery = useTeacherAssignmentsForTeacher(teacher.id);
+  const assignments = assignmentsQuery.data || [];
+
+  const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedSubjectId, setSelectedSubjectId] = useState<string>('none');
+  const [selectedRole, setSelectedRole] = useState<'titulaire' | 'intervenant' | 'surveillant'>('intervenant');
+
+  const roleBadge: Record<string, string> = {
+    titulaire: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+    intervenant: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+    surveillant: 'bg-amber-100 text-amber-800 border-amber-200',
+  };
+
+  const roleLabels: Record<string, string> = {
+    titulaire: 'Titulaire',
+    intervenant: 'Intervenant',
+    surveillant: 'Surveillant',
+  };
+
+  // Group assignments by class
+  const grouped = assignments.reduce<Record<string, typeof assignments>>((acc, a) => {
+    const key = a.class_id;
+    if (!acc[key]) acc[key] = [];
+    acc[key].push(a);
+    return acc;
+  }, {});
+
+  const handleAssign = async () => {
+    if (!selectedClassId) return;
+    await createAssignmentMutation.mutateAsync({
+      teacherId: teacher.id,
+      classId: selectedClassId,
+      subjectId: selectedSubjectId === 'none' ? null : selectedSubjectId,
+      roleInClass: selectedRole,
+    });
+    setSelectedClassId('');
+    setSelectedSubjectId('none');
+    setSelectedRole('intervenant');
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <GraduationCap className="w-5 h-5 text-primary" />
+            Classes de {teacher.full_name || teacher.email}
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-6 py-4 overflow-y-auto flex-1">
+          {/* Assign form */}
+          <div className="p-4 bg-muted/30 rounded-xl border space-y-3">
+            <h4 className="text-sm font-semibold">Assigner une classe</h4>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="grid gap-2">
+                <Label>Classe *</Label>
+                <Select value={selectedClassId} onValueChange={setSelectedClassId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choisir une classe" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {classes.length === 0 && (
+                      <SelectItem value="none" disabled>Aucune classe disponible</SelectItem>
+                    )}
+                    {classes.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name} {c.level_type ? `(${c.level_type})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid gap-2">
+                <Label>Rôle dans la classe</Label>
+                <Select
+                  value={selectedRole}
+                  onValueChange={(v) => setSelectedRole(v as typeof selectedRole)}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="titulaire">Titulaire</SelectItem>
+                    <SelectItem value="intervenant">Intervenant</SelectItem>
+                    <SelectItem value="surveillant">Surveillant</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {subjects.length > 0 && (
+                <div className="grid gap-2 col-span-2">
+                  <Label>Matière enseignée (optionnel)</Label>
+                  <Select value={selectedSubjectId} onValueChange={setSelectedSubjectId}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Non précisé / Toutes matières" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Non précisé / Toutes matières</SelectItem>
+                      {subjects.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+            </div>
+            <Button
+              onClick={handleAssign}
+              disabled={!selectedClassId || createAssignmentMutation.isPending}
+              className="w-full"
+            >
+              {createAssignmentMutation.isPending ? 'Assignation...' : 'Assigner à la classe'}
+            </Button>
+          </div>
+
+          {/* Classes list */}
+          <div className="space-y-3">
+            <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Classes assignées ({Object.keys(grouped).length})
+            </h4>
+
+            {assignmentsQuery.isLoading ? (
+              <div className="text-center py-4 text-sm text-muted-foreground">Chargement...</div>
+            ) : Object.keys(grouped).length === 0 ? (
+              <div className="text-center py-8 bg-muted/10 rounded-xl border border-dashed text-sm text-muted-foreground">
+                <GraduationCap className="w-8 h-8 mx-auto mb-2 opacity-30" />
+                Cet enseignant n'est assigné à aucune classe.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {Object.entries(grouped).map(([classId, classAssignments]) => {
+                  const classInfo = classAssignments[0]?.classes;
+                  return (
+                    <div key={classId} className="rounded-lg border bg-card overflow-hidden">
+                      <div className="flex items-center justify-between px-4 py-3 bg-muted/30 border-b">
+                        <div className="font-semibold flex items-center gap-2">
+                          <Users className="w-4 h-4 text-primary" />
+                          {classInfo?.name}
+                          {classInfo?.level_type && (
+                            <span className="text-xs text-muted-foreground">({classInfo.level_type})</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="divide-y">
+                        {classAssignments.map((a) => (
+                          <div key={a.id} className="flex items-center justify-between px-4 py-2.5">
+                            <div className="flex items-center gap-3">
+                              <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${roleBadge[a.role_in_class]}`}>
+                                {roleLabels[a.role_in_class]}
+                              </span>
+                              {(a as any).subjects && (
+                                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                                  <BookOpen className="w-3 h-3" />
+                                  {(a as any).subjects?.name}
+                                </span>
+                              )}
+                              {!(a as any).subjects && (
+                                <span className="text-xs text-muted-foreground">Toutes matières</span>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-destructive hover:text-destructive"
+                              onClick={() => deleteAssignmentMutation.mutate(a.id)}
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button onClick={onClose} variant="outline">Fermer</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

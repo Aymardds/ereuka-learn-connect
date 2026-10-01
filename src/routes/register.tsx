@@ -186,8 +186,8 @@ function RegisterPage() {
                   
                   <div className="grid gap-3 pt-2">
                     <Label>Niveaux d'enseignement *</Label>
-                    <div className="flex gap-4">
-                      {['Maternelle', 'Primaire', 'Secondaire'].map((type) => (
+                    <div className="flex flex-wrap gap-4">
+                      {['Maternelle', 'Primaire', 'Secondaire', 'Supérieur'].map((type) => (
                         <div key={type} className="flex items-center space-x-2">
                           <Checkbox 
                             id={`type-${type}`} 
@@ -195,7 +195,7 @@ function RegisterPage() {
                             onCheckedChange={(checked) => handleCheckboxChange(type, checked as boolean)}
                           />
                           <label htmlFor={`type-${type}`} className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            {type}
+                            {type === 'Supérieur' ? 'Supérieur (Université / LMD)' : type}
                           </label>
                         </div>
                       ))}

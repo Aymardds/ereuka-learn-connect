@@ -98,6 +98,8 @@ export function useSubjects() {
   });
 
   return {
+    subjects: subjectsQuery.data || [],
+    isLoading: subjectsQuery.isLoading,
     subjectsQuery,
     createSubjectMutation,
     updateSubjectMutation,

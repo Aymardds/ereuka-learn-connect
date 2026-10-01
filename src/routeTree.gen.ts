@@ -11,20 +11,32 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BulletinsRouteImport } from './routes/bulletins'
+import { Route as CahierDeTexteRouteImport } from './routes/cahier-de-texte'
 import { Route as ClassesRouteImport } from './routes/classes'
+import { Route as CommunicationRouteImport } from './routes/communication'
 import { Route as ElevesRouteImport } from './routes/eleves'
+import { Route as EmploiDuTempsRouteImport } from './routes/emploi-du-temps'
 import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as InviteRouteImport } from './routes/invite'
+import { Route as LmdRouteImport } from './routes/lmd'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MatieresRouteImport } from './routes/matieres'
 import { Route as ModalitesRouteImport } from './routes/modalites'
 import { Route as NotesRouteImport } from './routes/notes'
 import { Route as PaiementRouteImport } from './routes/paiement'
 import { Route as ParametresRouteImport } from './routes/parametres'
+import { Route as PortailEtudiantRouteImport } from './routes/portail-etudiant'
+import { Route as PortailParentRouteImport } from './routes/portail-parent'
 import { Route as PresencesRouteImport } from './routes/presences'
 import { Route as RegisterRouteImport } from './routes/register'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as RhRouteImport } from './routes/rh'
+import { Route as StatistiquesRouteImport } from './routes/statistiques'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
+import { Route as TerminauxPaiementRouteImport } from './routes/terminaux-paiement'
+import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as SuperadminIndexRouteImport } from './routes/superadmin/index'
+import { Route as SuperadminAbonnementsRouteImport } from './routes/superadmin/abonnements'
 import { Route as SuperadminEtablissementsRouteImport } from './routes/superadmin/etablissements'
 import { Route as SuperadminKycIndexRouteImport } from './routes/superadmin/kyc.index'
 import { Route as SuperadminKycIdRouteImport } from './routes/superadmin/kyc.$id'
@@ -39,14 +51,29 @@ const BulletinsRoute = BulletinsRouteImport.update({
   path: '/bulletins',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CahierDeTexteRoute = CahierDeTexteRouteImport.update({
+  id: '/cahier-de-texte',
+  path: '/cahier-de-texte',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ClassesRoute = ClassesRouteImport.update({
   id: '/classes',
   path: '/classes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CommunicationRoute = CommunicationRouteImport.update({
+  id: '/communication',
+  path: '/communication',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ElevesRoute = ElevesRouteImport.update({
   id: '/eleves',
   path: '/eleves',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmploiDuTempsRoute = EmploiDuTempsRouteImport.update({
+  id: '/emploi-du-temps',
+  path: '/emploi-du-temps',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EquipeRoute = EquipeRouteImport.update({
@@ -57,6 +84,11 @@ const EquipeRoute = EquipeRouteImport.update({
 const InviteRoute = InviteRouteImport.update({
   id: '/invite',
   path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LmdRoute = LmdRouteImport.update({
+  id: '/lmd',
+  path: '/lmd',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -89,6 +121,16 @@ const ParametresRoute = ParametresRouteImport.update({
   path: '/parametres',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PortailEtudiantRoute = PortailEtudiantRouteImport.update({
+  id: '/portail-etudiant',
+  path: '/portail-etudiant',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortailParentRoute = PortailParentRouteImport.update({
+  id: '/portail-parent',
+  path: '/portail-parent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PresencesRoute = PresencesRouteImport.update({
   id: '/presences',
   path: '/presences',
@@ -99,14 +141,44 @@ const RegisterRoute = RegisterRouteImport.update({
   path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RhRoute = RhRouteImport.update({
+  id: '/rh',
+  path: '/rh',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const StatistiquesRoute = StatistiquesRouteImport.update({
+  id: '/statistiques',
+  path: '/statistiques',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperadminRoute = SuperadminRouteImport.update({
   id: '/superadmin',
   path: '/superadmin',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TerminauxPaiementRoute = TerminauxPaiementRouteImport.update({
+  id: '/terminaux-paiement',
+  path: '/terminaux-paiement',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PayTokenRoute = PayTokenRouteImport.update({
+  id: '/pay/$token',
+  path: '/pay/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SuperadminIndexRoute = SuperadminIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SuperadminRoute,
+} as any)
+const SuperadminAbonnementsRoute = SuperadminAbonnementsRouteImport.update({
+  id: '/abonnements',
+  path: '/abonnements',
   getParentRoute: () => SuperadminRoute,
 } as any)
 const SuperadminEtablissementsRoute =
@@ -129,19 +201,31 @@ const SuperadminKycIdRoute = SuperadminKycIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
+  '/cahier-de-texte': typeof CahierDeTexteRoute
   '/classes': typeof ClassesRoute
+  '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
+  '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
   '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
   '/paiement': typeof PaiementRoute
   '/parametres': typeof ParametresRoute
+  '/portail-etudiant': typeof PortailEtudiantRoute
+  '/portail-parent': typeof PortailParentRoute
   '/presences': typeof PresencesRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/rh': typeof RhRoute
+  '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
+  '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin/': typeof SuperadminIndexRoute
   '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
@@ -150,18 +234,30 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
+  '/cahier-de-texte': typeof CahierDeTexteRoute
   '/classes': typeof ClassesRoute
+  '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
+  '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
   '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
   '/paiement': typeof PaiementRoute
   '/parametres': typeof ParametresRoute
+  '/portail-etudiant': typeof PortailEtudiantRoute
+  '/portail-parent': typeof PortailParentRoute
   '/presences': typeof PresencesRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/rh': typeof RhRoute
+  '/statistiques': typeof StatistiquesRoute
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
+  '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin': typeof SuperadminIndexRoute
   '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
@@ -171,19 +267,31 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
+  '/cahier-de-texte': typeof CahierDeTexteRoute
   '/classes': typeof ClassesRoute
+  '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
+  '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
   '/modalites': typeof ModalitesRoute
   '/notes': typeof NotesRoute
   '/paiement': typeof PaiementRoute
   '/parametres': typeof ParametresRoute
+  '/portail-etudiant': typeof PortailEtudiantRoute
+  '/portail-parent': typeof PortailParentRoute
   '/presences': typeof PresencesRoute
   '/register': typeof RegisterRoute
+  '/reset-password': typeof ResetPasswordRoute
+  '/rh': typeof RhRoute
+  '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
+  '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/pay/$token': typeof PayTokenRoute
+  '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
   '/superadmin/': typeof SuperadminIndexRoute
   '/superadmin/kyc/$id': typeof SuperadminKycIdRoute
@@ -194,19 +302,31 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/bulletins'
+    | '/cahier-de-texte'
     | '/classes'
+    | '/communication'
     | '/eleves'
+    | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/lmd'
     | '/login'
     | '/matieres'
     | '/modalites'
     | '/notes'
     | '/paiement'
     | '/parametres'
+    | '/portail-etudiant'
+    | '/portail-parent'
     | '/presences'
     | '/register'
+    | '/reset-password'
+    | '/rh'
+    | '/statistiques'
     | '/superadmin'
+    | '/terminaux-paiement'
+    | '/pay/$token'
+    | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin/'
     | '/superadmin/kyc/$id'
@@ -215,18 +335,30 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/bulletins'
+    | '/cahier-de-texte'
     | '/classes'
+    | '/communication'
     | '/eleves'
+    | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/lmd'
     | '/login'
     | '/matieres'
     | '/modalites'
     | '/notes'
     | '/paiement'
     | '/parametres'
+    | '/portail-etudiant'
+    | '/portail-parent'
     | '/presences'
     | '/register'
+    | '/reset-password'
+    | '/rh'
+    | '/statistiques'
+    | '/terminaux-paiement'
+    | '/pay/$token'
+    | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin'
     | '/superadmin/kyc/$id'
@@ -235,19 +367,31 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/bulletins'
+    | '/cahier-de-texte'
     | '/classes'
+    | '/communication'
     | '/eleves'
+    | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/lmd'
     | '/login'
     | '/matieres'
     | '/modalites'
     | '/notes'
     | '/paiement'
     | '/parametres'
+    | '/portail-etudiant'
+    | '/portail-parent'
     | '/presences'
     | '/register'
+    | '/reset-password'
+    | '/rh'
+    | '/statistiques'
     | '/superadmin'
+    | '/terminaux-paiement'
+    | '/pay/$token'
+    | '/superadmin/abonnements'
     | '/superadmin/etablissements'
     | '/superadmin/'
     | '/superadmin/kyc/$id'
@@ -257,19 +401,30 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BulletinsRoute: typeof BulletinsRoute
+  CahierDeTexteRoute: typeof CahierDeTexteRoute
   ClassesRoute: typeof ClassesRoute
+  CommunicationRoute: typeof CommunicationRoute
   ElevesRoute: typeof ElevesRoute
+  EmploiDuTempsRoute: typeof EmploiDuTempsRoute
   EquipeRoute: typeof EquipeRoute
   InviteRoute: typeof InviteRoute
+  LmdRoute: typeof LmdRoute
   LoginRoute: typeof LoginRoute
   MatieresRoute: typeof MatieresRoute
   ModalitesRoute: typeof ModalitesRoute
   NotesRoute: typeof NotesRoute
   PaiementRoute: typeof PaiementRoute
   ParametresRoute: typeof ParametresRoute
+  PortailEtudiantRoute: typeof PortailEtudiantRoute
+  PortailParentRoute: typeof PortailParentRoute
   PresencesRoute: typeof PresencesRoute
   RegisterRoute: typeof RegisterRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
+  RhRoute: typeof RhRoute
+  StatistiquesRoute: typeof StatistiquesRoute
   SuperadminRoute: typeof SuperadminRouteWithChildren
+  TerminauxPaiementRoute: typeof TerminauxPaiementRoute
+  PayTokenRoute: typeof PayTokenRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -288,6 +443,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BulletinsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cahier-de-texte': {
+      id: '/cahier-de-texte'
+      path: '/cahier-de-texte'
+      fullPath: '/cahier-de-texte'
+      preLoaderRoute: typeof CahierDeTexteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/classes': {
       id: '/classes'
       path: '/classes'
@@ -295,11 +457,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ClassesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/communication': {
+      id: '/communication'
+      path: '/communication'
+      fullPath: '/communication'
+      preLoaderRoute: typeof CommunicationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/eleves': {
       id: '/eleves'
       path: '/eleves'
       fullPath: '/eleves'
       preLoaderRoute: typeof ElevesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/emploi-du-temps': {
+      id: '/emploi-du-temps'
+      path: '/emploi-du-temps'
+      fullPath: '/emploi-du-temps'
+      preLoaderRoute: typeof EmploiDuTempsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/equipe': {
@@ -314,6 +490,13 @@ declare module '@tanstack/react-router' {
       path: '/invite'
       fullPath: '/invite'
       preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lmd': {
+      id: '/lmd'
+      path: '/lmd'
+      fullPath: '/lmd'
+      preLoaderRoute: typeof LmdRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -358,6 +541,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ParametresRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/portail-etudiant': {
+      id: '/portail-etudiant'
+      path: '/portail-etudiant'
+      fullPath: '/portail-etudiant'
+      preLoaderRoute: typeof PortailEtudiantRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portail-parent': {
+      id: '/portail-parent'
+      path: '/portail-parent'
+      fullPath: '/portail-parent'
+      preLoaderRoute: typeof PortailParentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/presences': {
       id: '/presences'
       path: '/presences'
@@ -372,6 +569,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rh': {
+      id: '/rh'
+      path: '/rh'
+      fullPath: '/rh'
+      preLoaderRoute: typeof RhRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/statistiques': {
+      id: '/statistiques'
+      path: '/statistiques'
+      fullPath: '/statistiques'
+      preLoaderRoute: typeof StatistiquesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/superadmin': {
       id: '/superadmin'
       path: '/superadmin'
@@ -379,11 +597,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SuperadminRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/terminaux-paiement': {
+      id: '/terminaux-paiement'
+      path: '/terminaux-paiement'
+      fullPath: '/terminaux-paiement'
+      preLoaderRoute: typeof TerminauxPaiementRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pay/$token': {
+      id: '/pay/$token'
+      path: '/pay/$token'
+      fullPath: '/pay/$token'
+      preLoaderRoute: typeof PayTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/superadmin/': {
       id: '/superadmin/'
       path: '/'
       fullPath: '/superadmin/'
       preLoaderRoute: typeof SuperadminIndexRouteImport
+      parentRoute: typeof SuperadminRoute
+    }
+    '/superadmin/abonnements': {
+      id: '/superadmin/abonnements'
+      path: '/abonnements'
+      fullPath: '/superadmin/abonnements'
+      preLoaderRoute: typeof SuperadminAbonnementsRouteImport
       parentRoute: typeof SuperadminRoute
     }
     '/superadmin/etablissements': {
@@ -411,6 +650,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface SuperadminRouteChildren {
+  SuperadminAbonnementsRoute: typeof SuperadminAbonnementsRoute
   SuperadminEtablissementsRoute: typeof SuperadminEtablissementsRoute
   SuperadminIndexRoute: typeof SuperadminIndexRoute
   SuperadminKycIdRoute: typeof SuperadminKycIdRoute
@@ -418,6 +658,7 @@ interface SuperadminRouteChildren {
 }
 
 const SuperadminRouteChildren: SuperadminRouteChildren = {
+  SuperadminAbonnementsRoute: SuperadminAbonnementsRoute,
   SuperadminEtablissementsRoute: SuperadminEtablissementsRoute,
   SuperadminIndexRoute: SuperadminIndexRoute,
   SuperadminKycIdRoute: SuperadminKycIdRoute,
@@ -431,19 +672,30 @@ const SuperadminRouteWithChildren = SuperadminRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BulletinsRoute: BulletinsRoute,
+  CahierDeTexteRoute: CahierDeTexteRoute,
   ClassesRoute: ClassesRoute,
+  CommunicationRoute: CommunicationRoute,
   ElevesRoute: ElevesRoute,
+  EmploiDuTempsRoute: EmploiDuTempsRoute,
   EquipeRoute: EquipeRoute,
   InviteRoute: InviteRoute,
+  LmdRoute: LmdRoute,
   LoginRoute: LoginRoute,
   MatieresRoute: MatieresRoute,
   ModalitesRoute: ModalitesRoute,
   NotesRoute: NotesRoute,
   PaiementRoute: PaiementRoute,
   ParametresRoute: ParametresRoute,
+  PortailEtudiantRoute: PortailEtudiantRoute,
+  PortailParentRoute: PortailParentRoute,
   PresencesRoute: PresencesRoute,
   RegisterRoute: RegisterRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
+  RhRoute: RhRoute,
+  StatistiquesRoute: StatistiquesRoute,
   SuperadminRoute: SuperadminRouteWithChildren,
+  TerminauxPaiementRoute: TerminauxPaiementRoute,
+  PayTokenRoute: PayTokenRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

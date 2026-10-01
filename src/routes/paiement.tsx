@@ -1,12 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useState } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useState, useMemo } from 'react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { AppShell } from '@/components/AppShell'
+import { useSchoolAccounting, StudentLedgerItem, OverdueScheduleReminder } from '@/hooks/useSchoolAccounting'
+import { useClasses } from '@/hooks/useClasses'
+import { useAuth } from '@/hooks/useAuth'
 import {
   CreditCard, Smartphone, CheckCircle2, FileText, Download, Printer,
   Loader2, Calendar, User, Mail, Clock, ArrowRight, AlertCircle,
-  RefreshCw, BadgePercent, ChevronDown, Banknote, School
+  RefreshCw, BadgePercent, ChevronDown, Banknote, School, Search,
+  Filter, MessageCircle, BellRing, QrCode, ExternalLink, ShieldCheck,
+  TrendingUp, AlertTriangle, Eye, Send, Users, DollarSign, Check,
+  Share2, ArrowUpRight
 } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -31,779 +37,1126 @@ import {
 } from "@/components/ui/select"
 
 export const Route = createFileRoute('/paiement')({
-  component: ParentPaymentPage,
+  component: PaymentAndAccountingPage,
 })
 
-// ─── Payment Methods ─────────────────────────────────────────────────────────
-const paymentMethods = [
-  { id: 'wave',       name: 'Wave Mobile Money',           icon: '🌊', color: 'bg-cyan-500' },
-  { id: 'orange',     name: 'Orange Money',                icon: '🍊', color: 'bg-orange-500' },
-  { id: 'mtn',        name: 'MTN Mobile Money',            icon: '🟡', color: 'bg-yellow-400' },
-  { id: 'moov',       name: 'Moov Money',                  icon: '🔹', color: 'bg-blue-600' },
-  { id: 'card',       name: 'Carte Bancaire (Visa/MC)',    icon: '💳', color: 'bg-slate-800' },
+// ─── Modes de Paiement Caisse & Mobile Money ──────────────────────────────────
+const PAYMENT_METHODS = [
+  { id: 'Espèces',            name: 'Espèces (Caisse guichet)',     icon: '💵', color: 'bg-emerald-600' },
+  { id: 'Wave',               name: 'Wave Mobile Money',           icon: '🌊', color: 'bg-cyan-500' },
+  { id: 'Orange Money',       name: 'Orange Money',                icon: '🍊', color: 'bg-orange-500' },
+  { id: 'MTN Mobile Money',   name: 'MTN MoMo',                    icon: '🟡', color: 'bg-yellow-400' },
+  { id: 'Moov Money',         name: 'Moov Money',                  icon: '🔹', color: 'bg-blue-600' },
+  { id: 'Chèque',             name: 'Chèque bancaire',             icon: '📑', color: 'bg-indigo-600' },
+  { id: 'Virement bancaire',  name: 'Virement bancaire',           icon: '🏦', color: 'bg-purple-600' },
+  { id: 'Carte Bancaire',     name: 'Carte Bancaire (Visa/MC)',    icon: '💳', color: 'bg-slate-800' },
 ]
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
-function genReceiptNumber() {
-  const y = new Date().getFullYear()
-  return `REC-${y}-${Math.floor(10000 + Math.random() * 90000)}`
-}
-function genTxRef(method: string) {
-  const prefix = { wave: 'WV', orange: 'OM', mtn: 'MTN', moov: 'MV', card: 'CB' }[method] || 'TX'
-  return `${prefix}-${Math.random().toString(36).substring(2, 10).toUpperCase()}`
-}
-
-// ─── Status Badge ─────────────────────────────────────────────────────────────
-function StatusBadge({ status }: { status: 'paid' | 'partial' | 'pending' }) {
-  if (status === 'paid') return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
-      <CheckCircle2 className="w-3.5 h-3.5" /> PAYÉ
+function StatusBadge({ status }: { status: 'paid' | 'partial' | 'pending' | 'up_to_date' | 'late' | 'not_configured' }) {
+  if (status === 'paid' || status === 'up_to_date') return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+      <CheckCircle2 className="w-3 h-3" /> EN RÈGLE
     </span>
   )
   if (status === 'partial') return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
-      <BadgePercent className="w-3.5 h-3.5" /> PARTIEL
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800">
+      <BadgePercent className="w-3 h-3" /> PARTIEL
+    </span>
+  )
+  if (status === 'late') return (
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 animate-pulse-slow">
+      <AlertTriangle className="w-3 h-3 text-red-600" /> EN RETARD
     </span>
   )
   return (
-    <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
-      <Clock className="w-3.5 h-3.5" /> À PAYER
+    <span className="inline-flex items-center gap-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800">
+      <Clock className="w-3 h-3" /> À PAYER
     </span>
   )
 }
 
-// ─── Main Component ───────────────────────────────────────────────────────────
-function ParentPaymentPage() {
+function PaymentAndAccountingPage() {
+  const { user, profile } = useAuth()
   const queryClient = useQueryClient()
+  const { classesQuery } = useClasses()
+  const classes = classesQuery.data || []
 
-  // ── UI state
-  const [selectedChildId, setSelectedChildId] = useState<string>('')
-  const [selectedSchedule, setSelectedSchedule] = useState<any>(null)
-  const [selectedMethod, setSelectedMethod] = useState<string>('wave')
-  const [phoneNumber, setPhoneNumber] = useState<string>('')
-  const [parentEmail, setParentEmail] = useState<string>('')
-  const [paymentAmount, setPaymentAmount] = useState<string>('')
-  const [isPartial, setIsPartial] = useState(false)
-  const [isProcessing, setIsProcessing] = useState(false)
+  // Rôles
+  const isStaff = ['admin', 'director', 'accountant', 'cashier', 'superadmin'].includes(profile?.role || '')
+  const isParent = profile?.role === 'responsible' || profile?.role === 'parent'
+  
+  // Bascule de vue (si staff a aussi des enfants, ou vue par défaut)
+  const [activeStaffView, setActiveStaffView] = useState<'accounting' | 'family'>(isStaff ? 'accounting' : 'family')
+
+  // ── Hook de comptabilité scolaire ──
+  const accounting = useSchoolAccounting()
+
+  // ── Filtres & États Comptabilité ──
+  const [accountingTab, setAccountingTab] = useState<'students' | 'reminders' | 'cash'>('students')
+  const [searchTerm, setSearchTerm] = useState('')
+  const [classFilter, setClassFilter] = useState('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'up_to_date' | 'partial' | 'late'>('all')
+
+  // Filtres Relances
+  const [reminderUrgencyFilter, setReminderUrgencyFilter] = useState<'all' | 'critical' | 'warning' | 'upcoming'>('all')
+  const [reminderSearch, setReminderSearch] = useState('')
+
+  // ── Modals & Actions ──
+  const [selectedStudentForDetails, setSelectedStudentForDetails] = useState<StudentLedgerItem | null>(null)
+  const [studentForCashPayment, setStudentForCashPayment] = useState<StudentLedgerItem | null>(null)
+  const [cashPaymentScheduleId, setCashPaymentScheduleId] = useState<string>('')
+  const [cashPaymentAmount, setCashPaymentAmount] = useState<string>('')
+  const [cashPaymentMethod, setCashPaymentMethod] = useState<string>('Espèces')
+  const [cashPaymentNotes, setCashPaymentNotes] = useState<string>('')
   const [activeReceipt, setActiveReceipt] = useState<any>(null)
 
-  // ── Fetch current user
-  const userQuery = useQuery({
-    queryKey: ['current_user'],
-    queryFn: async () => {
-      const { data: { user }, error } = await supabase.auth.getUser()
-      if (error || !user) throw new Error('Non authentifié')
-      const { data: profile } = await supabase
-        .from('user_profiles')
-        .select('id, full_name, email, tenant_id, role, tenants(name)')
-        .eq('id', user.id)
-        .single()
-      return profile
-    }
-  })
+  // ── Filtrage des Comptes Élèves (Dissociés) ──
+  const filteredStudentsLedger = useMemo(() => {
+    return accounting.studentsLedger.filter(st => {
+      const matchSearch = 
+        `${st.first_name} ${st.last_name}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (st.student_code && st.student_code.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (st.parent_name && st.parent_name.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (st.parent_phone && st.parent_phone.includes(searchTerm))
+      
+      const matchClass = classFilter === 'all' || st.class_id === classFilter
+      const matchStatus = statusFilter === 'all' || st.overall_financial_status === statusFilter
 
-  const schoolName = (userQuery.data?.tenants as any)?.name || 'Votre Établissement'
-  const parentEmailFromDB = userQuery.data?.email || ''
-
-  // ── Fetch children of this parent (responsible_id = auth.uid)
-  const childrenQuery = useQuery({
-    queryKey: ['my_children'],
-    enabled: !!userQuery.data,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('students')
-        .select('id, first_name, last_name, class_id, classes(name)')
-        .eq('responsible_id', userQuery.data!.id)
-        .order('last_name')
-      if (error) throw error
-      return data || []
-    },
-    onSuccess: (data: any[]) => {
-      if (data.length > 0 && !selectedChildId) {
-        setSelectedChildId(data[0].id)
-      }
-      if (userQuery.data?.email) setParentEmail(userQuery.data.email)
-    }
-  } as any)
-
-  const children = (childrenQuery.data as any[]) || []
-  const selectedChild = children.find((c: any) => c.id === selectedChildId)
-
-  // ── Fetch payment summary for selected child
-  const paymentSummaryQuery = useQuery({
-    queryKey: ['payment_summary', selectedChildId],
-    enabled: !!selectedChildId,
-    queryFn: async () => {
-      // Use the view created in migration 00012
-      const { data, error } = await supabase
-        .from('v_student_payment_summary')
-        .select('*')
-        .eq('student_id', selectedChildId)
-        .order('due_date', { ascending: true })
-      if (error) {
-        // Fallback: fetch schedules + payments manually if view not yet applied
-        const { data: schedules, error: sErr } = await supabase
-          .from('payment_schedules')
-          .select('id, title, amount, due_date, class_id, classes(name)')
-          .order('due_date', { ascending: true })
-        if (sErr) throw sErr
-
-        const { data: payments } = await supabase
-          .from('student_payments')
-          .select('schedule_id, amount_paid, receipt_number, paid_at, payment_method')
-          .eq('student_id', selectedChildId)
-
-        return (schedules || []).map((s: any) => {
-          const paid = (payments || [])
-            .filter((p: any) => p.schedule_id === s.id)
-            .reduce((sum: number, p: any) => sum + Number(p.amount_paid), 0)
-          const lastPay = (payments || [])
-            .filter((p: any) => p.schedule_id === s.id)
-            .sort((a: any, b: any) => new Date(b.paid_at).getTime() - new Date(a.paid_at).getTime())[0]
-          return {
-            schedule_id: s.id,
-            schedule_title: s.title,
-            schedule_amount: s.amount,
-            due_date: s.due_date,
-            total_paid: paid,
-            remaining: Number(s.amount) - paid,
-            payment_status: paid === 0 ? 'pending' : paid < Number(s.amount) ? 'partial' : 'paid',
-            last_payment_at: lastPay?.paid_at || null,
-            last_receipt_number: lastPay?.receipt_number || null,
-          }
-        })
-      }
-      return data || []
-    }
-  })
-
-  const summary = (paymentSummaryQuery.data as any[]) || []
-  const pendingItems = summary.filter(s => s.payment_status !== 'paid')
-  const paidItems = summary.filter(s => s.payment_status === 'paid')
-  const totalDue = summary.reduce((sum, s) => sum + Number(s.schedule_amount), 0)
-  const totalPaid = summary.reduce((sum, s) => sum + Number(s.total_paid), 0)
-  const totalRemaining = totalDue - totalPaid
-
-  // ── Open payment modal
-  const openPayment = (scheduleItem: any) => {
-    setSelectedSchedule(scheduleItem)
-    setPaymentAmount(String(scheduleItem.remaining))
-    setIsPartial(false)
-    if (parentEmailFromDB) setParentEmail(parentEmailFromDB)
-  }
-
-  // ── Handle Payment Execution (writes to student_payments)
-  const handlePayment = async () => {
-    if (!selectedSchedule || !selectedChild) return
-    const amount = parseFloat(paymentAmount)
-    if (isNaN(amount) || amount <= 0) {
-      toast.error("Montant invalide")
-      return
-    }
-    if (amount > selectedSchedule.remaining) {
-      toast.error(`Le montant ne peut pas dépasser le reliquat (${selectedSchedule.remaining.toLocaleString('fr-FR')} FCFA)`)
-      return
-    }
-
-    setIsProcessing(true)
-
-    const receiptNo = genReceiptNumber()
-    const txRef = genTxRef(selectedMethod)
-    const methodObj = paymentMethods.find(m => m.id === selectedMethod)
-
-    const { error } = await supabase.from('student_payments').insert({
-      tenant_id: userQuery.data?.tenant_id,
-      student_id: selectedChildId,
-      schedule_id: selectedSchedule.schedule_id,
-      amount_paid: amount,
-      payment_method: methodObj?.name || selectedMethod,
-      transaction_reference: txRef,
-      receipt_number: receiptNo,
-      parent_email: parentEmail,
-      phone_number: phoneNumber,
+      return matchSearch && matchClass && matchStatus
     })
+  }, [accounting.studentsLedger, searchTerm, classFilter, statusFilter])
 
-    setIsProcessing(false)
+  // ── Filtrage des Échéances & Relances ──
+  const filteredReminders = useMemo(() => {
+    return accounting.overdueReminders.filter(rem => {
+      const matchSearch = 
+        rem.student_name.toLowerCase().includes(reminderSearch.toLowerCase()) ||
+        rem.parent_name.toLowerCase().includes(reminderSearch.toLowerCase()) ||
+        rem.parent_phone.includes(reminderSearch) ||
+        rem.class_name.toLowerCase().includes(reminderSearch.toLowerCase())
+      
+      const matchUrgency = reminderUrgencyFilter === 'all' || rem.urgency === reminderUrgencyFilter
 
-    if (error) {
-      toast.error(error.message || "Erreur lors de l'enregistrement du paiement")
+      return matchSearch && matchUrgency
+    })
+  }, [accounting.overdueReminders, reminderSearch, reminderUrgencyFilter])
+
+  // ── Enregistrement d'un Paiement Caisse Guichet ──
+  const handleCashPaymentSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!studentForCashPayment) return
+
+    const amount = parseFloat(cashPaymentAmount)
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Veuillez saisir un montant valide")
       return
     }
 
-    // Build receipt
-    const receipt = {
-      receiptNumber: receiptNo,
-      transactionRef: txRef,
-      studentName: `${selectedChild.first_name} ${selectedChild.last_name}`,
-      className: (selectedChild.classes as any)?.name || '—',
-      schoolName,
-      title: selectedSchedule.schedule_title,
-      amount,
-      totalDue: selectedSchedule.schedule_amount,
-      remaining: selectedSchedule.remaining - amount,
-      method: methodObj?.name,
-      paidAt: new Date().toLocaleString('fr-FR'),
-      parentEmail,
-      isPartial: amount < selectedSchedule.remaining,
-    }
+    try {
+      const res = await accounting.recordPayment({
+        studentId: studentForCashPayment.id,
+        scheduleId: cashPaymentScheduleId || null,
+        amount,
+        method: cashPaymentMethod,
+        notes: cashPaymentNotes,
+        payerName: studentForCashPayment.parent_name,
+        payerPhone: studentForCashPayment.parent_phone,
+        payerEmail: studentForCashPayment.parent_email,
+      })
 
-    queryClient.invalidateQueries({ queryKey: ['payment_summary', selectedChildId] })
-    setSelectedSchedule(null)
-    setActiveReceipt(receipt)
-    toast.success("Paiement enregistré ! Votre reçu numérique est disponible.")
+      const targetSchedule = studentForCashPayment.schedules.find(s => s.schedule_id === cashPaymentScheduleId)
+
+      // Reçu officiel
+      setActiveReceipt({
+        receiptNumber: res.receiptNumber,
+        transactionRef: res.txRef,
+        studentName: `${studentForCashPayment.first_name} ${studentForCashPayment.last_name}`,
+        className: studentForCashPayment.class_name,
+        schoolName: (profile?.tenants as any)?.name || 'Eurêka Établissement',
+        title: targetSchedule?.title || 'Frais de scolarité',
+        amount,
+        totalDue: targetSchedule?.amount || amount,
+        remaining: targetSchedule ? Math.max(0, targetSchedule.remaining - amount) : 0,
+        method: cashPaymentMethod,
+        paidAt: new Date().toLocaleString('fr-FR'),
+        parentName: studentForCashPayment.parent_name,
+        parentEmail: studentForCashPayment.parent_email,
+        isPartial: targetSchedule ? (targetSchedule.remaining - amount > 0) : false,
+      })
+
+      setStudentForCashPayment(null)
+      setCashPaymentAmount('')
+      setCashPaymentScheduleId('')
+      setCashPaymentNotes('')
+    } catch (err: any) {
+      // Toast géré dans le hook
+    }
   }
 
-  // ─── Render ───────────────────────────────────────────────────────────────
-  return (
-    <AppShell
-      title="Espace Paiements"
-      subtitle="Consultez les échéances de scolarité et réglez les frais de votre enfant."
-    >
-      <div className="space-y-8 max-w-5xl mx-auto">
+  // ── Actions de Relance par Élève ──
+  const triggerWhatsAppReminder = (rem: OverdueScheduleReminder) => {
+    const schoolName = (profile?.tenants as any)?.name || 'notre établissement scolaire'
+    const formattedDate = new Date(rem.due_date).toLocaleDateString('fr-FR')
+    const parentGreeting = rem.parent_name ? `Bonjour M./Mme ${rem.parent_name}` : 'Bonjour'
 
-        {/* Loading user */}
-        {userQuery.isLoading && (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-            <span className="ml-3 text-gray-500">Chargement de votre espace...</span>
-          </div>
-        )}
+    const message = `${parentGreeting},\n\nL'établissement ${schoolName} vous rappelle que l'échéance *${rem.schedule_title}* pour votre enfant *${rem.student_name}* (${rem.class_name}) présente un reliquat restant de *${rem.remaining_amount.toLocaleString('fr-FR')} FCFA* (Date limite : ${formattedDate}).\n\nNous vous prions de bien vouloir régulariser ce paiement au guichet de l'école ou directement en ligne.\n\nMerci de votre confiance et de votre précieuse collaboration.\n${schoolName}`
 
-        {/* Error */}
-        {userQuery.isError && (
-          <div className="bg-red-50 border border-red-200 rounded-2xl p-6 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-            <div>
-              <p className="font-semibold text-red-800">Erreur de connexion</p>
-              <p className="text-sm text-red-600 mt-1">{(userQuery.error as any)?.message}</p>
-            </div>
-          </div>
-        )}
+    let cleanPhone = rem.parent_phone ? rem.parent_phone.replace(/[^0-9]/g, '') : ''
+    if (cleanPhone.length === 10 && !cleanPhone.startsWith('225')) {
+      cleanPhone = `225${cleanPhone}`
+    }
 
-        {userQuery.data && (
-          <>
-            {/* No children linked yet */}
-            {!childrenQuery.isLoading && children.length === 0 && (
-              <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
-                <div className="w-16 h-16 bg-emerald-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
-                  <School className="w-8 h-8 text-emerald-400" />
-                </div>
-                <h3 className="font-bold text-gray-700 text-lg">Aucun élève associé à votre compte</h3>
-                <p className="text-sm text-gray-400 mt-2 max-w-sm mx-auto">
-                  Dès que l'établissement inscrit votre enfant et vous associe comme parent responsable,
-                  vous verrez ici son dossier et l'échéancier de paiement.
-                </p>
-                <Button
-                  variant="outline"
-                  className="mt-6"
-                  onClick={() => queryClient.invalidateQueries({ queryKey: ['my_children'] })}
-                >
-                  <RefreshCw className="w-4 h-4 mr-2" /> Actualiser
-                </Button>
-              </div>
+    const url = cleanPhone
+      ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(message)}`
+      : `https://wa.me/?text=${encodeURIComponent(message)}`
+
+    window.open(url, '_blank')
+  }
+
+  const triggerEmailReminder = (rem: OverdueScheduleReminder) => {
+    if (!rem.parent_email) {
+      toast.error("Aucune adresse email enregistrée pour ce parent.")
+      return
+    }
+    const schoolName = (profile?.tenants as any)?.name || 'notre établissement scolaire'
+    const formattedDate = new Date(rem.due_date).toLocaleDateString('fr-FR')
+    const parentGreeting = rem.parent_name ? `Bonjour M./Mme ${rem.parent_name}` : 'Bonjour'
+
+    const subject = `Rappel d'échéance de scolarité — ${rem.student_name} (${rem.class_name})`
+    const body = `${parentGreeting},\n\nL'établissement ${schoolName} vous rappelle que l'échéance "${rem.schedule_title}" pour votre enfant ${rem.student_name} (${rem.class_name}) d'un montant de ${rem.remaining_amount.toLocaleString('fr-FR')} FCFA est échue depuis le ${formattedDate}.\n\nNous vous remercions de bien vouloir régulariser au guichet de l'établissement ou en ligne via notre plateforme Eurêka.\n\nCordialement,\nLe Service Comptabilité & Caisse\n${schoolName}`
+
+    window.open(`mailto:${rem.parent_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`, '_blank')
+  }
+
+  const triggerInAppReminder = async (rem: OverdueScheduleReminder) => {
+    if (!rem.responsible_id) {
+      toast.error("Ce parent n'a pas encore de compte Eurêka lié. Utilisez la relance WhatsApp ou Email.")
+      return
+    }
+    await accounting.sendInAppReminder({
+      responsibleId: rem.responsible_id,
+      studentName: rem.student_name,
+      className: rem.class_name,
+      scheduleTitle: rem.schedule_title,
+      remaining: rem.remaining_amount,
+      dueDate: rem.due_date,
+    })
+  }
+
+  // Relance groupée par notification in-app
+  const handleBulkInAppReminders = async () => {
+    const targets = filteredReminders.filter(r => r.responsible_id && r.days_overdue > 0)
+    if (targets.length === 0) {
+      toast.info("Aucun parent avec compte Eurêka à relancer parmi la sélection.")
+      return
+    }
+    if (!confirm(`Envoyer une notification de rappel Eurêka à ${targets.length} parent(s) en retard ?`)) return
+
+    let successCount = 0
+    for (const r of targets) {
+      try {
+        await accounting.sendInAppReminder({
+          responsibleId: r.responsible_id!,
+          studentName: r.student_name,
+          className: r.class_name,
+          scheduleTitle: r.schedule_title,
+          remaining: r.remaining_amount,
+          dueDate: r.due_date,
+        })
+        successCount++
+      } catch (e) {
+        // continue
+      }
+    }
+    toast.success(`${successCount} notification(s) de relance envoyée(s) aux parents avec succès !`)
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VUE 1 : COMPTABILITÉ & CAISSE ÉTABLISSEMENT (Staff)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (isStaff && activeStaffView === 'accounting') {
+    return (
+      <AppShell
+        title="Comptabilité, Caisse & Recouvrement"
+        subtitle="Gestion individualisée des comptes élèves, encaissements et relances des parents par échéance."
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => accounting.refetchAll()}
+              className="gap-1.5 text-xs"
+            >
+              <RefreshCw className="w-3.5 h-3.5" /> Actualiser
+            </Button>
+            {isParent && (
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setActiveStaffView('family')}
+                className="gap-1.5 text-xs bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200"
+              >
+                <User className="w-3.5 h-3.5" /> Espace Famille
+              </Button>
             )}
+          </div>
+        }
+      >
+        {/* ── KPI Financiers Globaux ── */}
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-semibold uppercase">Total Facturé</span>
+              <FileText className="w-4 h-4 text-blue-500" />
+            </div>
+            <p className="text-lg font-bold text-foreground">
+              {accounting.stats.totalDueGlobal.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">{accounting.stats.studentsCount} élève(s) suivi(s)</p>
+          </div>
 
-            {children.length > 0 && (
-              <>
-                {/* Child Selector + Profile Card */}
-                <div className="bg-gradient-to-r from-emerald-900 to-emerald-950 text-white rounded-2xl p-6 shadow-md">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-white/10 text-white flex items-center justify-center border border-white/20">
-                        <User className="w-7 h-7" />
-                      </div>
-                      <div>
-                        {children.length > 1 ? (
-                          <div className="mb-1">
-                            <Select value={selectedChildId} onValueChange={setSelectedChildId}>
-                              <SelectTrigger className="bg-white/10 border-white/20 text-white text-sm font-semibold w-auto pr-8">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {children.map((c: any) => (
-                                  <SelectItem key={c.id} value={c.id}>
-                                    {c.first_name} {c.last_name} — {(c.classes as any)?.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        ) : (
-                          <div>
-                            <span className="text-xs uppercase tracking-wider text-emerald-300 font-semibold">
-                              {(selectedChild?.classes as any)?.name}
-                            </span>
-                            <h2 className="text-2xl font-bold mt-0.5">
-                              {selectedChild?.first_name} {selectedChild?.last_name}
-                            </h2>
-                          </div>
-                        )}
-                        <p className="text-xs text-emerald-200/80 mt-0.5">{schoolName}</p>
-                      </div>
-                    </div>
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-semibold uppercase">Encaissé (Total)</span>
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+            </div>
+            <p className="text-lg font-bold text-emerald-600">
+              {accounting.stats.totalCollectedAllTime.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
+            </p>
+            <p className="text-[11px] text-emerald-700 font-medium mt-0.5">
+              Taux : {accounting.stats.overallRecoveryRate}% recouvré
+            </p>
+          </div>
 
-                    {/* Summary Stats */}
-                    <div className="grid grid-cols-3 gap-2">
-                      <div className="bg-white/10 backdrop-blur-md p-3 rounded-xl border border-white/10 text-center">
-                        <div className="text-[10px] text-emerald-200 uppercase font-semibold">Total dû</div>
-                        <div className="text-sm font-bold mt-0.5">{totalDue.toLocaleString('fr-FR')} F</div>
-                      </div>
-                      <div className="bg-emerald-600/40 backdrop-blur-md p-3 rounded-xl border border-emerald-500/30 text-center">
-                        <div className="text-[10px] text-emerald-200 uppercase font-semibold">Payé</div>
-                        <div className="text-sm font-bold mt-0.5">{totalPaid.toLocaleString('fr-FR')} F</div>
-                      </div>
-                      <div className={`backdrop-blur-md p-3 rounded-xl border text-center ${totalRemaining > 0 ? 'bg-amber-500/20 border-amber-400/30' : 'bg-white/10 border-white/10'}`}>
-                        <div className="text-[10px] text-emerald-200 uppercase font-semibold">Reliquat</div>
-                        <div className={`text-sm font-bold mt-0.5 ${totalRemaining > 0 ? 'text-amber-300' : 'text-white'}`}>
-                          {totalRemaining.toLocaleString('fr-FR')} F
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-semibold uppercase">Créances Restantes</span>
+              <Clock className="w-4 h-4 text-amber-500" />
+            </div>
+            <p className="text-lg font-bold text-amber-600">
+              {accounting.stats.totalRemainingGlobal.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Solde total à percevoir</p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-semibold uppercase">Échéances en retard</span>
+              <AlertTriangle className="w-4 h-4 text-red-500" />
+            </div>
+            <p className="text-lg font-bold text-red-600">
+              {accounting.stats.overdueCount}
+            </p>
+            <p className="text-[11px] text-red-700 font-semibold mt-0.5">
+              {accounting.stats.lateStudentsCount} élève(s) en impayé
+            </p>
+          </div>
+
+          <div className="bg-white p-4 rounded-xl border border-border shadow-sm col-span-2 md:col-span-1">
+            <div className="flex items-center justify-between text-muted-foreground mb-1">
+              <span className="text-xs font-semibold uppercase">Caisse du Jour</span>
+              <Banknote className="w-4 h-4 text-primary" />
+            </div>
+            <p className="text-lg font-bold text-foreground">
+              {accounting.stats.todayTotal.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
+            </p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">Encaissements aujourd'hui</p>
+          </div>
+        </div>
+
+        {/* ── Navigation Principale par Onglets ── */}
+        <Tabs value={accountingTab} onValueChange={(val: any) => setAccountingTab(val)} className="space-y-4">
+          <TabsList className="bg-slate-100 p-1 rounded-xl w-full sm:w-auto flex flex-wrap h-auto gap-1">
+            <TabsTrigger value="students" className="gap-2 text-xs font-bold py-2 px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Users className="w-4 h-4" />
+              Comptes Élèves & Inscriptions ({accounting.studentsLedger.length})
+            </TabsTrigger>
+            <TabsTrigger value="reminders" className="gap-2 text-xs font-bold py-2 px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm relative">
+              <BellRing className="w-4 h-4 text-red-500" />
+              Échéances & Relances Parents
+              {accounting.stats.overdueCount > 0 && (
+                <span className="ml-1 px-1.5 py-0.2 text-[10px] bg-red-600 text-white rounded-full font-bold">
+                  {accounting.stats.overdueCount}
+                </span>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="cash" className="gap-2 text-xs font-bold py-2 px-3 data-[state=active]:bg-white data-[state=active]:shadow-sm">
+              <Banknote className="w-4 h-4 text-emerald-600" />
+              Journal de Caisse ({accounting.cashTransactions.length})
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              ONGLET 1 : COMPTES ÉLÈVES & INSCRIPTIONS (GRAND LIVRE DISSOCIÉ)
+              ═══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="students" className="space-y-4">
+            {/* Barre de Recherche et Filtres */}
+            <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                <div className="relative flex-1 min-w-[200px]">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
+                  <Input
+                    placeholder="Rechercher élève, matricule, parent ou téléphone..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
                 </div>
 
-                {/* Loading summary */}
-                {paymentSummaryQuery.isLoading && (
-                  <div className="flex items-center justify-center py-10">
-                    <Loader2 className="w-6 h-6 animate-spin text-emerald-600" />
-                    <span className="ml-2 text-gray-500 text-sm">Chargement de l'échéancier...</span>
-                  </div>
-                )}
+                <Select value={classFilter} onValueChange={setClassFilter}>
+                  <SelectTrigger className="w-[140px] h-9 text-xs">
+                    <SelectValue placeholder="Toutes classes" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Toutes classes</SelectItem>
+                    {classes.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-                {paymentSummaryQuery.isError && (
-                  <div className="bg-red-50 border border-red-200 rounded-2xl p-4 flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-red-500" />
-                    <p className="text-sm text-red-700">{(paymentSummaryQuery.error as any)?.message}</p>
-                    <Button variant="ghost" size="sm" onClick={() => queryClient.invalidateQueries({ queryKey: ['payment_summary'] })}>
-                      <RefreshCw className="w-3.5 h-3.5" />
-                    </Button>
-                  </div>
-                )}
+                <Select value={statusFilter} onValueChange={(val: any) => setStatusFilter(val)}>
+                  <SelectTrigger className="w-[140px] h-9 text-xs">
+                    <SelectValue placeholder="Tous statuts" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous statuts</SelectItem>
+                    <SelectItem value="up_to_date">En règle (Soldé)</SelectItem>
+                    <SelectItem value="partial">Partiel</SelectItem>
+                    <SelectItem value="late">En retard (Impayé)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-                {/* Tabs */}
-                {!paymentSummaryQuery.isLoading && summary.length > 0 && (
-                  <Tabs defaultValue="due" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2 bg-gray-100 p-1 rounded-xl">
-                      <TabsTrigger value="due" className="rounded-lg font-medium">
-                        Échéances ({pendingItems.length} à régler)
-                      </TabsTrigger>
-                      <TabsTrigger value="history" className="rounded-lg font-medium">
-                        Historique des Paiements ({paidItems.length})
-                      </TabsTrigger>
-                    </TabsList>
+              <span className="text-xs text-muted-foreground">
+                <strong>{filteredStudentsLedger.length}</strong> élève(s) affiché(s)
+              </span>
+            </div>
 
-                    {/* TAB 1: Échéances */}
-                    <TabsContent value="due" className="mt-6 space-y-4">
-                      {summary.length === 0 ? (
-                        <div className="text-center py-10 text-gray-400 bg-white rounded-2xl border">
-                          <CheckCircle2 className="w-10 h-10 mx-auto mb-2 text-emerald-300" />
-                          <p>Aucune échéance disponible pour le moment.</p>
-                        </div>
-                      ) : (
-                        <div className="grid gap-4">
-                          {summary.map((item: any) => {
-                            const status = item.payment_status as 'paid' | 'partial' | 'pending'
-                            const isPaid = status === 'paid'
-                            const isPartialPaid = status === 'partial'
-                            const progressPct = Math.min(100, Math.round((Number(item.total_paid) / Number(item.schedule_amount)) * 100))
-
-                            return (
-                              <div
-                                key={item.schedule_id}
-                                className={`bg-white rounded-2xl border p-6 flex flex-col gap-4 transition-all ${
-                                  isPaid
-                                    ? 'border-emerald-200 bg-emerald-50/20'
-                                    : isPartialPaid
-                                    ? 'border-blue-200 bg-blue-50/10'
-                                    : 'border-gray-200 hover:border-gray-300 shadow-sm'
-                                }`}
-                              >
-                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                                  <div className="space-y-1">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <StatusBadge status={status} />
-                                      <span className="text-xs text-gray-400 flex items-center gap-1">
-                                        <Calendar className="w-3.5 h-3.5" />
-                                        Limite : {new Date(item.due_date + 'T00:00:00').toLocaleDateString('fr-FR', { day: '2-digit', month: 'long', year: 'numeric' })}
-                                      </span>
-                                    </div>
-                                    <h3 className="font-bold text-lg text-gray-900">{item.schedule_title}</h3>
-                                  </div>
-
-                                  <div className="flex items-center justify-between sm:justify-end gap-6 shrink-0">
-                                    <div className="text-right">
-                                      <div className="text-2xl font-bold text-gray-900">
-                                        {Number(item.schedule_amount).toLocaleString('fr-FR')}
-                                        <span className="text-xs font-normal ml-1">FCFA</span>
-                                      </div>
-                                      {isPartialPaid && (
-                                        <div className="text-xs text-blue-600 font-semibold">
-                                          Reliquat : {Number(item.remaining).toLocaleString('fr-FR')} FCFA
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {!isPaid ? (
-                                      <Button
-                                        className="bg-emerald-600 hover:bg-emerald-700 gap-1.5 shrink-0"
-                                        onClick={() => openPayment(item)}
-                                      >
-                                        {isPartialPaid ? 'Compléter' : 'Payer'} <ArrowRight className="w-4 h-4" />
-                                      </Button>
-                                    ) : (
-                                      <Button
-                                        variant="outline"
-                                        size="sm"
-                                        className="gap-1.5 border-emerald-200 text-emerald-700 hover:bg-emerald-50 shrink-0"
-                                        onClick={() => setActiveReceipt({
-                                          receiptNumber: item.last_receipt_number,
-                                          transactionRef: '—',
-                                          studentName: `${selectedChild?.first_name} ${selectedChild?.last_name}`,
-                                          className: (selectedChild?.classes as any)?.name || '—',
-                                          schoolName,
-                                          title: item.schedule_title,
-                                          amount: item.schedule_amount,
-                                          totalDue: item.schedule_amount,
-                                          remaining: 0,
-                                          method: '—',
-                                          paidAt: item.last_payment_at ? new Date(item.last_payment_at).toLocaleString('fr-FR') : '—',
-                                          parentEmail,
-                                          isPartial: false,
-                                        })}
-                                      >
-                                        <FileText className="w-4 h-4" /> Reçu
-                                      </Button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Progress bar for partial */}
-                                {(isPartialPaid || isPaid) && (
-                                  <div className="space-y-1">
-                                    <div className="flex justify-between text-xs text-gray-500">
-                                      <span>Payé : {Number(item.total_paid).toLocaleString('fr-FR')} FCFA</span>
-                                      <span>{progressPct}%</span>
-                                    </div>
-                                    <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                                      <div
-                                        className={`h-full rounded-full transition-all ${isPaid ? 'bg-emerald-500' : 'bg-blue-500'}`}
-                                        style={{ width: `${progressPct}%` }}
-                                      />
-                                    </div>
-                                  </div>
-                                )}
+            {/* Tableau des Comptes Élèves */}
+            <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-slate-50/70 text-muted-foreground font-semibold uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-4">Élève & Matricule</th>
+                      <th className="py-3 px-3">Classe</th>
+                      <th className="py-3 px-3">Parent Responsable</th>
+                      <th className="py-3 px-3 text-right">Inscription</th>
+                      <th className="py-3 px-3 text-right">Total Dû</th>
+                      <th className="py-3 px-3 text-right">Réglé</th>
+                      <th className="py-3 px-3 text-right">Reste à payer</th>
+                      <th className="py-3 px-3 text-center">Statut</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredStudentsLedger.length === 0 ? (
+                      <tr>
+                        <td colSpan={9} className="py-12 text-center text-muted-foreground">
+                          Aucun compte élève ne correspond aux critères de recherche.
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredStudentsLedger.map((st) => (
+                        <tr key={st.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-8 h-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                                {st.first_name[0]}{st.last_name[0]}
                               </div>
-                            )
-                          })}
-                        </div>
-                      )}
-                    </TabsContent>
-
-                    {/* TAB 2: Historique */}
-                    <TabsContent value="history" className="mt-6 space-y-4">
-                      {paidItems.length === 0 ? (
-                        <div className="text-center py-12 bg-white rounded-2xl border text-gray-400">
-                          <FileText className="w-12 h-12 mx-auto mb-2 text-gray-300" />
-                          <p>Aucun paiement enregistré pour l'instant.</p>
-                        </div>
-                      ) : (
-                        <div className="grid gap-4">
-                          {paidItems.map((item: any) => (
-                            <div key={item.schedule_id} className="bg-white p-5 rounded-2xl border flex items-center justify-between gap-4 hover:shadow-sm transition-shadow">
-                              <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 bg-emerald-100 text-emerald-700 rounded-xl flex items-center justify-center shrink-0">
-                                  <FileText className="w-6 h-6" />
-                                </div>
-                                <div>
-                                  <div className="font-mono text-xs text-gray-400 font-semibold">{item.last_receipt_number}</div>
-                                  <h4 className="font-bold text-gray-900 text-base">{item.schedule_title}</h4>
-                                  <div className="text-xs text-gray-500 mt-0.5">
-                                    {item.last_payment_at ? new Date(item.last_payment_at).toLocaleDateString('fr-FR') : '—'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex items-center gap-4 shrink-0">
-                                <div className="text-right font-bold text-gray-900 text-lg">
-                                  {Number(item.schedule_amount).toLocaleString('fr-FR')} FCFA
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setActiveReceipt({
-                                    receiptNumber: item.last_receipt_number,
-                                    transactionRef: '—',
-                                    studentName: `${selectedChild?.first_name} ${selectedChild?.last_name}`,
-                                    className: (selectedChild?.classes as any)?.name || '—',
-                                    schoolName,
-                                    title: item.schedule_title,
-                                    amount: item.schedule_amount,
-                                    totalDue: item.schedule_amount,
-                                    remaining: 0,
-                                    method: '—',
-                                    paidAt: item.last_payment_at ? new Date(item.last_payment_at).toLocaleString('fr-FR') : '—',
-                                    parentEmail,
-                                    isPartial: false,
-                                  })}
-                                >
-                                  <Download className="w-4 h-4 mr-1.5" /> Reçu
-                                </Button>
+                              <div>
+                                <p className="font-bold text-foreground text-xs">{st.first_name} {st.last_name}</p>
+                                <p className="text-[10px] text-muted-foreground font-mono">{st.student_code || 'ID:' + st.id.slice(0, 6)}</p>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
-                  </Tabs>
-                )}
+                          </td>
 
-                {/* Empty schedule state */}
-                {!paymentSummaryQuery.isLoading && summary.length === 0 && !paymentSummaryQuery.isError && (
-                  <div className="text-center py-12 bg-white rounded-2xl border border-dashed text-gray-400">
-                    <Banknote className="w-10 h-10 mx-auto mb-2 text-gray-300" />
-                    <p className="font-medium">Aucun échéancier de paiement défini pour le moment.</p>
-                    <p className="text-xs mt-1">L'établissement n'a pas encore configuré les tranches de scolarité.</p>
+                          <td className="py-3 px-3 font-semibold text-slate-700">
+                            {st.class_name}
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <p className="font-medium text-foreground text-xs">{st.parent_name}</p>
+                            <p className="text-[10px] text-muted-foreground">{st.parent_phone || st.parent_email || '—'}</p>
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            {st.registration_due > 0 ? (
+                              <div>
+                                <span className={`font-bold ${st.registration_status === 'paid' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                  {st.registration_paid.toLocaleString('fr-FR')} F
+                                </span>
+                                <span className="text-[10px] text-muted-foreground block">sur {st.registration_due.toLocaleString('fr-FR')} F</span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground">—</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 text-right font-bold text-foreground">
+                            {st.total_due.toLocaleString('fr-FR')} F
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            <span className="font-bold text-emerald-600">
+                              {st.total_paid.toLocaleString('fr-FR')} F
+                            </span>
+                            <span className="text-[10px] text-muted-foreground block">
+                              ({st.recovery_rate}%)
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            {st.remaining_balance > 0 ? (
+                              <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-200">
+                                {st.remaining_balance.toLocaleString('fr-FR')} F
+                              </span>
+                            ) : (
+                              <span className="font-semibold text-emerald-600">0 F</span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-3 text-center">
+                            <StatusBadge status={st.overall_financial_status} />
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => setSelectedStudentForDetails(st)}
+                                className="h-7 px-2.5 text-[11px] gap-1 hover:bg-slate-100"
+                                title="Voir la fiche financière et l'échéancier"
+                              >
+                                <Eye className="w-3.5 h-3.5 text-blue-600" />
+                                Fiche
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setStudentForCashPayment(st);
+                                  setCashPaymentAmount(st.remaining_balance > 0 ? String(st.remaining_balance) : '25000');
+                                  if (st.schedules.length > 0) {
+                                    const firstPending = st.schedules.find(s => s.remaining > 0);
+                                    if (firstPending) {
+                                      setCashPaymentScheduleId(firstPending.schedule_id);
+                                      setCashPaymentAmount(String(firstPending.remaining));
+                                    }
+                                  }
+                                }}
+                                className="h-7 px-2.5 text-[11px] gap-1 bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
+                                title="Encaisser un versement"
+                              >
+                                <Banknote className="w-3.5 h-3.5" />
+                                Encaisser
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              ONGLET 2 : ÉCHÉANCES & RELANCES DES PARENTS (SUR-MESURE PAR ÉLÈVE)
+              ═══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="reminders" className="space-y-4">
+            <div className="bg-amber-50/70 border border-amber-200 rounded-xl p-4 flex flex-wrap items-center justify-between gap-3 text-xs">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
+                  <BellRing className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-amber-900 text-sm">Gestion des Relances d'Échéances par Élève</h4>
+                  <p className="text-amber-800 text-[11px]">
+                    Chaque relance est strictement adressée pour un élève spécifique, même si le parent en a plusieurs.
+                    Relancez en 1 clic par WhatsApp, Email ou Notification directe sur le compte Eurêka du parent.
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                size="sm"
+                onClick={handleBulkInAppReminders}
+                className="bg-amber-700 hover:bg-amber-800 text-white text-xs font-bold gap-1.5 shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                Relancer les parents Eurêka en retard ({filteredReminders.filter(r => r.responsible_id && r.days_overdue > 0).length})
+              </Button>
+            </div>
+
+            {/* Barre de Recherche et Filtres d'Urgence */}
+            <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+                <div className="relative flex-1 min-w-[220px]">
+                  <Search className="w-4 h-4 text-muted-foreground absolute left-3 top-2.5" />
+                  <Input
+                    placeholder="Filtrer par nom d'élève, parent, classe..."
+                    value={reminderSearch}
+                    onChange={(e) => setReminderSearch(e.target.value)}
+                    className="pl-9 h-9 text-xs"
+                  />
+                </div>
+
+                <Select value={reminderUrgencyFilter} onValueChange={(val: any) => setReminderUrgencyFilter(val)}>
+                  <SelectTrigger className="w-[180px] h-9 text-xs">
+                    <SelectValue placeholder="Niveau d'urgence" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tous les retards & à venir</SelectItem>
+                    <SelectItem value="critical">🔴 Retard critique (&gt; 15j)</SelectItem>
+                    <SelectItem value="warning">🟠 Retard récent (1-15j)</SelectItem>
+                    <SelectItem value="upcoming">🟡 À venir (&lt; 7j)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <span className="text-xs text-muted-foreground">
+                <strong>{filteredReminders.length}</strong> échéance(s) à relancer
+              </span>
+            </div>
+
+            {/* Liste des Échéances à relancer */}
+            <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-slate-50/70 text-muted-foreground font-semibold uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-4">Élève concerné</th>
+                      <th className="py-3 px-3">Parent à relancer</th>
+                      <th className="py-3 px-3">Échéance</th>
+                      <th className="py-3 px-3 text-center">Date Limite</th>
+                      <th className="py-3 px-3 text-right">Reste Dû</th>
+                      <th className="py-3 px-3 text-center">Retard</th>
+                      <th className="py-3 px-4 text-center">Actions de Relance</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {filteredReminders.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                          🎉 Aucune échéance en retard ne nécessite de relance actuellement !
+                        </td>
+                      </tr>
+                    ) : (
+                      filteredReminders.map((rem, idx) => (
+                        <tr key={`${rem.student_id}-${rem.schedule_id}-${idx}`} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-[11px] shrink-0">
+                                {rem.student_name[0]}
+                              </div>
+                              <div>
+                                <p className="font-bold text-foreground text-xs">{rem.student_name}</p>
+                                <p className="text-[10px] text-muted-foreground font-semibold">{rem.class_name}</p>
+                              </div>
+                            </div>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <p className="font-semibold text-foreground text-xs">{rem.parent_name}</p>
+                            <p className="text-[10px] text-muted-foreground">{rem.parent_phone || rem.parent_email || '—'}</p>
+                          </td>
+
+                          <td className="py-3 px-3">
+                            <span className="font-semibold text-slate-800">{rem.schedule_title}</span>
+                            <span className="text-[10px] text-muted-foreground block">
+                              Total tranche: {rem.schedule_amount.toLocaleString('fr-FR')} F
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-center font-medium">
+                            {new Date(rem.due_date).toLocaleDateString('fr-FR')}
+                          </td>
+
+                          <td className="py-3 px-3 text-right">
+                            <span className="font-bold text-red-600 bg-red-50 px-2 py-0.5 rounded-lg border border-red-200">
+                              {rem.remaining_amount.toLocaleString('fr-FR')} F
+                            </span>
+                          </td>
+
+                          <td className="py-3 px-3 text-center">
+                            {rem.days_overdue > 0 ? (
+                              <span className={`px-2 py-0.5 rounded-full font-bold text-[10px] ${
+                                rem.days_overdue > 15 
+                                  ? 'bg-red-100 text-red-800 border border-red-300' 
+                                  : 'bg-orange-100 text-orange-800'
+                              }`}>
+                                +{rem.days_overdue} jour{rem.days_overdue > 1 ? 's' : ''}
+                              </span>
+                            ) : (
+                              <span className="px-2 py-0.5 rounded-full font-medium text-[10px] bg-amber-50 text-amber-700 border border-amber-200">
+                                Dans {Math.abs(rem.days_overdue)} j
+                              </span>
+                            )}
+                          </td>
+
+                          <td className="py-3 px-4 text-center">
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                size="sm"
+                                onClick={() => triggerWhatsAppReminder(rem)}
+                                className="h-7 px-2 text-[10px] font-bold bg-[#25D366] hover:bg-[#1EBE5D] text-white gap-1"
+                                title="Relancer le parent sur WhatsApp avec message prérempli"
+                              >
+                                <MessageCircle className="w-3.5 h-3.5 fill-white" />
+                                WhatsApp
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => triggerEmailReminder(rem)}
+                                disabled={!rem.parent_email}
+                                className="h-7 px-2 text-[10px] gap-1 border-slate-300 hover:bg-slate-100"
+                                title="Envoyer un email de relance"
+                              >
+                                <Mail className="w-3.5 h-3.5 text-blue-600" />
+                                Email
+                              </Button>
+
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => triggerInAppReminder(rem)}
+                                disabled={!rem.responsible_id || accounting.isSendingReminder}
+                                className="h-7 px-2 text-[10px] gap-1 border-indigo-200 bg-indigo-50/50 text-indigo-700 hover:bg-indigo-100 disabled:opacity-40"
+                                title="Envoyer une notification directe sur son compte Eurêka"
+                              >
+                                <BellRing className="w-3.5 h-3.5 text-indigo-600" />
+                                Eurêka
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+
+          {/* ═══════════════════════════════════════════════════════════════════
+              ONGLET 3 : JOURNAL DE CAISSE (HISTORIQUE DES ENCAISSEMENTS)
+              ═══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="cash" className="space-y-4">
+            <div className="bg-white p-4 rounded-xl border border-border shadow-sm flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h4 className="font-bold text-foreground text-sm">Journal des Règlements & Encaissements</h4>
+                <p className="text-xs text-muted-foreground">Historique chronologique complet des versements enregistrés au guichet et en ligne.</p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <div className="bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200 text-right">
+                  <span className="text-[10px] text-emerald-800 uppercase font-bold block">Aujourd'hui</span>
+                  <span className="text-sm font-bold text-emerald-700">{accounting.stats.todayTotal.toLocaleString('fr-FR')} FCFA</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead>
+                    <tr className="border-b border-border bg-slate-50/70 text-muted-foreground font-semibold uppercase text-[10px] tracking-wider">
+                      <th className="py-3 px-4">N° Reçu</th>
+                      <th className="py-3 px-3">Date & Heure</th>
+                      <th className="py-3 px-3">Élève & Classe</th>
+                      <th className="py-3 px-3">Échéance / Motif</th>
+                      <th className="py-3 px-3">Mode Règlement</th>
+                      <th className="py-3 px-3 text-right">Montant Encaissé</th>
+                      <th className="py-3 px-4 text-center">Reçu</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {accounting.cashTransactions.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="py-12 text-center text-muted-foreground">
+                          Aucun encaissement enregistré pour le moment.
+                        </td>
+                      </tr>
+                    ) : (
+                      accounting.cashTransactions.map(t => (
+                        <tr key={t.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3 px-4 font-mono font-bold text-primary">
+                            {t.receipt_number}
+                          </td>
+                          <td className="py-3 px-3 text-muted-foreground">
+                            {new Date(t.paid_at).toLocaleString('fr-FR', {
+                              day: '2-digit', month: '2-digit', year: 'numeric',
+                              hour: '2-digit', minute: '2-digit'
+                            })}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="font-bold text-foreground">{t.student_name}</span>
+                            <span className="text-[10px] text-muted-foreground block">{t.class_name}</span>
+                          </td>
+                          <td className="py-3 px-3 font-medium text-slate-800">
+                            {t.schedule_title}
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className="inline-flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
+                              {t.payment_method}
+                            </span>
+                          </td>
+                          <td className="py-3 px-3 text-right font-bold text-emerald-600 text-sm">
+                            {t.amount_paid.toLocaleString('fr-FR')} FCFA
+                          </td>
+                          <td className="py-3 px-4 text-center">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setActiveReceipt({
+                                receiptNumber: t.receipt_number,
+                                transactionRef: t.transaction_reference,
+                                studentName: t.student_name,
+                                className: t.class_name,
+                                schoolName: (profile?.tenants as any)?.name || 'Eurêka Établissement',
+                                title: t.schedule_title || 'Scolarité',
+                                amount: t.amount_paid,
+                                totalDue: t.amount_paid,
+                                remaining: 0,
+                                method: t.payment_method,
+                                paidAt: new Date(t.paid_at).toLocaleString('fr-FR'),
+                                parentEmail: t.parent_email || '',
+                                isPartial: false,
+                              })}
+                              className="h-7 px-2 text-[10px] gap-1"
+                            >
+                              <Printer className="w-3.5 h-3.5" /> Reçu
+                            </Button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            MODAL 1 : FICHE FINANCIÈRE & ÉCHÉANCIER D'UN ÉLÈVE
+            ═══════════════════════════════════════════════════════════════════ */}
+        <Dialog open={!!selectedStudentForDetails} onOpenChange={(open) => !open && setSelectedStudentForDetails(null)}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-6">
+            {selectedStudentForDetails && (
+              <>
+                <DialogHeader>
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-base uppercase">
+                        {selectedStudentForDetails.first_name[0]}{selectedStudentForDetails.last_name[0]}
+                      </div>
+                      <div>
+                        <DialogTitle className="text-base font-bold text-foreground">
+                          {selectedStudentForDetails.first_name} {selectedStudentForDetails.last_name}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                          Classe : <strong>{selectedStudentForDetails.class_name}</strong> · Parent : <strong>{selectedStudentForDetails.parent_name}</strong> ({selectedStudentForDetails.parent_phone || 'Sans tél'})
+                        </DialogDescription>
+                      </div>
+                    </div>
+
+                    <StatusBadge status={selectedStudentForDetails.overall_financial_status} />
                   </div>
-                )}
+                </DialogHeader>
+
+                {/* Résumé Financier Élève */}
+                <div className="grid grid-cols-3 gap-2.5 my-3 text-center">
+                  <div className="bg-slate-50 p-2.5 rounded-lg border border-border">
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Total Scolarité</span>
+                    <p className="font-bold text-foreground text-sm">{selectedStudentForDetails.total_due.toLocaleString('fr-FR')} F</p>
+                  </div>
+                  <div className="bg-emerald-50 p-2.5 rounded-lg border border-emerald-200">
+                    <span className="text-[10px] text-emerald-800 uppercase font-semibold">Total Réglé</span>
+                    <p className="font-bold text-emerald-700 text-sm">{selectedStudentForDetails.total_paid.toLocaleString('fr-FR')} F</p>
+                  </div>
+                  <div className="bg-red-50 p-2.5 rounded-lg border border-red-200">
+                    <span className="text-[10px] text-red-800 uppercase font-semibold">Reste à Payer</span>
+                    <p className="font-bold text-red-700 text-sm">{selectedStudentForDetails.remaining_balance.toLocaleString('fr-FR')} F</p>
+                  </div>
+                </div>
+
+                {/* Échéancier détaillé pour cet élève */}
+                <div className="space-y-2 mt-4">
+                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                    Échéancier individuel de paiement ({selectedStudentForDetails.schedules.length} tranches)
+                  </h4>
+
+                  <div className="border border-border rounded-xl overflow-hidden divide-y divide-border text-xs">
+                    {selectedStudentForDetails.schedules.length === 0 ? (
+                      <p className="p-4 text-center text-muted-foreground text-xs">
+                        Aucune échéance configurée pour cette classe.
+                      </p>
+                    ) : (
+                      selectedStudentForDetails.schedules.map(sc => (
+                        <div key={sc.schedule_id} className="p-3 flex items-center justify-between gap-3 hover:bg-slate-50">
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className="font-bold text-foreground text-xs">{sc.title}</span>
+                              {sc.is_registration && (
+                                <span className="px-1.5 py-0.2 text-[9px] font-bold bg-purple-100 text-purple-700 rounded">
+                                  Inscription
+                                </span>
+                              )}
+                              {sc.is_overdue && (
+                                <span className="px-1.5 py-0.2 text-[9px] font-bold bg-red-100 text-red-700 rounded">
+                                  +{sc.days_overdue}j retard
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              Échéance le {new Date(sc.due_date).toLocaleDateString('fr-FR')} · Montant : {sc.amount.toLocaleString('fr-FR')} FCFA
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <span className="font-bold text-foreground text-xs">{sc.total_paid.toLocaleString('fr-FR')} F</span>
+                              {sc.remaining > 0 ? (
+                                <span className="text-[10px] text-red-600 block font-medium">Reste : {sc.remaining.toLocaleString('fr-FR')} F</span>
+                              ) : (
+                                <span className="text-[10px] text-emerald-600 block font-medium">Soldé</span>
+                              )}
+                            </div>
+
+                            {sc.remaining > 0 && (
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  setStudentForCashPayment(selectedStudentForDetails);
+                                  setCashPaymentScheduleId(sc.schedule_id);
+                                  setCashPaymentAmount(String(sc.remaining));
+                                  setSelectedStudentForDetails(null);
+                                }}
+                                className="h-7 px-2 text-[10px] font-bold bg-emerald-600 hover:bg-emerald-700 text-white"
+                              >
+                                Encaisser
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                <DialogFooter className="mt-4 pt-2 border-t border-border flex items-center justify-between sm:justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.print()}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Imprimer la Fiche
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSelectedStudentForDetails(null)}
+                    className="text-xs"
+                  >
+                    Fermer
+                  </Button>
+                </DialogFooter>
               </>
             )}
-          </>
-        )}
-
-        {/* ── MODAL 1: Checkout ─────────────────────────────────────── */}
-        <Dialog open={!!selectedSchedule} onOpenChange={(open) => !open && setSelectedSchedule(null)}>
-          <DialogContent className="sm:max-w-[540px]">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-                <CreditCard className="w-6 h-6 text-emerald-600" /> Règlement de scolarité
-              </DialogTitle>
-              <DialogDescription>
-                {selectedSchedule?.schedule_title}
-              </DialogDescription>
-            </DialogHeader>
-
-            {/* Amount Summary */}
-            <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200 space-y-1">
-              <div className="flex justify-between text-xs text-emerald-700 font-semibold uppercase">
-                <span>Montant total de l'échéance</span>
-                <span>{Number(selectedSchedule?.schedule_amount).toLocaleString('fr-FR')} FCFA</span>
-              </div>
-              {selectedSchedule && Number(selectedSchedule.total_paid) > 0 && (
-                <div className="flex justify-between text-xs text-blue-600">
-                  <span>Déjà payé</span>
-                  <span>- {Number(selectedSchedule.total_paid).toLocaleString('fr-FR')} FCFA</span>
-                </div>
-              )}
-              <div className="flex justify-between text-emerald-950 font-extrabold text-xl pt-1 border-t border-emerald-200 mt-1">
-                <span>Reliquat à régler</span>
-                <span>{Number(selectedSchedule?.remaining).toLocaleString('fr-FR')} FCFA</span>
-              </div>
-            </div>
-
-            {/* Partial payment toggle */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsPartial(!isPartial)
-                    if (!isPartial) setPaymentAmount('')
-                    else setPaymentAmount(String(selectedSchedule?.remaining || ''))
-                  }}
-                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isPartial ? 'bg-blue-500' : 'bg-gray-200'}`}
-                >
-                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${isPartial ? 'translate-x-6' : 'translate-x-1'}`} />
-                </button>
-                <Label className="text-sm font-medium cursor-pointer" onClick={() => setIsPartial(p => !p)}>
-                  Paiement partiel
-                </Label>
-                <span className="text-xs text-gray-400">(Verser un montant inférieur)</span>
-              </div>
-
-              {isPartial && (
-                <div className="grid gap-1.5">
-                  <Label htmlFor="partialAmt" className="text-xs">Montant à verser (FCFA)</Label>
-                  <Input
-                    id="partialAmt"
-                    type="number"
-                    min="1"
-                    max={selectedSchedule?.remaining}
-                    placeholder={`Max : ${Number(selectedSchedule?.remaining).toLocaleString('fr-FR')}`}
-                    value={paymentAmount}
-                    onChange={e => setPaymentAmount(e.target.value)}
-                    className="text-lg font-bold"
-                  />
-                  {paymentAmount && parseFloat(paymentAmount) < Number(selectedSchedule?.remaining) && (
-                    <p className="text-xs text-blue-600">
-                      Reliquat après ce paiement : {(Number(selectedSchedule?.remaining) - parseFloat(paymentAmount)).toLocaleString('fr-FR')} FCFA
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Payment Method */}
-            <div className="space-y-2">
-              <Label className="font-semibold text-sm">Moyen de paiement *</Label>
-              <div className="grid grid-cols-1 gap-2">
-                {paymentMethods.map(method => (
-                  <button
-                    key={method.id}
-                    onClick={() => setSelectedMethod(method.id)}
-                    className={`flex items-center justify-between p-3 rounded-xl border text-left transition-all ${
-                      selectedMethod === method.id
-                        ? 'border-emerald-600 bg-emerald-50/50 ring-2 ring-emerald-600/20'
-                        : 'border-gray-200 hover:border-gray-300 bg-white'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <span className="text-xl">{method.icon}</span>
-                      <span className="font-semibold text-sm text-gray-900">{method.name}</span>
-                    </div>
-                    {selectedMethod === method.id && <CheckCircle2 className="w-5 h-5 text-emerald-600" />}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Contact */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="grid gap-1.5">
-                <Label htmlFor="phone" className="text-xs">Numéro Mobile Money</Label>
-                <Input id="phone" placeholder="07 00 00 00 00" value={phoneNumber} onChange={e => setPhoneNumber(e.target.value)} />
-              </div>
-              <div className="grid gap-1.5">
-                <Label htmlFor="email" className="text-xs">Email pour le reçu</Label>
-                <Input id="email" type="email" value={parentEmail} onChange={e => setParentEmail(e.target.value)} />
-              </div>
-            </div>
-
-            <DialogFooter className="mt-2">
-              <Button variant="outline" onClick={() => setSelectedSchedule(null)}>Annuler</Button>
-              <Button
-                className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
-                onClick={handlePayment}
-                disabled={isProcessing || !paymentAmount || parseFloat(paymentAmount) <= 0}
-              >
-                {isProcessing ? (
-                  <><Loader2 className="w-4 h-4 animate-spin mr-2" />Validation en cours...</>
-                ) : (
-                  `Confirmer — ${parseFloat(paymentAmount || '0').toLocaleString('fr-FR')} FCFA`
-                )}
-              </Button>
-            </DialogFooter>
           </DialogContent>
         </Dialog>
 
-        {/* ── MODAL 2: Digital Receipt ──────────────────────────────── */}
-        <Dialog open={!!activeReceipt} onOpenChange={(open) => !open && setActiveReceipt(null)}>
-          <DialogContent className="sm:max-w-[600px] bg-white p-8 border shadow-2xl rounded-2xl">
-            {activeReceipt && (
-              <div className="space-y-6">
+        {/* ═══════════════════════════════════════════════════════════════════
+            MODAL 2 : ENCAISSEMENT EN CAISSE GUICHET
+            ═══════════════════════════════════════════════════════════════════ */}
+        <Dialog open={!!studentForCashPayment} onOpenChange={(open) => !open && setStudentForCashPayment(null)}>
+          <DialogContent className="max-w-md p-6">
+            {studentForCashPayment && (
+              <form onSubmit={handleCashPaymentSubmit} className="space-y-4">
+                <DialogHeader>
+                  <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                    <Banknote className="w-5 h-5 text-emerald-600" />
+                    Encaisser un Paiement Scolaire
+                  </DialogTitle>
+                  <DialogDescription className="text-xs text-muted-foreground">
+                    Élève : <strong>{studentForCashPayment.first_name} {studentForCashPayment.last_name}</strong> ({studentForCashPayment.class_name})
+                  </DialogDescription>
+                </DialogHeader>
 
-                {/* Email Notice */}
-                <div className="bg-emerald-50 border border-emerald-200 text-emerald-900 p-3 rounded-xl text-xs flex items-center gap-2">
-                  <Mail className="w-4 h-4 text-emerald-600 shrink-0" />
-                  <span>Une copie a été envoyée par mail à <strong>{activeReceipt.parentEmail}</strong>.</span>
+                {/* Choix de l'échéance / tranche */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Échéance / Tranche concernée *</Label>
+                  <Select value={cashPaymentScheduleId} onValueChange={(val) => {
+                    setCashPaymentScheduleId(val);
+                    const target = studentForCashPayment.schedules.find(s => s.schedule_id === val);
+                    if (target) {
+                      setCashPaymentAmount(String(target.remaining > 0 ? target.remaining : target.amount));
+                    }
+                  }}>
+                    <SelectTrigger className="text-xs h-9">
+                      <SelectValue placeholder="Sélectionner la tranche" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Paiement libre / Acompte global</SelectItem>
+                      {studentForCashPayment.schedules.map(sc => (
+                        <SelectItem key={sc.schedule_id} value={sc.schedule_id}>
+                          {sc.title} — Reste : {sc.remaining.toLocaleString('fr-FR')} F (Total : {sc.amount.toLocaleString('fr-FR')} F)
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
-                {/* Partial warning */}
-                {activeReceipt.isPartial && activeReceipt.remaining > 0 && (
-                  <div className="bg-blue-50 border border-blue-200 text-blue-800 p-3 rounded-xl text-xs flex items-center gap-2">
-                    <BadgePercent className="w-4 h-4 text-blue-500 shrink-0" />
-                    <span>
-                      Paiement partiel enregistré. Reliquat restant : <strong>{Number(activeReceipt.remaining).toLocaleString('fr-FR')} FCFA</strong>
-                    </span>
-                  </div>
-                )}
-
-                {/* Printable Area */}
-                <div className="border-2 border-dashed border-gray-300 p-6 rounded-xl space-y-6 bg-gray-50/50 relative overflow-hidden">
-
-                  {/* Stamp */}
-                  <div className={`absolute top-12 right-6 transform rotate-12 border-4 font-extrabold text-2xl tracking-widest px-4 py-1.5 rounded-lg opacity-80 select-none ${
-                    activeReceipt.isPartial
-                      ? 'border-blue-500 text-blue-500'
-                      : 'border-emerald-600 text-emerald-600'
-                  }`}>
-                    {activeReceipt.isPartial ? 'PARTIEL' : 'PAYÉ / VALIDÉ'}
-                  </div>
-
-                  {/* Header */}
-                  <div className="flex items-center gap-3 border-b pb-4">
-                    <div className="w-10 h-10 bg-emerald-900 text-white font-bold rounded-xl flex items-center justify-center text-lg">E</div>
-                    <div>
-                      <h3 className="font-bold text-lg text-gray-900 leading-none">{activeReceipt.schoolName}</h3>
-                      <p className="text-xs text-gray-500 mt-1">Plateforme Officielle Ereuka Learn & Connect</p>
-                    </div>
-                  </div>
-
-                  {/* Receipt No + Date */}
-                  <div className="grid grid-cols-2 gap-4 text-xs border-b pb-4">
-                    <div>
-                      <span className="text-gray-400 uppercase tracking-wider block">Numéro de reçu</span>
-                      <span className="font-mono font-bold text-sm text-gray-900">{activeReceipt.receiptNumber}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-gray-400 uppercase tracking-wider block">Date & Heure</span>
-                      <span className="font-semibold text-gray-800">{activeReceipt.paidAt}</span>
-                    </div>
-                  </div>
-
-                  {/* Student Details */}
-                  <div className="grid grid-cols-2 gap-4 text-xs border-b pb-4">
-                    <div>
-                      <span className="text-gray-400 uppercase block">Élève</span>
-                      <span className="font-bold text-gray-900 text-sm">{activeReceipt.studentName}</span>
-                    </div>
-                    <div>
-                      <span className="text-gray-400 uppercase block">Classe</span>
-                      <span className="font-semibold text-gray-800">{activeReceipt.className}</span>
-                    </div>
-                  </div>
-
-                  {/* Itemized */}
-                  <div className="space-y-2">
-                    <div className="flex justify-between text-xs text-gray-400 uppercase border-b pb-1 font-semibold">
-                      <span>Désignation</span>
-                      <span>Montant</span>
-                    </div>
-                    <div className="flex justify-between text-sm font-semibold text-gray-900 pt-1">
-                      <span>{activeReceipt.title}</span>
-                      <span>{Number(activeReceipt.amount).toLocaleString('fr-FR')} FCFA</span>
-                    </div>
-                    {activeReceipt.isPartial && (
-                      <div className="flex justify-between text-xs text-blue-600">
-                        <span>Total échéance</span>
-                        <span>{Number(activeReceipt.totalDue).toLocaleString('fr-FR')} FCFA</span>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Payment Method + Total */}
-                  <div className="bg-white p-4 rounded-xl border border-gray-200 flex justify-between items-center mt-4">
-                    <div>
-                      <span className="text-xs text-gray-500 block">Mode de règlement</span>
-                      <span className="font-semibold text-xs text-gray-900">{activeReceipt.method}</span>
-                      <span className="text-[10px] text-gray-400 block font-mono">Ref: {activeReceipt.transactionRef}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-xs text-emerald-700 font-bold block uppercase">
-                        {activeReceipt.isPartial ? 'Versement Partiel' : 'Total Réglé'}
-                      </span>
-                      <span className="text-2xl font-extrabold text-gray-900">
-                        {Number(activeReceipt.amount).toLocaleString('fr-FR')} FCFA
-                      </span>
-                    </div>
-                  </div>
+                {/* Montant versé */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Montant versé (FCFA) *</Label>
+                  <Input
+                    type="number"
+                    min="100"
+                    step="100"
+                    required
+                    value={cashPaymentAmount}
+                    onChange={(e) => setCashPaymentAmount(e.target.value)}
+                    className="text-sm font-bold text-emerald-700 h-9"
+                    placeholder="Ex: 50000"
+                  />
                 </div>
 
-                {/* Actions */}
-                <DialogFooter className="flex sm:justify-between gap-2">
-                  <Button variant="outline" size="sm" onClick={() => window.print()} className="gap-1.5">
-                    <Printer className="w-4 h-4" /> Imprimer
+                {/* Mode de règlement */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Mode de règlement *</Label>
+                  <Select value={cashPaymentMethod} onValueChange={setCashPaymentMethod}>
+                    <SelectTrigger className="text-xs h-9">
+                      <SelectValue placeholder="Mode de paiement" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {PAYMENT_METHODS.map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          {m.icon} {m.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Notes / Réf chèque ou transaction */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Référence ou observations (optionnel)</Label>
+                  <Input
+                    value={cashPaymentNotes}
+                    onChange={(e) => setCashPaymentNotes(e.target.value)}
+                    className="text-xs h-9"
+                    placeholder="Ex: Chèque N° 458921 ou payé par l'oncle"
+                  />
+                </div>
+
+                <DialogFooter className="mt-4 pt-2 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setStudentForCashPayment(null)}
+                    className="text-xs"
+                  >
+                    Annuler
                   </Button>
-                  <Button size="sm" onClick={() => setActiveReceipt(null)} className="bg-emerald-700 hover:bg-emerald-800">
+
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={accounting.isRecordingPayment}
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs gap-1.5"
+                  >
+                    {accounting.isRecordingPayment ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Check className="w-3.5 h-3.5" />
+                    )}
+                    Valider & Émettre le Reçu
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* ═══════════════════════════════════════════════════════════════════
+            MODAL 3 : REÇU NUMÉRIQUE OFFICIEL (IMPRIMABLE)
+            ═══════════════════════════════════════════════════════════════════ */}
+        <Dialog open={!!activeReceipt} onOpenChange={(open) => !open && setActiveReceipt(null)}>
+          <DialogContent className="max-w-md p-6 bg-white">
+            {activeReceipt && (
+              <div className="space-y-4">
+                <DialogHeader className="text-center sm:text-center pb-3 border-b border-dashed border-border">
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-1">
+                    <CheckCircle2 className="w-6 h-6" />
+                  </div>
+                  <DialogTitle className="text-base font-bold text-foreground">
+                    {activeReceipt.schoolName}
+                  </DialogTitle>
+                  <p className="text-[11px] font-mono font-bold text-primary">
+                    REÇU DE CAISSE : {activeReceipt.receiptNumber}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">{activeReceipt.paidAt}</p>
+                </DialogHeader>
+
+                <div className="bg-slate-50 p-3 rounded-xl border border-border text-xs space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Élève :</span>
+                    <strong className="text-foreground">{activeReceipt.studentName}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Classe :</span>
+                    <strong className="text-foreground">{activeReceipt.className}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Motif / Tranche :</span>
+                    <strong className="text-foreground">{activeReceipt.title}</strong>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Mode de règlement :</span>
+                    <span className="font-semibold text-slate-700">{activeReceipt.method}</span>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-center">
+                  <span className="text-[10px] text-emerald-800 uppercase font-bold block">Montant Perçu</span>
+                  <span className="text-2xl font-bold text-emerald-700">
+                    {Number(activeReceipt.amount).toLocaleString('fr-FR')} FCFA
+                  </span>
+                  {activeReceipt.remaining > 0 && (
+                    <span className="text-[11px] text-amber-700 block font-semibold mt-1">
+                      Reliquat restant à payer : {Number(activeReceipt.remaining).toLocaleString('fr-FR')} FCFA
+                    </span>
+                  )}
+                </div>
+
+                <div className="text-center text-[10px] text-muted-foreground pt-1">
+                  Ce reçu numérique certifie l'encaissement régulier des frais scolaires dans le système Eurêka.
+                </div>
+
+                <DialogFooter className="pt-2 border-t border-border flex items-center justify-between sm:justify-between">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.print()}
+                    className="gap-1.5 text-xs"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Imprimer le reçu
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setActiveReceipt(null)}
+                    className="text-xs bg-slate-900 text-white"
+                  >
                     Fermer
                   </Button>
                 </DialogFooter>
@@ -811,7 +1164,113 @@ function ParentPaymentPage() {
             )}
           </DialogContent>
         </Dialog>
+      </AppShell>
+    )
+  }
 
+  // ═══════════════════════════════════════════════════════════════════════════
+  // VUE 2 : ESPACE FAMILLE / PARENT (COMPTES ENFANTS DISSOCIÉS)
+  // ═══════════════════════════════════════════════════════════════════════════
+  return (
+    <AppShell
+      title="Espace Paiements Parent"
+      subtitle="Comptes de scolarité individuels pour chacun de vos enfants inscrits."
+      actions={
+        isStaff && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setActiveStaffView('accounting')}
+            className="gap-1.5 text-xs border-primary text-primary"
+          >
+            <Banknote className="w-3.5 h-3.5" /> Retour Vue Comptabilité
+          </Button>
+        )
+      }
+    >
+      <div className="space-y-6 max-w-5xl mx-auto">
+        {/* Rappel d'accès direct pour les parents */}
+        <div className="bg-gradient-to-r from-indigo-50 to-blue-50 border border-indigo-200 rounded-2xl p-5 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center font-bold">
+              <School className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="font-bold text-slate-900 text-sm">Gestion Individualisée des Échéances par Enfant</h3>
+              <p className="text-xs text-slate-600">
+                Chaque enfant dispose de son propre compte financier, de son échéancier et de ses reçus indépendants.
+                Pour gérer et payer directement les frais en ligne par Wave, Orange Money ou MTN, rendez-vous également sur votre{' '}
+                <a href="/portail-parent" className="font-bold text-indigo-700 underline">Portail Parent</a>.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Liste des enfants avec compte dissocié */}
+        <div className="grid gap-4 md:grid-cols-2">
+          {accounting.studentsLedger
+            .filter(st => st.responsible_id === user?.id || (st.parent_email && st.parent_email === user?.email))
+            .map(child => (
+              <div key={child.id} className="bg-white rounded-2xl border border-border p-5 shadow-sm space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm uppercase">
+                      {child.first_name[0]}{child.last_name[0]}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-foreground text-sm">{child.first_name} {child.last_name}</h4>
+                      <p className="text-xs text-muted-foreground">Classe : <strong>{child.class_name}</strong></p>
+                    </div>
+                  </div>
+                  <StatusBadge status={child.overall_financial_status} />
+                </div>
+
+                <div className="grid grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-border text-center text-xs">
+                  <div>
+                    <span className="text-[10px] text-muted-foreground uppercase font-semibold">Total</span>
+                    <p className="font-bold text-foreground">{child.total_due.toLocaleString('fr-FR')} F</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-emerald-800 uppercase font-semibold">Payé</span>
+                    <p className="font-bold text-emerald-700">{child.total_paid.toLocaleString('fr-FR')} F</p>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-red-800 uppercase font-semibold">Reste</span>
+                    <p className="font-bold text-red-700">{child.remaining_balance.toLocaleString('fr-FR')} F</p>
+                  </div>
+                </div>
+
+                {/* Échéances */}
+                <div className="space-y-1.5">
+                  <span className="text-xs font-bold text-foreground">Échéances de scolarité :</span>
+                  <div className="divide-y divide-border border border-border rounded-xl overflow-hidden text-xs">
+                    {child.schedules.map(sc => (
+                      <div key={sc.schedule_id} className="p-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-slate-800">{sc.title}</p>
+                          <p className="text-[10px] text-muted-foreground">Date limite : {new Date(sc.due_date).toLocaleDateString('fr-FR')}</p>
+                        </div>
+                        <div className="text-right">
+                          <span className={`font-bold ${sc.remaining === 0 ? 'text-emerald-600' : 'text-foreground'}`}>
+                            {sc.remaining === 0 ? 'Réglé' : `${sc.remaining.toLocaleString('fr-FR')} F`}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <a
+                    href="/portail-parent"
+                    className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-primary hover:bg-primary/95 text-primary-foreground font-bold text-xs py-2.5 shadow-sm"
+                  >
+                    <CreditCard className="w-4 h-4" /> Payer en ligne (Wave, Orange, MTN, Carte)
+                  </a>
+                </div>
+              </div>
+            ))}
+        </div>
       </div>
     </AppShell>
   )

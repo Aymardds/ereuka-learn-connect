@@ -64,8 +64,24 @@ function InviteRoute() {
     setIsSubmitting(true)
 
     try {
-      // Pour une expérience "sans mot de passe", on génère un mot de passe sécurisé aléatoire.
-      // Le parent pourra se reconnecter plus tard via Magic Link (OTP) sur l'app mobile ou web.
+      // Vérifier si l'utilisateur est déjà connecté (cas multi-école : parent déjà inscrit ailleurs)
+      const { data: { user: existingUser } } = await supabase.auth.getUser()
+
+      if (existingUser) {
+        // Le parent est déjà connecté : on appelle directement l'RPC pour lier le nouvel établissement
+        const { data: rpcData, error: rpcError } = await supabase.rpc('accept_parent_invitation', {
+          invitation_token: token,
+          parent_full_name: fullName || existingUser.user_metadata?.full_name || fullName
+        })
+
+        if (rpcError) throw rpcError
+
+        toast.success("Nouvel établissement lié à votre compte !")
+        navigate({ to: '/portail-parent' })
+        return
+      }
+
+      // Nouveau parent : créer le compte
       const generatedPassword = crypto.randomUUID()
 
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -74,10 +90,18 @@ function InviteRoute() {
       })
 
       if (authError) {
-        // Si le compte existe déjà, on ne peut pas le connecter avec un mot de passe aléatoire.
-        // Dans une vraie app passwordless, on enverrait un Magic Link ici.
-        if (authError.message.includes('already registered')) {
-           throw new Error("Ce compte email existe déjà. Veuillez utiliser la page de connexion standard avec OTP/Magic Link.")
+        if (authError.message.includes('already registered') || authError.message.includes('already exists')) {
+          // Compte existant : envoyer un magic link pour connexion puis rediriger
+          const { error: otpErr } = await supabase.auth.signInWithOtp({
+            email: invitation.email,
+            options: {
+              emailRedirectTo: `${window.location.origin}/invite?token=${token}`,
+            },
+          })
+          if (otpErr) throw otpErr
+          toast.info("Un lien de connexion a été envoyé à votre adresse email. Cliquez dessus pour lier cet établissement à votre compte existant.")
+          setIsSubmitting(false)
+          return
         } else {
           throw authError
         }
@@ -93,8 +117,8 @@ function InviteRoute() {
 
       toast.success("Compte créé et lié avec succès !")
       
-      // Redirect to parent dashboard (payments)
-      navigate({ to: '/paiement' })
+      // Redirect to parent portal
+      navigate({ to: '/portail-parent' })
 
     } catch (err: any) {
       toast.error(err.message || "Erreur lors de la création du compte.")
@@ -181,6 +205,22 @@ function InviteRoute() {
               )}
             </Button>
           </form>
+
+          <div className="mt-6 pt-4 border-t border-gray-100 text-center">
+            <p className="text-xs text-gray-500 mb-2">Vous avez déjà un compte Eurêka ?</p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => navigate({ 
+                to: '/login', 
+                search: { redirectTo: `/invite?token=${token}` } as any 
+              })}
+              className="w-full text-xs font-semibold text-primary border-primary/30 hover:bg-primary/5"
+            >
+              Me connecter avec mon compte existant
+            </Button>
+          </div>
 
         </div>
       </div>
