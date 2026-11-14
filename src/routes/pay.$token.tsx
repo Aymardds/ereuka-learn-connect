@@ -241,9 +241,7 @@ function PublicPaymentPage() {
 
         {/* Header */}
         <div className="text-center space-y-2 py-4">
-          <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur text-white font-bold text-2xl flex items-center justify-center mx-auto border border-white/20 shadow-xl">
-            E
-          </div>
+          <img src="/favicon.svg" alt="Eurêka" className="w-14 h-14 rounded-2xl mx-auto shadow-xl object-contain" />
           <h1 className="text-white text-2xl font-bold tracking-tight">Eurêka — Paiement</h1>
           <p className="text-white/60 text-xs">Paiement sécurisé · 256-bit SSL</p>
         </div>

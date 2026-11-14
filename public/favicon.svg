@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1E4D3A" />
+      <stop offset="100%" stop-color="#0F291E" />
+    </linearGradient>
+    <linearGradient id="goldRing" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE68A" />
+      <stop offset="60%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <linearGradient id="stepTop" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FEF3C7" />
+      <stop offset="50%" stop-color="#FCD34D" />
+      <stop offset="100%" stop-color="#F59E0B" />
+    </linearGradient>
+    <linearGradient id="stepFront" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#D97706" />
+      <stop offset="100%" stop-color="#B45309" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#000000" flood-opacity="0.3" />
+    </filter>
+  </defs>
+
+  <!-- Squircle Base (Brand Green #1B4332) -->
+  <rect x="24" y="24" width="464" height="464" rx="112" fill="url(#bgGrad)" />
+  <rect x="26" y="26" width="460" height="460" rx="110" fill="none" stroke="#34D399" stroke-width="2" stroke-opacity="0.25" />
+
+  <!-- Eurêka Knowledge Emblem -->
+  <g filter="url(#shadow)">
+    <!-- Outer Knowledge Circle -->
+    <circle cx="256" cy="246" r="168" fill="none" stroke="url(#goldRing)" stroke-width="16" stroke-linecap="round" />
+
+    <!-- Sprout / Leaf at bottom-left -->
+    <path d="M 148 376 C 130 405 110 435 125 450 C 145 465 175 430 185 398 C 170 395 155 388 148 376 Z" 
+          fill="url(#stepTop)" stroke="#B45309" stroke-width="3" stroke-linejoin="round" />
+
+    <!-- Smile arc at bottom -->
+    <path d="M 180 388 C 225 414 287 414 332 388" 
+          fill="none" stroke="url(#goldRing)" stroke-width="12" stroke-linecap="round" />
+
+    <!-- 3D Ascending Staircase ("E" of Eurêka) -->
+    <!-- STEP 1 (Top) -->
+    <polygon points="205,190 355,216 355,232 205,206" fill="url(#stepFront)" stroke="#92400E" stroke-width="1.5" />
+    <polygon points="225,166 375,192 355,216 205,190" fill="url(#stepTop)" stroke="#FDE68A" stroke-width="1.5" />
+
+    <!-- STEP 2 (Middle) -->
+    <polygon points="155,242 325,272 325,288 155,258" fill="url(#stepFront)" stroke="#92400E" stroke-width="1.5" />
+    <polygon points="175,218 345,248 325,272 155,242" fill="url(#stepTop)" stroke="#FDE68A" stroke-width="1.5" />
+
+    <!-- STEP 3 (Bottom) -->
+    <polygon points="105,294 395,344 395,360 105,310" fill="url(#stepFront)" stroke="#92400E" stroke-width="1.5" />
+    <polygon points="125,270 415,320 395,344 105,294" fill="url(#stepTop)" stroke="#FDE68A" stroke-width="1.5" />
+  </g>
+</svg>

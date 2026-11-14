@@ -174,9 +174,7 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
           {/* Brand header */}
           <div className="flex items-center justify-between px-5 pt-6 pb-4">
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-accent text-accent-foreground font-display text-xl font-bold shadow-md">
-                E
-              </div>
+              <img src="/favicon.svg" alt="Eurêka" className="h-10 w-10 rounded-xl shadow-md object-contain" />
               <div>
                 <div className="font-display text-lg font-bold tracking-tight text-sidebar-foreground">Eurêka</div>
                 <div className="text-[10px] uppercase font-semibold tracking-wider text-accent">ERP Éducatif SaaS</div>
