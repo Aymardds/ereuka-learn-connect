@@ -10,6 +10,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PaymentMethodCard, PAYMENT_METHODS_CONFIG, PaymentBadge, type PaymentMethod } from '@/components/payment/PaymentLogos';
 
 export const Route = createFileRoute('/pay/$token')({
   head: () => ({
@@ -21,12 +22,12 @@ export const Route = createFileRoute('/pay/$token')({
   component: PublicPaymentPage,
 });
 
-const PAYMENT_METHODS = [
-  { id: 'WAVE',           name: 'Wave',         icon: '🌊', color: '#00B8D9', bg: '#E6F9FF', border: '#00B8D9' },
-  { id: 'ORANGE_MONEY_CI', name: 'Orange Money', icon: '🍊', color: '#FF6600', bg: '#FFF3EB', border: '#FF6600' },
-  { id: 'MTN_CI',         name: 'MTN MoMo',      icon: '🟡', color: '#FFCC00', bg: '#FFFBE6', border: '#FFCC00' },
-  { id: 'MOOV_CI',        name: 'Moov Money',    icon: '🔹', color: '#0052CC', bg: '#EBF2FF', border: '#0052CC' },
-  { id: 'CARD',           name: 'Carte Bancaire', icon: '💳', color: '#1A1A2E', bg: '#F0F0F5', border: '#1A1A2E' },
+const PAYMENT_METHODS: PaymentMethod[] = [
+  PAYMENT_METHODS_CONFIG['WAVE'],
+  PAYMENT_METHODS_CONFIG['ORANGE_MONEY_CI'],
+  PAYMENT_METHODS_CONFIG['MTN_CI'],
+  PAYMENT_METHODS_CONFIG['MOOV_CI'],
+  PAYMENT_METHODS_CONFIG['CARD'],
 ];
 
 function PublicPaymentPage() {
@@ -56,24 +57,24 @@ function PublicPaymentPage() {
       const { error: txError } = await supabase
         .from('cinetpay_transactions')
         .insert([{
-          tenant_id:             session.tenant_id,
-          student_id:            session.student_id,
-          schedule_id:           session.schedule_id,
-          cpm_trans_id:          transId,
-          amount:                session.amount,
-          currency:              'XOF',
-          description:           session.description,
-          customer_name:         payerName || 'Parent',
-          customer_surname:      '',
+          tenant_id: session.tenant_id,
+          student_id: session.student_id,
+          schedule_id: session.schedule_id,
+          cpm_trans_id: transId,
+          amount: session.amount,
+          currency: 'XOF',
+          description: session.description,
+          customer_name: payerName || 'Parent',
+          customer_surname: '',
           customer_phone_number: phone || '0000000000',
-          payment_method:        selectedMethod,
-          status:                'ACCEPTED',
-          receipt_number:        receipt,
-          webhook_received_at:   new Date().toISOString(),
+          payment_method: selectedMethod,
+          status: 'ACCEPTED',
+          receipt_number: receipt,
+          webhook_received_at: new Date().toISOString(),
           webhook_payload: {
-            source:         'terminal_qr',
+            source: 'terminal_qr',
             terminal_token: token,
-            session_id:     session.id,
+            session_id: session.id,
           },
         }]);
 
@@ -83,9 +84,9 @@ function PublicPaymentPage() {
       const { error: sessError } = await supabase
         .from('payment_terminal_sessions')
         .update({
-          status:           'paid',
-          payment_method:   selectedMethod,
-          paid_at:          new Date().toISOString(),
+          status: 'paid',
+          payment_method: selectedMethod,
+          paid_at: new Date().toISOString(),
           cinetpay_trans_id: transId,
         })
         .eq('id', session.id);
@@ -96,18 +97,18 @@ function PublicPaymentPage() {
       const { error: spError } = await supabase
         .from('student_payments')
         .insert([{
-          tenant_id:             session.tenant_id,
-          student_id:            session.student_id,
-          schedule_id:           session.schedule_id,
-          amount_paid:           session.amount,
-          payment_method:        selectedMethod.toLowerCase(),
+          tenant_id: session.tenant_id,
+          student_id: session.student_id,
+          schedule_id: session.schedule_id,
+          amount_paid: session.amount,
+          payment_method: selectedMethod.toLowerCase(),
           transaction_reference: transId,
-          receipt_number:        receipt,
-          parent_email:          '',
-          phone_number:          phone,
-          operator_name:         selectedMethod,
-          cinetpay_trans_id:     transId,
-          gateway_provider:      'cinetpay',
+          receipt_number: receipt,
+          parent_email: '',
+          phone_number: phone,
+          operator_name: selectedMethod,
+          cinetpay_trans_id: transId,
+          gateway_provider: 'cinetpay',
         }]);
 
       if (spError) throw spError;

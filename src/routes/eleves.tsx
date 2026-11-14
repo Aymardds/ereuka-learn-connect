@@ -51,6 +51,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuth } from "@/hooks/useAuth";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 
 export const Route = createFileRoute("/eleves")({
   head: () => ({
@@ -75,6 +76,7 @@ function ElevesPage() {
   const { classesQuery } = useClasses();
   const { parents, createParentMutation, linkParentMutation, unlinkParentMutation } = useParents();
   const { profile } = useAuth();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
   const { results: globalParents, isSearching: isGlobalSearching, search: searchGlobal, clear: clearGlobalSearch, inviteExistingParent, linkExistingParentDirectly } = useParentSearch();
   
   // State for Invitation Success Share Dialog
@@ -355,25 +357,25 @@ function ElevesPage() {
 
   return (
     <AppShell
-      title="Élèves & Parents"
-      subtitle={`${studentsList.length} élèves inscrits • ${parents.length} comptes parents enregistrés`}
+      title={estInfo.isUniversityOnly ? "Étudiants & Dossiers" : "Élèves & Parents"}
+      subtitle={`${studentsList.length} ${estInfo.studentsTerm} inscrit(s)${estInfo.showParentPortal ? ` • ${parents.length} comptes parents enregistrés` : ''}`}
       actions={
         <div className="flex items-center gap-2">
-          {/* Action 1 : Inscrire un parent */}
-          <Button 
-            variant="outline" 
-            onClick={() => setIsCreateParentOpen(true)}
-            className="gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold"
-          >
-            <UserPlus className="w-4 h-4" /> Inscrire un Parent
-          </Button>
+          {estInfo.showParentPortal && (
+            <Button 
+              variant="outline" 
+              onClick={() => setIsCreateParentOpen(true)}
+              className="gap-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100 font-semibold"
+            >
+              <UserPlus className="w-4 h-4" /> Inscrire un Parent
+            </Button>
+          )}
 
-          {/* Action 2 : Nouvelle inscription élève */}
           <Button 
             onClick={() => setIsCreateStudentOpen(true)}
             className="gap-2 bg-primary font-semibold shadow-sm"
           >
-            <Plus className="w-4 h-4" /> Nouvelle Inscription Élève
+            <Plus className="w-4 h-4" /> {estInfo.isUniversityOnly ? "Nouvelle Inscription Étudiant" : "Nouvelle Inscription Élève"}
           </Button>
         </div>
       }
@@ -392,24 +394,26 @@ function ElevesPage() {
               }`}
             >
               <Users className="w-4 h-4 text-primary" />
-              Élèves Inscrits ({studentsList.length})
+              {estInfo.isUniversityOnly ? "Étudiants Inscrits" : "Élèves Inscrits"} ({studentsList.length})
             </button>
-            <button
-              onClick={() => setActiveTab('parents')}
-              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
-                activeTab === 'parents' 
-                  ? 'bg-white shadow text-gray-900' 
-                  : 'text-gray-500 hover:text-gray-900'
-              }`}
-            >
-              <UserCheck className="w-4 h-4 text-emerald-600" />
-              Parents & Tuteurs ({parents.length})
-            </button>
+            {estInfo.showParentPortal && (
+              <button
+                onClick={() => setActiveTab('parents')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all ${
+                  activeTab === 'parents' 
+                    ? 'bg-white shadow text-gray-900' 
+                    : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                <UserCheck className="w-4 h-4 text-emerald-600" />
+                Parents & Tuteurs ({parents.length})
+              </button>
+            )}
           </div>
 
           <div className="text-xs text-muted-foreground hidden sm:block">
             {activeTab === 'students' 
-              ? `${filteredStudents.length} élève(s) affiché(s)` 
+              ? `${filteredStudents.length} ${estInfo.studentTerm.toLowerCase()}(s) affiché(s)` 
               : `${filteredParents.length} parent(s) affiché(s)`}
           </div>
         </div>

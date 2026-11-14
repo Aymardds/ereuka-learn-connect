@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ArrowUpRight, TrendingUp, AlertCircle, Calendar, GraduationCap, Users, Banknote, Clock } from "lucide-react";
+import { ArrowUpRight, TrendingUp, AlertCircle, Calendar, GraduationCap, Users, Banknote, Clock, Award } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 
 export const Route = createFileRoute("/")({
   component: Dashboard,
@@ -11,6 +12,7 @@ export const Route = createFileRoute("/")({
 function Dashboard() {
   const { profile } = useAuth();
   const { data: stats, isLoading } = useDashboardStats();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
 
   if (isLoading || !stats) {
     return (
@@ -43,7 +45,7 @@ function Dashboard() {
   return (
     <AppShell
       title="Tableau de bord"
-      subtitle={`Vue direction`}
+      subtitle={estInfo.isUniversityOnly ? "Vue direction — Enseignement Supérieur" : estInfo.isMixed ? "Vue direction — Établissement multi-niveaux" : "Vue direction — Groupe Scolaire"}
       actions={
         <button className="hidden md:inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-95">
           <Calendar className="h-4 w-4" />
@@ -62,15 +64,20 @@ function Dashboard() {
               Bonne journée, {profile?.full_name || 'Direction'}.
             </h2>
             <p className="mt-2 max-w-lg text-sm text-primary-foreground/70">
-              Voici le résumé des activités récentes de votre établissement. Vous avez actuellement <b className="text-primary-foreground">{stats.total_students} élèves</b> inscrits répartis dans <b className="text-primary-foreground">{stats.total_classes} classes</b>.
+              Voici le résumé des activités récentes de votre établissement. Vous avez actuellement <b className="text-primary-foreground">{stats.total_students} {estInfo.studentsTerm}</b> inscrits répartis dans <b className="text-primary-foreground">{stats.total_classes} {estInfo.classesTerm}</b>.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               <a href="/eleves" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-95">
-                Voir les élèves <ArrowUpRight className="h-4 w-4" />
+                {estInfo.isUniversityOnly ? "Voir les étudiants" : "Voir les élèves"} <ArrowUpRight className="h-4 w-4" />
               </a>
               <a href="/paiement" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-4 py-2 text-sm text-primary-foreground/90 hover:bg-primary-foreground/10">
                 Portail Paiements CinetPay
               </a>
+              {estInfo.hasSuperieur && (
+                <a href="/lmd" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
+                  Gestion LMD
+                </a>
+              )}
               <a href="/emploi-du-temps" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
                 Emploi du temps
               </a>
@@ -132,7 +139,7 @@ function Dashboard() {
               {stats.total_classes > 0 ? Math.round(stats.total_students / stats.total_classes) : 0}
             </div>
           </div>
-          <div className="mt-1 text-xs text-muted-foreground">Élèves par classe en moyenne</div>
+          <div className="mt-1 text-xs text-muted-foreground">{estInfo.isUniversityOnly ? "Étudiants" : "Élèves"} par {estInfo.classTerm} en moyenne</div>
         </div>
 
         <div className="rounded-2xl border border-border bg-card p-5">
@@ -169,7 +176,7 @@ function Dashboard() {
                     <div className="flex items-center gap-2">
                       <span className="font-medium">{c.name}</span>
                     </div>
-                    <span className="font-medium tabular-nums">{c.students_count} élèves</span>
+                    <span className="font-medium tabular-nums">{c.students_count} {estInfo.studentsTerm}</span>
                   </div>
                   <div className="h-2 w-full overflow-hidden rounded-full bg-secondary">
                     <div

@@ -1,12 +1,14 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useCourseLogs } from '@/hooks/useCourseLogs';
 import { useClasses } from '@/hooks/useClasses';
 import { useSubjects } from '@/hooks/useSubjects';
+import { useAuth } from '@/hooks/useAuth';
+import { getEstablishmentTypeInfo } from '@/lib/school-types';
 import { 
   BookCheck, Plus, Calendar, BookOpen, Clock, 
-  CheckCircle2, AlertCircle, FileText, Filter 
+  CheckCircle2, AlertCircle, FileText, Filter, School, Award, ArrowRight
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
@@ -20,11 +22,50 @@ export const Route = createFileRoute('/cahier-de-texte')({
 });
 
 function CourseLogsPage() {
+  const { profile } = useAuth();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
+
   const [selectedClassId, setSelectedClassId] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { classes } = useClasses();
   const { subjects } = useSubjects();
   const { courseLogs, isLoading, createCourseLog } = useCourseLogs(selectedClassId);
+
+  // Si l'établissement est exclusivement universitaire, afficher un message explicatif
+  if (!estInfo.hasK12) {
+    return (
+      <AppShell title="Cahier de Texte">
+        <div className="max-w-2xl mx-auto my-12 p-8 bg-card border border-border rounded-2xl shadow-sm text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-sky-500/10 text-sky-600 flex items-center justify-center mx-auto">
+            <School className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">
+              Module réservé aux Écoles & Groupes Scolaires
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Le <strong>Cahier de Texte journalier</strong> (séances, devoirs et leçons) est conçu pour les cycles Maternelle, Primaire et Secondaire.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pour l'enseignement supérieur, la planification et le syllabus s'organisent via les Maquettes LMD, Unités d'Enseignement (UE) et ECUE.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center gap-3">
+            <Link to="/lmd">
+              <Button className="gap-2 bg-primary">
+                <Award className="w-4 h-4" /> Accéder au Système LMD
+              </Button>
+            </Link>
+            <Link to="/">
+              <Button variant="outline">
+                Tableau de bord
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   // Form State
   const [classId, setClassId] = useState('');

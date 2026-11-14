@@ -1,15 +1,16 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useStudents } from '@/hooks/useStudents';
 import { useClasses } from '@/hooks/useClasses';
 import { useCinetPay } from '@/hooks/useCinetPay';
 import { useAuth } from '@/hooks/useAuth';
+import { getEstablishmentTypeInfo } from '@/lib/school-types';
 import { useParentSchools, useParentChildrenAllSchools, useParentPendingInvitations, ParentChildAllSchools } from '@/hooks/useParentMultiSchool';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
-import { 
-  UserCheck, GraduationCap, CreditCard, Calendar, Clock, 
+import {
+  UserCheck, GraduationCap, CreditCard, Calendar, Clock,
   CheckCircle2, AlertCircle, FileText, Download, Phone, ArrowRight,
   UserPlus, HeartPulse, Sparkles, ShieldCheck, Building2, RefreshCw,
   Globe2, School, ChevronRight, ExternalLink, Mail, Loader2
@@ -21,6 +22,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { PaymentMethodCard, PAYMENT_METHODS_CONFIG, type PaymentMethod } from '@/components/payment/PaymentLogos';
 
 export const Route = createFileRoute('/portail-parent')({
   head: () => ({
@@ -32,12 +34,12 @@ export const Route = createFileRoute('/portail-parent')({
   component: ParentPortalPage,
 });
 
-const PAYMENT_METHODS = [
-  { id: 'WAVE', name: 'Wave Mobile Money', icon: '🌊', color: 'bg-cyan-500' },
-  { id: 'ORANGE_MONEY_CI', name: 'Orange Money', icon: '🍊', color: 'bg-orange-500' },
-  { id: 'MTN_CI', name: 'MTN Mobile Money', icon: '🟡', color: 'bg-yellow-400' },
-  { id: 'MOOV_CI', name: 'Moov Money', icon: '🔹', color: 'bg-blue-600' },
-  { id: 'CARD', name: 'Carte Bancaire (Visa/Mastercard)', icon: '💳', color: 'bg-slate-800' },
+const PAYMENT_METHODS: PaymentMethod[] = [
+  PAYMENT_METHODS_CONFIG['WAVE'],
+  PAYMENT_METHODS_CONFIG['ORANGE_MONEY_CI'],
+  PAYMENT_METHODS_CONFIG['MTN_CI'],
+  PAYMENT_METHODS_CONFIG['MOOV_CI'],
+  PAYMENT_METHODS_CONFIG['CARD'],
 ];
 
 function ParentPortalPage() {
@@ -53,9 +55,48 @@ function ParentPortalPage() {
   const { invitations: pendingInvitations, acceptInvitation, declineInvitation } = useParentPendingInvitations();
   const [processingToken, setProcessingToken] = useState<string | null>(null);
 
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
+  const isPureParent = profile?.role === 'parent' || profile?.role === 'responsible';
+
+  // Si établissement strictement universitaire et utilisateur sans enfants rattachés
+  if (!isPureParent && estInfo.isUniversityOnly && allChildren.length === 0) {
+    return (
+      <AppShell title="Espace Parents">
+        <div className="max-w-2xl mx-auto my-12 p-8 bg-card border border-border rounded-2xl shadow-sm text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
+            <School className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">
+              Module réservé aux Écoles & Groupes Scolaires
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Le <strong>Portail Parent</strong> est destiné au suivi scolaire des élèves de la Maternelle au Secondaire (bulletins, absences, devoirs, autorisations).
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Pour l'enseignement supérieur, vos étudiants disposent d'un portail dédié autonome pour consulter leurs notes, emplois du temps et relevés LMD.
+            </p>
+          </div>
+          <div className="pt-2 flex justify-center gap-3">
+            <Link to="/portail-etudiant">
+              <Button className="gap-2 bg-primary">
+                <GraduationCap className="w-4 h-4" /> Portail Étudiant
+              </Button>
+            </Link>
+            <Link to="/lmd">
+              <Button variant="outline">
+                Système LMD
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   // Filter school — 'all' shows children from all schools
   const [selectedSchoolFilter, setSelectedSchoolFilter] = useState<string>('all');
-  
+
   // Selected child state
   const [selectedStudentId, setSelectedStudentId] = useState<string>('');
   const [isPayModalOpen, setIsPayModalOpen] = useState(false);
@@ -71,7 +112,7 @@ function ParentPortalPage() {
     gender: 'M' as 'M' | 'F',
     medicalNotes: '',
   });
-  
+
   // Payment Form state
   const [amount, setAmount] = useState('65000');
   const [channel, setChannel] = useState<'WAVE' | 'ORANGE_MONEY_CI' | 'MTN_CI' | 'MOOV_CI' | 'CARD'>('WAVE');
@@ -141,7 +182,7 @@ function ParentPortalPage() {
       toast.success(`Demande d'inscription enregistrée pour ${enrollForm.firstName} !`);
       await queryClient.invalidateQueries({ queryKey: ['students'] });
       await queryClient.invalidateQueries({ queryKey: ['parent_children_all'] });
-      
+
       if (data?.id) setSelectedStudentId(data.id);
 
       setEnrollForm({
@@ -184,13 +225,13 @@ function ParentPortalPage() {
   return (
     <AppShell
       title="Espace Parents d'Élèves"
-      subtitle={hasMultipleSchools 
+      subtitle={hasMultipleSchools
         ? `Compte lié à ${schools.length} établissements · ${allChildren.length} enfant(s) suivi(s)`
         : "Suivi de scolarité, inscriptions d'enfants et paiement direct en ligne"
       }
       actions={
         <div className="flex items-center gap-2">
-          <Button 
+          <Button
             onClick={() => setIsEnrollModalOpen(true)}
             className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm"
           >
@@ -319,11 +360,10 @@ function ParentPortalPage() {
                 onClick={() => setSelectedSchoolFilter(
                   selectedSchoolFilter === school.tenant_id ? 'all' : school.tenant_id
                 )}
-                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${
-                  selectedSchoolFilter === school.tenant_id
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-white text-foreground border-border hover:border-primary/50'
-                }`}
+                className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full border transition-all ${selectedSchoolFilter === school.tenant_id
+                  ? 'bg-primary text-primary-foreground border-primary'
+                  : 'bg-white text-foreground border-border hover:border-primary/50'
+                  }`}
               >
                 <School className="w-3 h-3" />
                 {school.school_name}
@@ -348,8 +388,8 @@ function ParentPortalPage() {
           <div className="flex items-center gap-3">
             <GraduationCap className="w-5 h-5 text-accent" />
             <span className="text-xs font-semibold text-foreground uppercase tracking-wide">Mon enfant :</span>
-            <Select 
-              value={selectedStudentId || (displayChildren[0]?.student_id || '')} 
+            <Select
+              value={selectedStudentId || (displayChildren[0]?.student_id || '')}
               onValueChange={setSelectedStudentId}
             >
               <SelectTrigger className="w-72 h-9 text-xs bg-white">
@@ -375,7 +415,7 @@ function ParentPortalPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button 
+            <Button
               size="sm"
               variant="outline"
               onClick={() => setIsEnrollModalOpen(true)}
@@ -384,9 +424,9 @@ function ParentPortalPage() {
               <UserPlus className="w-3.5 h-3.5" /> Inscrire un autre enfant
             </Button>
 
-            <Button 
-              size="sm" 
-              onClick={() => setIsPayModalOpen(true)} 
+            <Button
+              size="sm"
+              onClick={() => setIsPayModalOpen(true)}
               className="gap-2 bg-accent text-accent-foreground font-bold hover:opacity-95 text-xs shadow-md"
             >
               <CreditCard className="w-4 h-4" /> Payer la scolarité
@@ -516,8 +556,8 @@ function ParentPortalPage() {
                       <div className="font-bold text-amber-700 font-mono">35 000 FCFA</div>
                       <span className="text-[10px] font-bold text-amber-800 uppercase">À régler</span>
                     </div>
-                    <Button 
-                      size="sm" 
+                    <Button
+                      size="sm"
                       onClick={() => {
                         setAmount('35000');
                         setIsPayModalOpen(true);
@@ -568,7 +608,7 @@ function ParentPortalPage() {
                     Règlement sécurisé sans déplacement : reçu officiel généré automatiquement.
                   </p>
                 </div>
-                <Button 
+                <Button
                   onClick={() => setIsPayModalOpen(true)}
                   className="bg-accent text-accent-foreground font-bold hover:opacity-90 text-xs"
                 >
@@ -589,7 +629,7 @@ function ParentPortalPage() {
             Vous n'avez pas encore d'enfant rattaché à votre compte. Vous pouvez effectuer une nouvelle inscription en ligne directement en quelques clics, ou attendre une invitation de l'établissement.
           </p>
           <div className="pt-2">
-            <Button 
+            <Button
               onClick={() => setIsEnrollModalOpen(true)}
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-sm px-6 h-11 shadow-md"
             >
@@ -616,23 +656,23 @@ function ParentPortalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label htmlFor="c_firstname">Prénom de l'enfant *</Label>
-                  <Input 
+                  <Input
                     id="c_firstname"
                     required
                     placeholder="Ex: Jean-Marc"
                     value={enrollForm.firstName}
-                    onChange={(e) => setEnrollForm({...enrollForm, firstName: e.target.value})}
+                    onChange={(e) => setEnrollForm({ ...enrollForm, firstName: e.target.value })}
                     className="h-9 text-xs"
                   />
                 </div>
                 <div className="grid gap-1.5">
                   <Label htmlFor="c_lastname">Nom de famille *</Label>
-                  <Input 
+                  <Input
                     id="c_lastname"
                     required
                     placeholder="Ex: Kouamé"
                     value={enrollForm.lastName}
-                    onChange={(e) => setEnrollForm({...enrollForm, lastName: e.target.value})}
+                    onChange={(e) => setEnrollForm({ ...enrollForm, lastName: e.target.value })}
                     className="h-9 text-xs"
                   />
                 </div>
@@ -641,9 +681,9 @@ function ParentPortalPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="grid gap-1.5">
                   <Label>Classe demandée *</Label>
-                  <Select 
-                    value={enrollForm.classId} 
-                    onValueChange={(val) => setEnrollForm({...enrollForm, classId: val})}
+                  <Select
+                    value={enrollForm.classId}
+                    onValueChange={(val) => setEnrollForm({ ...enrollForm, classId: val })}
                     required
                   >
                     <SelectTrigger className="h-9 text-xs">
@@ -659,9 +699,9 @@ function ParentPortalPage() {
 
                 <div className="grid gap-1.5">
                   <Label>Genre</Label>
-                  <Select 
-                    value={enrollForm.gender} 
-                    onValueChange={(val: any) => setEnrollForm({...enrollForm, gender: val})}
+                  <Select
+                    value={enrollForm.gender}
+                    onValueChange={(val: any) => setEnrollForm({ ...enrollForm, gender: val })}
                   >
                     <SelectTrigger className="h-9 text-xs">
                       <SelectValue />
@@ -676,22 +716,22 @@ function ParentPortalPage() {
 
               <div className="grid gap-1.5">
                 <Label htmlFor="c_dob">Date de naissance</Label>
-                <Input 
+                <Input
                   id="c_dob"
                   type="date"
                   value={enrollForm.dateOfBirth}
-                  onChange={(e) => setEnrollForm({...enrollForm, dateOfBirth: e.target.value})}
+                  onChange={(e) => setEnrollForm({ ...enrollForm, dateOfBirth: e.target.value })}
                   className="h-9 text-xs"
                 />
               </div>
 
               <div className="grid gap-1.5">
                 <Label htmlFor="c_notes">Remarques médicales / Allergies / Particularités (optionnel)</Label>
-                <Textarea 
+                <Textarea
                   id="c_notes"
                   placeholder="Ex: Asthme léger, régime alimentaire sans arachides..."
                   value={enrollForm.medicalNotes}
-                  onChange={(e) => setEnrollForm({...enrollForm, medicalNotes: e.target.value})}
+                  onChange={(e) => setEnrollForm({ ...enrollForm, medicalNotes: e.target.value })}
                   className="text-xs min-h-[60px]"
                 />
               </div>
@@ -708,8 +748,8 @@ function ParentPortalPage() {
               <Button type="button" variant="outline" size="sm" onClick={() => setIsEnrollModalOpen(false)}>
                 Annuler
               </Button>
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 size="sm"
                 disabled={isSubmittingEnrollment}
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
@@ -740,70 +780,63 @@ function ParentPortalPage() {
           <div className="space-y-4 py-2 text-xs">
             <div>
               <Label className="text-xs">Moyen de paiement</Label>
-              <div className="grid grid-cols-2 gap-2 mt-1.5">
+              <div className="grid grid-cols-3 gap-2 mt-1.5">
                 {PAYMENT_METHODS.map(pm => (
-                  <button
+                  <PaymentMethodCard
                     key={pm.id}
-                    type="button"
+                    method={pm}
+                    selected={channel === pm.id}
                     onClick={() => setChannel(pm.id as any)}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
-                      channel === pm.id 
-                        ? 'border-accent bg-accent/10 font-bold' 
-                        : 'border-border hover:bg-secondary/50'
-                    }`}
-                  >
-                    <span className="text-lg">{pm.icon}</span>
-                    <span className="truncate">{pm.name.split(' ')[0]}</span>
-                  </button>
+                  />
                 ))}
               </div>
             </div>
 
             <div>
               <Label className="text-xs">Montant à régler (FCFA)</Label>
-              <Input 
-                type="number" 
-                value={amount} 
+              <Input
+                type="number"
+                value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="mt-1 h-10 text-sm font-mono font-bold" 
+                className="mt-1 h-10 text-sm font-mono font-bold"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <Label className="text-xs">Nom du payeur</Label>
-                <Input 
-                  value={parentName} 
+                <Input
+                  value={parentName}
                   onChange={(e) => setParentName(e.target.value)}
-                  className="mt-1 h-9 text-xs" 
+                  className="mt-1 h-9 text-xs"
                 />
               </div>
               <div>
                 <Label className="text-xs">Prénom</Label>
-                <Input 
-                  value={parentSurname} 
+                <Input
+                  value={parentSurname}
                   onChange={(e) => setParentSurname(e.target.value)}
-                  className="mt-1 h-9 text-xs" 
+                  className="mt-1 h-9 text-xs"
                 />
               </div>
             </div>
 
             <div>
               <Label className="text-xs">Numéro de téléphone (Compte Mobile Money)</Label>
-              <Input 
-                placeholder="Ex: 0708091011" 
-                value={parentPhone} 
+              <Input
+                placeholder="Ex: 0708091011"
+                value={parentPhone}
                 onChange={(e) => setParentPhone(e.target.value)}
-                className="mt-1 h-9 text-xs font-mono" 
+                className="mt-1 h-9 text-xs font-mono"
               />
             </div>
           </div>
 
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setIsPayModalOpen(false)}>Annuler</Button>
-            <Button 
-              size="sm" 
-              onClick={handlePay} 
+            <Button
+              size="sm"
+              onClick={handlePay}
               disabled={isProcessing || !amount || !parentPhone}
               className="bg-accent text-accent-foreground font-bold hover:opacity-95"
             >

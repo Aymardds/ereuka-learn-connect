@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import React, { useState } from "react";
 import { 
   Award, BookOpen, GraduationCap, Plus, CheckCircle2, 
@@ -21,6 +21,7 @@ import { useLMD } from "@/hooks/useLMD";
 import { useStudents } from "@/hooks/useStudents";
 import { useAuth } from "@/hooks/useAuth";
 import { LMDTeachingUnit, LMDEcue, LMDUEType } from "@/types/database";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/lmd")({
@@ -35,6 +36,8 @@ export const Route = createFileRoute("/lmd")({
 
 function LMDManagementPage() {
   const { profile } = useAuth();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
+
   const { 
     programsQuery, 
     teachingUnitsQuery, 
@@ -49,6 +52,65 @@ function LMDManagementPage() {
 
   // Active Tab
   const [activeTab, setActiveTab] = useState<'maquettes' | 'notes' | 'deliberations' | 'releve' | 'ufr'>('maquettes');
+
+  // Si l'établissement n'a pas l'enseignement supérieur, interdire l'affichage des données LMD
+  if (!estInfo.hasSuperieur) {
+    return (
+      <AppShell title="Système LMD (Enseignement Supérieur)">
+        <div className="max-w-2xl mx-auto my-12 p-8 bg-card border border-border rounded-2xl shadow-sm text-center space-y-5">
+          <div className="w-16 h-16 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
+            <School className="w-8 h-8" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">
+              Module réservé à l'Enseignement Supérieur
+            </h2>
+            <p className="text-sm text-muted-foreground mt-2 leading-relaxed">
+              Le <strong>Système LMD (Licence, Master, Doctorat, Crédits ECTS, UFR, Délibérations)</strong> est réservé aux universités et établissements d'enseignement supérieur.
+            </p>
+          </div>
+
+          <div className="bg-secondary/60 rounded-xl p-4 text-xs text-muted-foreground text-left space-y-2 border border-border/50">
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Établissement actuel :</span>
+              <strong className="text-foreground">{profile?.tenant?.name || 'Votre établissement'}</strong>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Configuration :</span>
+              <span className="font-semibold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded border border-emerald-200">
+                {estInfo.badgeLabel}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-muted-foreground">Niveaux actuels :</span>
+              <strong className="text-foreground">{estInfo.levelsSummary}</strong>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Les données d'une université ne sont pas chargées dans votre groupe scolaire afin de préserver la clarté de votre gestion académique.
+          </p>
+
+          <div className="pt-2 flex flex-wrap justify-center gap-3">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:opacity-95"
+            >
+              Retour au tableau de bord
+            </Link>
+            {['admin', 'director'].includes(profile?.role || '') && (
+              <Link
+                to="/parametres"
+                className="inline-flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-secondary"
+              >
+                Gérer les niveaux dans Paramètres
+              </Link>
+            )}
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
 
   // Selected filters
   const [selectedProgramId, setSelectedProgramId] = useState<string>('prog-gl-l');

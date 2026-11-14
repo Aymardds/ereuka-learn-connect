@@ -15,6 +15,8 @@ import {
   Share2, ArrowUpRight
 } from 'lucide-react'
 import { toast } from 'sonner'
+import { PaymentBadge } from '@/components/payment/PaymentLogos'
+import { ReceiptModal } from '@/components/payment/ReceiptModal'
 
 import {
   Dialog,
@@ -803,9 +805,7 @@ function PaymentAndAccountingPage() {
                             {t.schedule_title}
                           </td>
                           <td className="py-3 px-3">
-                            <span className="inline-flex items-center gap-1 font-semibold text-xs px-2 py-0.5 rounded-full bg-slate-100 text-slate-700">
-                              {t.payment_method}
-                            </span>
+                            <PaymentBadge method={t.payment_method} size="sm" />
                           </td>
                           <td className="py-3 px-3 text-right font-bold text-emerald-600 text-sm">
                             {t.amount_paid.toLocaleString('fr-FR')} FCFA
@@ -1040,7 +1040,7 @@ function PaymentAndAccountingPage() {
                     <SelectContent>
                       {PAYMENT_METHODS.map(m => (
                         <SelectItem key={m.id} value={m.id}>
-                          {m.icon} {m.name}
+                          {m.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -1091,79 +1091,7 @@ function PaymentAndAccountingPage() {
         {/* ═══════════════════════════════════════════════════════════════════
             MODAL 3 : REÇU NUMÉRIQUE OFFICIEL (IMPRIMABLE)
             ═══════════════════════════════════════════════════════════════════ */}
-        <Dialog open={!!activeReceipt} onOpenChange={(open) => !open && setActiveReceipt(null)}>
-          <DialogContent className="max-w-md p-6 bg-white">
-            {activeReceipt && (
-              <div className="space-y-4">
-                <DialogHeader className="text-center sm:text-center pb-3 border-b border-dashed border-border">
-                  <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto mb-1">
-                    <CheckCircle2 className="w-6 h-6" />
-                  </div>
-                  <DialogTitle className="text-base font-bold text-foreground">
-                    {activeReceipt.schoolName}
-                  </DialogTitle>
-                  <p className="text-[11px] font-mono font-bold text-primary">
-                    REÇU DE CAISSE : {activeReceipt.receiptNumber}
-                  </p>
-                  <p className="text-[10px] text-muted-foreground">{activeReceipt.paidAt}</p>
-                </DialogHeader>
-
-                <div className="bg-slate-50 p-3 rounded-xl border border-border text-xs space-y-1.5">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Élève :</span>
-                    <strong className="text-foreground">{activeReceipt.studentName}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Classe :</span>
-                    <strong className="text-foreground">{activeReceipt.className}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Motif / Tranche :</span>
-                    <strong className="text-foreground">{activeReceipt.title}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Mode de règlement :</span>
-                    <span className="font-semibold text-slate-700">{activeReceipt.method}</span>
-                  </div>
-                </div>
-
-                <div className="bg-emerald-50/80 border border-emerald-200 rounded-xl p-3 text-center">
-                  <span className="text-[10px] text-emerald-800 uppercase font-bold block">Montant Perçu</span>
-                  <span className="text-2xl font-bold text-emerald-700">
-                    {Number(activeReceipt.amount).toLocaleString('fr-FR')} FCFA
-                  </span>
-                  {activeReceipt.remaining > 0 && (
-                    <span className="text-[11px] text-amber-700 block font-semibold mt-1">
-                      Reliquat restant à payer : {Number(activeReceipt.remaining).toLocaleString('fr-FR')} FCFA
-                    </span>
-                  )}
-                </div>
-
-                <div className="text-center text-[10px] text-muted-foreground pt-1">
-                  Ce reçu numérique certifie l'encaissement régulier des frais scolaires dans le système Eurêka.
-                </div>
-
-                <DialogFooter className="pt-2 border-t border-border flex items-center justify-between sm:justify-between">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.print()}
-                    className="gap-1.5 text-xs"
-                  >
-                    <Printer className="w-3.5 h-3.5" /> Imprimer le reçu
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => setActiveReceipt(null)}
-                    className="text-xs bg-slate-900 text-white"
-                  >
-                    Fermer
-                  </Button>
-                </DialogFooter>
-              </div>
-            )}
-          </DialogContent>
-        </Dialog>
+        <ReceiptModal receipt={activeReceipt} onClose={() => setActiveReceipt(null)} />
       </AppShell>
     )
   }

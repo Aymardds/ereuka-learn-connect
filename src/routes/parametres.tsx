@@ -214,9 +214,21 @@ function ParametresPage() {
               ))}
             </div>
 
-            {schoolTypes.includes('Supérieur') && (
-              <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-800 flex items-center gap-2">
-                <span className="font-bold">Mode Supérieur actif :</span> Le module Système LMD est opérationnel (Licence/Master/Doctorat, UEs, crédits ECTS, sessions normales et rattrapages).
+            {schoolTypes.includes('Supérieur') && !schoolTypes.some(t => ['Maternelle', 'Primaire', 'Secondaire'].includes(t)) && (
+              <div className="mt-4 rounded-lg bg-purple-50 border border-purple-200 p-3 text-xs text-purple-900 flex items-center gap-2">
+                <span className="font-bold">Mode Université / Supérieur exclusif :</span> L'interface et les menus s'adaptent automatiquement au supérieur (vocabulaire Étudiants / Filières / Relevés LMD ; les modules de gestion K12 sont masqués).
+              </div>
+            )}
+
+            {schoolTypes.includes('Supérieur') && schoolTypes.some(t => ['Maternelle', 'Primaire', 'Secondaire'].includes(t)) && (
+              <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 p-3 text-xs text-amber-900 flex items-center gap-2">
+                <span className="font-bold">Mode Groupe Scolaire & Supérieur (Mixte) :</span> Les modules de l'enseignement scolaire (Maternelle à Terminale) et universitaire (LMD) cohabitent harmonieusement avec filtrage par niveau.
+              </div>
+            )}
+
+            {!schoolTypes.includes('Supérieur') && schoolTypes.length > 0 && (
+              <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 flex items-center gap-2">
+                <span className="font-bold">Mode Groupe Scolaire (K12) :</span> Modules scolaires complets (Classes, Élèves, Bulletins trimestriels, Cahier de texte). Le module universitaire LMD est masqué pour garder votre espace épuré.
               </div>
             )}
           </div>

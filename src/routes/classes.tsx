@@ -21,6 +21,7 @@ import { useState, useEffect } from "react";
 import { Class, UserProfile, Tenant } from "@/types/database";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/hooks/useAuth";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 
 import {
   Dialog,
@@ -100,7 +101,8 @@ function ClassesPage() {
       });
   }, [profile?.tenant_id]);
 
-  const schoolTypes = tenant?.school_types || ["Primaire"];
+  const estInfo = getEstablishmentTypeInfo(tenant?.school_types || profile?.tenant?.school_types);
+  const schoolTypes = estInfo.schoolTypes;
 
   // State for Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -175,7 +177,15 @@ function ClassesPage() {
     );
   }
 
-  const classesList = classesQuery.data || [];
+  const rawClassesList = classesQuery.data || [];
+
+  // Filtrer strictement selon le type d'établissement :
+  // Les classes universitaires (Supérieur) ne doivent JAMAIS apparaître dans un Groupe Scolaire
+  const classesList = rawClassesList.filter(c => {
+    if (!estInfo.hasSuperieur && c.level_type === 'Supérieur') return false;
+    if (estInfo.isUniversityOnly && c.level_type && ['Maternelle', 'Primaire', 'Secondaire'].includes(c.level_type)) return false;
+    return true;
+  });
 
   // Group by level_type
   const grouped = classesList.reduce<Record<string, ClassWithTeacher[]>>(
@@ -188,28 +198,35 @@ function ClassesPage() {
     {}
   );
 
+  const pageTitle = estInfo.isUniversityOnly ? "Filières & Niveaux" : (estInfo.isMixed ? "Classes & Filières" : "Classes & Niveaux");
+  const createButtonText = estInfo.isUniversityOnly ? "Créer une filière / promotion" : "Créer une classe";
+
   return (
     <AppShell
-      title="Classes"
-      subtitle={`${classesList.length} classe${classesList.length !== 1 ? "s" : ""} enregistrée${classesList.length !== 1 ? "s" : ""}`}
+      title={pageTitle}
+      subtitle={`${classesList.length} ${estInfo.classesTerm} enregistrée${classesList.length > 1 ? "s" : ""} • ${estInfo.badgeLabel}`}
       actions={
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-95">
-              <Plus className="h-4 w-4" /> Créer une classe
+              <Plus className="h-4 w-4" /> {createButtonText}
             </button>
           </DialogTrigger>
           <DialogContent>
             <form onSubmit={handleCreate}>
               <DialogHeader>
-                <DialogTitle>Nouvelle classe</DialogTitle>
+                <DialogTitle>
+                  {estInfo.isUniversityOnly ? "Nouvelle filière ou promotion" : "Nouvelle classe"}
+                </DialogTitle>
               </DialogHeader>
               <div className="grid gap-4 py-4">
                 <div className="grid gap-2">
-                  <Label htmlFor="name">Nom de la classe</Label>
+                  <Label htmlFor="name">
+                    {estInfo.isUniversityOnly ? "Intitulé de la filière / promotion" : "Nom de la classe"}
+                  </Label>
                   <Input
                     id="name"
-                    placeholder="Ex: 6ème A"
+                    placeholder={estInfo.isUniversityOnly ? "Ex: Licence 1 Informatique (L1-INFO)" : "Ex: 6ème A, CM2 B"}
                     value={newClassName}
                     onChange={(e) => setNewClassName(e.target.value)}
                     required

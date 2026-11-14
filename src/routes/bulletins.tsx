@@ -8,6 +8,7 @@ import { useSubjects } from "@/hooks/useSubjects";
 import { useGrades } from "@/hooks/useGrades";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 
 export const Route = createFileRoute("/bulletins")({
   head: () => ({
@@ -21,7 +22,8 @@ export const Route = createFileRoute("/bulletins")({
 
 function BulletinsPage() {
   const { profile } = useAuth();
-  const tenantName = profile?.tenant?.name || "Établissement Scolaire Eurêka";
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
+  const tenantName = profile?.tenant?.name || (estInfo.isUniversityOnly ? "Établissement Supérieur Eurêka" : "Établissement Scolaire Eurêka");
   const tenantCity = profile?.tenant?.city || "Abidjan";
   const tenantLogo = profile?.tenant?.logo_url;
 
@@ -96,15 +98,17 @@ function BulletinsPage() {
 
   return (
     <AppShell
-      title="Bulletins scolaires & Moyennes"
-      subtitle={`${tenantName} · ${currentClass?.name || 'Classe'} · ${selectedTerm}`}
+      title={estInfo.isUniversityOnly ? "Relevés de Notes & PV de Délibérations" : "Bulletins Scolaires & Moyennes"}
+      subtitle={`${tenantName} · ${currentClass?.name || estInfo.classTerm} · ${selectedTerm}`}
       actions={
         <div className="flex flex-wrap items-center gap-2">
-          <Link to="/lmd">
-            <button className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20">
-              <Award className="h-4 w-4" /> Relevé LMD (Supérieur)
-            </button>
-          </Link>
+          {estInfo.hasSuperieur && (
+            <Link to="/lmd">
+              <button className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-3 py-2 text-sm font-semibold text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20">
+                <Award className="h-4 w-4" /> Relevé LMD (Supérieur)
+              </button>
+            </Link>
+          )}
           <button 
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium hover:bg-secondary"
@@ -124,7 +128,7 @@ function BulletinsPage() {
       <div className="mb-6 flex flex-wrap items-center gap-4 rounded-xl border border-border bg-card p-4 shadow-sm">
         <div>
           <label className="text-[11px] font-semibold uppercase text-muted-foreground block mb-1">
-            Classe
+            {estInfo.classTerm}
           </label>
           <select
             value={currentClassId}

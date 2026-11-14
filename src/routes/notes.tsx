@@ -8,6 +8,7 @@ import { useStudents } from "@/hooks/useStudents";
 import { useGrades } from "@/hooks/useGrades";
 import { useTeacherAssignments } from "@/hooks/useTeacherAssignments";
 import { useAuth } from "@/hooks/useAuth";
+import { getEstablishmentTypeInfo } from "@/lib/school-types";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
@@ -26,6 +27,7 @@ export const Route = createFileRoute("/notes")({
 function NotesPage() {
   const queryClient = useQueryClient();
   const { profile, user } = useAuth();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
   const tenantId = profile?.tenant_id;
   const isTeacher = profile?.role === "teacher";
 
@@ -91,12 +93,12 @@ function NotesPage() {
 
   const handleSaveAll = async () => {
     if (!currentClassId || !currentSubjectId || !tenantId) {
-      toast.error("Veuillez sélectionner une classe et une matière valides");
+      toast.error(`Veuillez sélectionner un(e) ${estInfo.classTerm.toLowerCase()} et une matière valides`);
       return;
     }
 
     if (classStudents.length === 0) {
-      toast.error("Aucun élève inscrit dans cette classe");
+      toast.error(`Aucun ${estInfo.studentTerm.toLowerCase()} inscrit dans cette formation`);
       return;
     }
 
@@ -145,7 +147,7 @@ function NotesPage() {
   return (
     <AppShell
       title="Saisie des notes & Évaluations"
-      subtitle={`${currentClassObj?.name || 'Sélectionnez une classe'} · ${currentSubjectObj?.name || 'Matière'} · ${selectedTerm}`}
+      subtitle={`${currentClassObj?.name || `Sélectionnez un(e) ${estInfo.classTerm.toLowerCase()}`} · ${currentSubjectObj?.name || 'Matière'} · ${selectedTerm}`}
       actions={
         <Button
           onClick={handleSaveAll}

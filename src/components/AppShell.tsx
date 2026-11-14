@@ -10,24 +10,92 @@ import { school } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useCampuses } from "@/hooks/useCampuses";
+import { getEstablishmentTypeInfo, type EstablishmentTypeInfo } from "@/lib/school-types";
 
-type NavItem = { to: string; label: string; icon: React.ElementType; roles?: string[]; badge?: string };
+type NavItem = { 
+  to: string; 
+  label: string; 
+  icon: React.ElementType; 
+  roles?: string[]; 
+  badge?: string;
+  requiresSuperieur?: boolean;
+  requiresK12?: boolean;
+  getDynamicLabel?: (info: EstablishmentTypeInfo) => string;
+  getDynamicBadge?: (info: EstablishmentTypeInfo) => string | undefined;
+};
 
 const ALL_NAV_ITEMS: NavItem[] = [
   { to: "/", label: "Tableau de bord", icon: LayoutDashboard, roles: ['admin', 'director', 'accountant', 'dean', 'department_head'] },
-  { to: "/portail-parent", label: "Portail Parent", icon: UserCheck, roles: ['parent', 'responsible', 'admin', 'director'], badge: 'Famille' },
-  { to: "/portail-etudiant", label: "Portail Étudiant", icon: GraduationCap, roles: ['student', 'admin', 'director'], badge: 'Élève' },
-  { to: "/lmd", label: "Système LMD (Supérieur)", icon: Award, roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head', 'student'], badge: 'LMD' },
-  { to: "/modalites", label: "Modalités Scolarité", icon: DollarSign, roles: ['admin', 'director', 'accountant'] },
+  { 
+    to: "/portail-parent", 
+    label: "Portail Parent", 
+    icon: UserCheck, 
+    roles: ['parent', 'responsible', 'admin', 'director'], 
+    badge: 'Famille',
+    requiresK12: true, // Caché dans une université pure
+  },
+  { 
+    to: "/portail-etudiant", 
+    label: "Portail Étudiant", 
+    icon: GraduationCap, 
+    roles: ['student', 'admin', 'director'], 
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Portail Étudiant" : "Portail Élève",
+    getDynamicBadge: (info) => info.isUniversityOnly ? "Campus" : "Élève",
+  },
+  { 
+    to: "/lmd", 
+    label: "Système LMD (Supérieur)", 
+    icon: Award, 
+    roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head', 'student'], 
+    badge: 'LMD',
+    requiresSuperieur: true, // EXCLUSIVEMENT pour Supérieur / Université : invisible dans un Groupe Scolaire
+  },
+  { 
+    to: "/modalites", 
+    label: "Modalités Scolarité", 
+    icon: DollarSign, 
+    roles: ['admin', 'director', 'accountant'],
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Frais Universitaires" : "Modalités Scolarité",
+  },
   { to: "/paiement", label: "Caisse & CinetPay", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'] },
   { to: "/terminaux-paiement", label: "Terminaux QR", icon: QrCode, roles: ['admin', 'director', 'accountant', 'cashier'], badge: 'QR' },
-  { to: "/eleves", label: "Élèves & Inscriptions", icon: GraduationCap, roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean'] },
-  { to: "/classes", label: "Classes & Niveaux", icon: Users, roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head'] },
+  { 
+    to: "/eleves", 
+    label: "Élèves & Inscriptions", 
+    icon: GraduationCap, 
+    roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean'],
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Étudiants & Dossiers" : (info.isMixed ? "Élèves & Étudiants" : "Élèves & Inscriptions"),
+  },
+  { 
+    to: "/classes", 
+    label: "Classes & Niveaux", 
+    icon: Users, 
+    roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head'],
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Filières & Promotions" : (info.isMixed ? "Classes & Filières" : "Classes & Niveaux"),
+  },
   { to: "/emploi-du-temps", label: "Emploi du Temps", icon: CalendarDays, roles: ['admin', 'director', 'teacher', 'student', 'parent', 'surveillance', 'dean', 'secretary'] },
-  { to: "/cahier-de-texte", label: "Cahier de Texte", icon: BookCheck, roles: ['admin', 'director', 'teacher', 'student', 'parent', 'dean', 'department_head'] },
-  { to: "/matieres", label: "Matières & Coeff.", icon: BookOpen, roles: ['admin', 'director', 'teacher', 'dean', 'department_head'] },
+  { 
+    to: "/cahier-de-texte", 
+    label: "Cahier de Texte", 
+    icon: BookCheck, 
+    roles: ['admin', 'director', 'teacher', 'student', 'parent', 'dean', 'department_head'],
+    requiresK12: true, // Enseignement primaire/secondaire
+  },
+  { 
+    to: "/matieres", 
+    label: "Matières & Coeff.", 
+    icon: BookOpen, 
+    roles: ['admin', 'director', 'teacher', 'dean', 'department_head'],
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Matières & Modules" : "Matières & Coeff.",
+  },
   { to: "/notes", label: "Notes & Évaluations", icon: ClipboardList, roles: ['admin', 'director', 'teacher', 'dean', 'department_head'] },
-  { to: "/bulletins", label: "Bulletins & Moyennes", icon: FileText, roles: ['admin', 'director', 'teacher', 'dean', 'secretary'] },
+  { 
+    to: "/bulletins", 
+    label: "Bulletins & Moyennes", 
+    icon: FileText, 
+    roles: ['admin', 'director', 'teacher', 'dean', 'secretary'],
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Relevés LMD & PV" : "Bulletins & Moyennes",
+  },
   { to: "/rh", label: "RH & Personnel", icon: Briefcase, roles: ['admin', 'director', 'accountant'] },
   { to: "/communication", label: "Communication & SMS", icon: MessageSquare },
   { to: "/statistiques", label: "Statistiques & BI", icon: BarChart3, roles: ['admin', 'director', 'accountant', 'dean'] },
@@ -74,7 +142,29 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
     navigate({ to: "/login" });
   };
 
-  const nav = ALL_NAV_ITEMS.filter(item => !item.roles || (profile?.role && item.roles.includes(profile.role)));
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
+
+  const nav = ALL_NAV_ITEMS
+    .filter(item => {
+      // 1. Filtrer selon les rôles utilisateurs
+      if (item.roles && profile?.role && !item.roles.includes(profile.role)) {
+        return false;
+      }
+      // 2. Filtrer selon le type d'établissement :
+      // Les universités n'ont pas les modules K12 et le groupe scolaire n'a JAMAIS de Système LMD
+      if (item.requiresSuperieur && !estInfo.hasSuperieur) {
+        return false;
+      }
+      if (item.requiresK12 && !estInfo.hasK12) {
+        return false;
+      }
+      return true;
+    })
+    .map(item => ({
+      ...item,
+      label: item.getDynamicLabel ? item.getDynamicLabel(estInfo) : item.label,
+      badge: item.getDynamicBadge ? item.getDynamicBadge(estInfo) : item.badge,
+    }));
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -95,11 +185,28 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
           </div>
 
           {/* School & Campus Switcher */}
-          <div className="mx-3 mb-3 rounded-xl bg-sidebar-accent/60 p-3 border border-sidebar-border/40">
-            <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-sidebar-foreground/70 mb-1">
+          <div className="mx-3 mb-3 rounded-xl bg-sidebar-accent/60 p-3 border border-sidebar-border/40 space-y-1.5">
+            <div className="flex items-center justify-between text-[11px] uppercase tracking-wider text-sidebar-foreground/70">
               <span className="truncate font-semibold">{profile?.tenant?.name || school.name}</span>
-              <span className="font-mono text-[10px] bg-sidebar-primary/20 text-accent px-1.5 py-0.5 rounded">2025-2026</span>
+              <span className="font-mono text-[10px] bg-sidebar-primary/20 text-accent px-1.5 py-0.5 rounded shrink-0">2025-2026</span>
             </div>
+
+            {/* Badge type d'établissement */}
+            <div className="flex items-center gap-1.5">
+              <span className={cn(
+                "inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold tracking-tight",
+                estInfo.isUniversityOnly 
+                  ? "bg-purple-900/40 text-purple-200 border border-purple-700/50" 
+                  : estInfo.isMixed
+                    ? "bg-amber-900/40 text-amber-200 border border-amber-700/50"
+                    : "bg-emerald-900/40 text-emerald-200 border border-emerald-700/50"
+              )}>
+                {estInfo.badgeLabel}
+              </span>
+            </div>
+            <p className="text-[10px] text-sidebar-foreground/60 truncate" title={estInfo.levelsSummary}>
+              Niveaux : {estInfo.levelsSummary}
+            </p>
             {campuses.length > 0 ? (
               <select
                 value={selectedCampusId}
@@ -231,7 +338,7 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
                 <Search className="h-3.5 w-3.5" />
                 <input 
                   type="text" 
-                  placeholder="Élève, classe, matricule..." 
+                  placeholder={estInfo.isUniversityOnly ? "Étudiant, filière, matricule..." : "Élève, classe, matricule..."} 
                   className="bg-transparent border-none outline-none text-xs text-foreground placeholder:text-muted-foreground w-full"
                 />
               </div>
