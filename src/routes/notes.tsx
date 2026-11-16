@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { supabase } from "@/lib/supabase";
 import { useQueryClient } from "@tanstack/react-query";
+import { offlineSyncManager } from "@/lib/offline-sync";
 
 export const Route = createFileRoute("/notes")({
   head: () => ({
@@ -128,14 +129,38 @@ function NotesPage() {
         };
       });
 
-      const { error } = await supabase
-        .from("grade_entries")
-        .upsert(recordsToInsert, { onConflict: "id" });
+      // Try online first; if offline or network fails, queue locally
+      if (!navigator.onLine) {
+        await offlineSyncManager.enqueue({
+          table: "grade_entries",
+          action: "upsert",
+          data: recordsToInsert,
+          options: { onConflict: "id" },
+          description: `Saisie de ${recordsToInsert.length} notes (${currentSubjectObj?.name || 'Matière'} - ${selectedTerm})`
+        });
+        toast.success(`Mode Hors-ligne : ${recordsToInsert.length} notes sauvegardées localement ! Elles seront envoyées à la reconnexion.`);
+      } else {
+        try {
+          const { error } = await supabase
+            .from("grade_entries")
+            .upsert(recordsToInsert, { onConflict: "id" });
 
-      if (error) throw error;
+          if (error) throw error;
 
-      queryClient.invalidateQueries({ queryKey: ["grades", tenantId] });
-      toast.success(`${recordsToInsert.length} notes enregistrées avec succès dans la base !`);
+          queryClient.invalidateQueries({ queryKey: ["grades", tenantId] });
+          toast.success(`${recordsToInsert.length} notes enregistrées avec succès dans la base !`);
+        } catch (netErr: any) {
+          console.warn("Direct upload failed, saving to offline sync queue:", netErr);
+          await offlineSyncManager.enqueue({
+            table: "grade_entries",
+            action: "upsert",
+            data: recordsToInsert,
+            options: { onConflict: "id" },
+            description: `Saisie de ${recordsToInsert.length} notes (${currentSubjectObj?.name || 'Matière'} - ${selectedTerm})`
+          });
+          toast.info(`${recordsToInsert.length} notes enregistrées localement dans la file de synchronisation.`);
+        }
+      }
     } catch (err: any) {
       console.error(err);
       toast.error("Erreur lors de l'enregistrement des notes : " + (err.message || "Erreur inconnue"));

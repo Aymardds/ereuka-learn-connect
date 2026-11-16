@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Eurêka - Connexion requise</title>
+  <title>Eurêka ERP — Sélecteur de Serveur</title>
   <style>
     * {
       box-sizing: border-box;
@@ -12,7 +12,7 @@
     }
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-      background: linear-gradient(135deg, #0f291e 0%, #1a4433 100%);
+      background: linear-gradient(135deg, #0b1d15 0%, #16382a 50%, #0b1d15 100%);
       color: #ffffff;
       min-height: 100vh;
       display: flex;
@@ -23,117 +23,343 @@
       -webkit-user-select: none;
     }
     .card {
-      background: rgba(255, 255, 255, 0.06);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
       border: 1px solid rgba(255, 255, 255, 0.12);
-      border-radius: 20px;
-      padding: 40px;
-      max-width: 480px;
+      border-radius: 24px;
+      padding: 36px;
+      max-width: 580px;
       width: 100%;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+    }
+    .header {
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+      margin-bottom: 28px;
     }
     .logo-container {
-      width: 80px;
-      height: 80px;
-      margin: 0 auto 24px;
-      background: rgba(255, 255, 255, 0.08);
-      border-radius: 20px;
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 16px;
+      background: rgba(245, 158, 11, 0.12);
+      border-radius: 18px;
       display: flex;
       align-items: center;
       justify-content: center;
-      border: 1px solid rgba(245, 158, 11, 0.25);
+      border: 1px solid rgba(245, 158, 11, 0.3);
     }
     .logo-container svg {
-      width: 48px;
-      height: 48px;
+      width: 44px;
+      height: 44px;
     }
     h1 {
       font-size: 22px;
       font-weight: 700;
-      margin-bottom: 12px;
       letter-spacing: -0.02em;
+      margin-bottom: 8px;
     }
-    p {
-      font-size: 14px;
-      line-height: 1.6;
-      color: #cbd5e1;
-      margin-bottom: 28px;
+    p.subtitle {
+      font-size: 13px;
+      color: #94a3b8;
+      line-height: 1.5;
     }
-    .btn {
-      display: inline-flex;
+    .section-title {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #f59e0b;
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .server-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-bottom: 24px;
+    }
+    .server-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    .server-item:hover {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(245, 158, 11, 0.4);
+      transform: translateY(-1px);
+    }
+    .server-info {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .server-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.06);
+      display: flex;
       align-items: center;
       justify-content: center;
+      font-size: 16px;
+    }
+    .server-text h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: #f8fafc;
+      margin-bottom: 2px;
+    }
+    .server-text p {
+      font-size: 11px;
+      color: #94a3b8;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    }
+    .server-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 8px;
+    }
+    .badge-online {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+    .badge-offline {
+      background: rgba(244, 63, 94, 0.12);
+      color: #fb7185;
+      border: 1px solid rgba(244, 63, 94, 0.2);
+    }
+    .badge-testing {
+      background: rgba(245, 158, 11, 0.15);
+      color: #fbbf24;
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+    .badge-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+    }
+    .custom-input-box {
+      margin-bottom: 24px;
+    }
+    .input-group {
+      display: flex;
       gap: 8px;
+    }
+    input[type="text"] {
+      flex: 1;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: #ffffff;
+      font-size: 13px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    input[type="text"]:focus {
+      border-color: #f59e0b;
+    }
+    .btn-connect {
       background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
       color: #0f172a;
       font-weight: 600;
-      font-size: 14px;
-      padding: 12px 28px;
+      font-size: 13px;
+      padding: 12px 20px;
       border-radius: 12px;
       border: none;
       cursor: pointer;
-      transition: all 0.2s ease;
-      box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+      transition: all 0.2s;
+      white-space: nowrap;
     }
-    .btn:hover {
+    .btn-connect:hover {
+      opacity: 0.95;
       transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(245, 158, 11, 0.4);
-    }
-    .btn:active {
-      transform: translateY(1px);
     }
     .footer {
-      margin-top: 32px;
-      font-size: 12px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      padding-top: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
       color: #64748b;
+    }
+    .btn-scan {
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      color: #cbd5e1;
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 11px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .btn-scan:hover {
+      background: rgba(255, 255, 255, 0.05);
+      color: #ffffff;
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="logo-container">
-      <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
-        <circle cx="50" cy="50" r="44" stroke="#f59e0b" stroke-width="4" stroke-dasharray="8 6"/>
-        <path d="M30 75V25H65V35H42V45H60V55H42V65H65V75H30Z" fill="#f59e0b"/>
-      </svg>
+    <div class="header">
+      <div class="logo-container">
+        <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="50" cy="50" r="44" stroke="#f59e0b" stroke-width="4" stroke-dasharray="8 6"/>
+          <path d="M30 75V25H65V35H42V45H60V55H42V65H65V75H30Z" fill="#f59e0b"/>
+        </svg>
+      </div>
+      <h1>Connexion à Eurêka ERP</h1>
+      <p class="subtitle">Sélectionnez le serveur local de votre établissement ou le cloud Eurêka.</p>
     </div>
-    <h1>Connexion serveur interrompue</h1>
-    <p>Impossible de joindre la plateforme Eurêka ERP. Vérifiez votre connexion internet ou réessayez dans quelques instants.</p>
-    <button class="btn" id="retry-btn">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-        <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
-        <path d="M3 3v5h5"/>
-        <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
-        <path d="M16 21h5v-5"/>
-      </svg>
-      Réessayer la connexion
-    </button>
+
+    <div class="section-title">
+      <span>Serveurs Détectés</span>
+      <button class="btn-scan" id="btn-rescan">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/>
+          <path d="M3 3v5h5"/>
+          <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16"/>
+          <path d="M16 21h5v-5"/>
+        </svg>
+        Re-scanner
+      </button>
+    </div>
+
+    <div class="server-list" id="server-list">
+      <!-- Injected by JavaScript -->
+    </div>
+
+    <div class="custom-input-box">
+      <div class="section-title">
+        <span>Ou connecter à une adresse spécifique</span>
+      </div>
+      <div class="input-group">
+        <input type="text" id="custom-url-input" placeholder="http://localhost:8080 ou http://192.168.1.X:3000" value="http://localhost:8080" />
+        <button class="btn-connect" id="btn-custom-connect">Se connecter</button>
+      </div>
+    </div>
+
     <div class="footer">
-      Eurêka ERP Scolaire & Universitaire &bull; inexiumus.com
+      <span>Eurêka ERP Scolaire & Universitaire</span>
+      <span>v1.0.0 &bull; Inexiumus</span>
     </div>
   </div>
 
   <script>
-    document.getElementById('retry-btn').addEventListener('click', () => {
-      const btn = document.getElementById('retry-btn');
-      btn.innerText = 'Connexion en cours...';
-      btn.disabled = true;
-      if (window.electronAPI && window.electronAPI.retryConnection) {
-        window.electronAPI.retryConnection();
+    const CANDIDATES = [
+      { name: "Serveur Local (Port 8080)", url: "http://localhost:8080", icon: "💻", tag: "Local dev / prod" },
+      { name: "Serveur Local (Port 3000)", url: "http://localhost:3000", icon: "⚡", tag: "Local TanStack" },
+      { name: "Serveur Local (Port 5173)", url: "http://localhost:5173", icon: "🛠️", tag: "Local Vite" },
+      { name: "Serveur Cloud Vercel", url: "https://ereuka-learn-connect.vercel.app", icon: "☁️", tag: "Production Live" },
+      { name: "Domaine Eurêka", url: "https://eureka.inexiumus.com", icon: "🌐", tag: "Domaine personnalisé" }
+    ];
+
+    function renderServers(statuses = {}) {
+      const container = document.getElementById('server-list');
+      container.innerHTML = '';
+
+      CANDIDATES.forEach(server => {
+        const status = statuses[server.url] || 'testing';
+        const div = document.createElement('div');
+        div.className = 'server-item';
+        div.onclick = () => connect(server.url);
+
+        let badgeClass = 'badge-testing';
+        let badgeText = 'Test en cours...';
+
+        if (status === 'online') {
+          badgeClass = 'badge-online';
+          badgeText = 'Disponible';
+        } else if (status === 'offline') {
+          badgeClass = 'badge-offline';
+          badgeText = 'Inaccessible';
+        }
+
+        div.innerHTML = `
+          <div class="server-info">
+            <div class="server-icon">${server.icon}</div>
+            <div class="server-text">
+              <h4>${server.name}</h4>
+              <p>${server.url}</p>
+            </div>
+          </div>
+          <div class="server-badge ${badgeClass}">
+            <span class="badge-dot"></span>
+            ${badgeText}
+          </div>
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function testServer(url) {
+      return new Promise((resolve) => {
+        const timeout = setTimeout(() => resolve('offline'), 1500);
+        fetch(url, { method: 'HEAD', mode: 'no-cors', cache: 'no-store' })
+          .then(() => {
+            clearTimeout(timeout);
+            resolve('online');
+          })
+          .catch(() => {
+            clearTimeout(timeout);
+            resolve('offline');
+          });
+      });
+    }
+
+    async function scanAll() {
+      const statuses = {};
+      renderServers(statuses);
+
+      for (const server of CANDIDATES) {
+        const status = await testServer(server.url);
+        statuses[server.url] = status;
+        renderServers(statuses);
+      }
+    }
+
+    function connect(url) {
+      if (window.electronAPI && window.electronAPI.connectToServer) {
+        window.electronAPI.connectToServer(url);
       } else {
-        window.location.reload();
+        window.location.href = url;
+      }
+    }
+
+    document.getElementById('btn-rescan').addEventListener('click', scanAll);
+
+    document.getElementById('btn-custom-connect').addEventListener('click', () => {
+      const input = document.getElementById('custom-url-input');
+      const val = input.value.trim();
+      if (val) connect(val);
+    });
+
+    document.getElementById('custom-url-input').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        const val = e.target.value.trim();
+        if (val) connect(val);
       }
     });
 
-    window.addEventListener('online', () => {
-      if (window.electronAPI && window.electronAPI.retryConnection) {
-        window.electronAPI.retryConnection();
-      } else {
-        window.location.reload();
-      }
-    });
+    // Start initial scan
+    scanAll();
   </script>
 </body>
 </html>

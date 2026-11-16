@@ -32,6 +32,9 @@ function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
 
+  // GitHub Releases base URL for desktop app downloads
+  const GH_RELEASE = "https://github.com/Aymardds/ereuka-learn-connect/releases/download/v1.0.0";
+
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
@@ -330,7 +333,7 @@ function LandingPage() {
                     </a>
                     <div className="mt-2 rounded-xl bg-amber-50 border border-amber-100 px-3 py-2.5">
                       <p className="text-xs text-amber-700">
-                        <strong>Version 1.0.0</strong> — Nécessite une connexion internet pour utiliser l'ERP.
+                        <strong>Version 1.0.0</strong> — Mode hors-ligne pris en charge avec synchronisation automatique et détection de serveur local.
                       </p>
                     </div>
                   </div>
@@ -356,6 +359,26 @@ function LandingPage() {
               </div>
             ))}
           </div>
+
+          {/* App Interface Preview Mockup */}
+          <div className="mt-16 -mb-16 relative mx-auto max-w-5xl z-10">
+            <div className="rounded-2xl border border-white/20 bg-black/40 p-2 shadow-2xl shadow-black/60 backdrop-blur-md">
+              <div className="flex items-center gap-2 px-3 py-2 border-b border-white/10 bg-black/30 rounded-t-xl">
+                <span className="h-3 w-3 rounded-full bg-rose-500/80" />
+                <span className="h-3 w-3 rounded-full bg-amber-500/80" />
+                <span className="h-3 w-3 rounded-full bg-emerald-500/80" />
+                <span className="text-[11px] text-white/60 font-mono ml-2">eureka-erp.app &bull; Interface Scolaire & Universitaire</span>
+              </div>
+              <div className="overflow-hidden rounded-b-xl bg-gray-900">
+                <img 
+                  src="/landing1.jpg" 
+                  alt="Aperçu plateforme Eurêka ERP" 
+                  className="w-full h-auto object-cover max-h-[520px] rounded-b-xl"
+                  loading="lazy"
+                />
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Scroll indicator */}
@@ -365,7 +388,7 @@ function LandingPage() {
       </section>
 
       {/* ── TYPES D'ÉTABLISSEMENTS ── */}
-      <section id="etablissements" className="py-20 bg-gray-50">
+      <section id="etablissements" className="pt-28 pb-20 bg-gray-50">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-14">
             <span className="inline-block rounded-full bg-primary/10 px-4 py-1.5 text-xs font-semibold text-primary uppercase tracking-wider">

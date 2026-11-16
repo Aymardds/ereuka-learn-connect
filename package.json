@@ -105,6 +105,8 @@
     "appId": "com.inexiumus.eureka",
     "productName": "Eureka ERP",
     "copyright": "Copyright © 2026 Inexiumus",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
     "directories": {
       "output": "release"
     },

@@ -7,6 +7,7 @@ import { Button } from '../components/ui/button'
 import { toast } from 'sonner'
 import { Class, Student, AttendanceRecord } from '../types/database'
 import { AppShell } from '../components/AppShell'
+import { offlineSyncManager } from '../lib/offline-sync'
 
 export const Route = createFileRoute('/presences')({
   component: PresencesRoute,
@@ -89,22 +90,54 @@ function TeacherPresenceView({ tenantId, teacherId }: { tenantId: string, teache
         teacher_id: teacherId,
         tenant_id: tenantId
       }))
-      await supabase.from('attendances').insert(records)
 
-      // 2. Save signature
-      await supabase.from('attendance_signatures').insert({
-        class_id: selectedClass,
-        date: today,
-        teacher_id: teacherId,
-        signature_data: signatureData,
-        is_validated: false,
-        tenant_id: tenantId
-      })
-
-      toast.success('Présences enregistrées avec succès !')
+      if (!navigator.onLine) {
+        await offlineSyncManager.enqueue({
+          table: 'attendances',
+          action: 'insert',
+          data: records,
+          description: `Appel de présence (${records.length} élèves - ${today})`
+        })
+        await offlineSyncManager.enqueue({
+          table: 'attendance_signatures',
+          action: 'insert',
+          data: {
+            class_id: selectedClass,
+            date: today,
+            teacher_id: teacherId,
+            signature_data: signatureData,
+            is_validated: false,
+            tenant_id: tenantId
+          },
+          description: `Émargement enseignant (${today})`
+        })
+        toast.success(`Mode Hors-ligne : Appel sauvegardé localement ! Il sera synchronisé dès le retour d'internet.`)
+      } else {
+        try {
+          await supabase.from('attendances').insert(records)
+          await supabase.from('attendance_signatures').insert({
+            class_id: selectedClass,
+            date: today,
+            teacher_id: teacherId,
+            signature_data: signatureData,
+            is_validated: false,
+            tenant_id: tenantId
+          })
+          toast.success('Présences enregistrées avec succès !')
+        } catch (netErr: any) {
+          console.warn('Direct upload failed, saving to offline queue:', netErr)
+          await offlineSyncManager.enqueue({
+            table: 'attendances',
+            action: 'insert',
+            data: records,
+            description: `Appel de présence (${records.length} élèves - ${today})`
+          })
+          toast.info('Appel enregistré dans la file de synchronisation hors-ligne.')
+        }
+      }
       sigPad.current?.clear()
-    } catch (e) {
-      toast.error('Erreur lors de la sauvegarde')
+    } catch (e: any) {
+      toast.error('Erreur lors de la sauvegarde: ' + (e.message || 'Erreur inconnue'))
     } finally {
       setIsSubmitting(false)
     }

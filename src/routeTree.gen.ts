@@ -18,6 +18,7 @@ import { Route as ElevesRouteImport } from './routes/eleves'
 import { Route as EmploiDuTempsRouteImport } from './routes/emploi-du-temps'
 import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as InviteRouteImport } from './routes/invite'
+import { Route as LandingRouteImport } from './routes/landing'
 import { Route as LmdRouteImport } from './routes/lmd'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MatieresRouteImport } from './routes/matieres'
@@ -84,6 +85,11 @@ const EquipeRoute = EquipeRouteImport.update({
 const InviteRoute = InviteRouteImport.update({
   id: '/invite',
   path: '/invite',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LandingRoute = LandingRouteImport.update({
+  id: '/landing',
+  path: '/landing',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LmdRoute = LmdRouteImport.update({
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/landing': typeof LandingRoute
   '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/landing': typeof LandingRoute
   '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/emploi-du-temps': typeof EmploiDuTempsRoute
   '/equipe': typeof EquipeRoute
   '/invite': typeof InviteRoute
+  '/landing': typeof LandingRoute
   '/lmd': typeof LmdRoute
   '/login': typeof LoginRoute
   '/matieres': typeof MatieresRoute
@@ -309,6 +318,7 @@ export interface FileRouteTypes {
     | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/landing'
     | '/lmd'
     | '/login'
     | '/matieres'
@@ -342,6 +352,7 @@ export interface FileRouteTypes {
     | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/landing'
     | '/lmd'
     | '/login'
     | '/matieres'
@@ -374,6 +385,7 @@ export interface FileRouteTypes {
     | '/emploi-du-temps'
     | '/equipe'
     | '/invite'
+    | '/landing'
     | '/lmd'
     | '/login'
     | '/matieres'
@@ -408,6 +420,7 @@ export interface RootRouteChildren {
   EmploiDuTempsRoute: typeof EmploiDuTempsRoute
   EquipeRoute: typeof EquipeRoute
   InviteRoute: typeof InviteRoute
+  LandingRoute: typeof LandingRoute
   LmdRoute: typeof LmdRoute
   LoginRoute: typeof LoginRoute
   MatieresRoute: typeof MatieresRoute
@@ -490,6 +503,13 @@ declare module '@tanstack/react-router' {
       path: '/invite'
       fullPath: '/invite'
       preLoaderRoute: typeof InviteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/landing': {
+      id: '/landing'
+      path: '/landing'
+      fullPath: '/landing'
+      preLoaderRoute: typeof LandingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/lmd': {
@@ -679,6 +699,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmploiDuTempsRoute: EmploiDuTempsRoute,
   EquipeRoute: EquipeRoute,
   InviteRoute: InviteRoute,
+  LandingRoute: LandingRoute,
   LmdRoute: LmdRoute,
   LoginRoute: LoginRoute,
   MatieresRoute: MatieresRoute,

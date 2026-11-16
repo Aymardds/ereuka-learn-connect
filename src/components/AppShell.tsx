@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
 import { useCampuses } from "@/hooks/useCampuses";
 import { getEstablishmentTypeInfo, type EstablishmentTypeInfo } from "@/lib/school-types";
+import { useOfflineSync } from "@/hooks/useOfflineSync";
+import { OfflineSyncModal } from "./OfflineSyncModal";
 
 type NavItem = { 
   to: string; 
@@ -108,20 +110,8 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
   const { user, profile, isLoading, signOut } = useAuth();
   const { campuses } = useCampuses();
   const [selectedCampusId, setSelectedCampusId] = useState<string>('all');
-  const [isOnline, setIsOnline] = useState(true);
-
-  // Monitor network status for offline-first responsiveness
-  useEffect(() => {
-    const handleOnline = () => setIsOnline(true);
-    const handleOffline = () => setIsOnline(false);
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-    setIsOnline(navigator.onLine);
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-    };
-  }, []);
+  const { isOnline, isSyncing, pendingCount, sync } = useOfflineSync();
+  const [syncModalOpen, setSyncModalOpen] = useState(false);
 
   // Redirect logic inside useEffect to avoid updating state during render
   useEffect(() => {
@@ -258,33 +248,44 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
 
           {/* Sync & Connectivity status */}
           <div className="px-3 pt-2 pb-1">
-            <div className={cn(
-              "flex items-center justify-between rounded-lg px-2.5 py-1.5 text-[11px] font-medium border",
-              isOnline 
-                ? "bg-emerald-950/40 border-emerald-800/40 text-emerald-300"
-                : "bg-amber-950/40 border-amber-800/40 text-amber-300"
-            )}>
-              <div className="flex items-center gap-2">
-                {isOnline ? (
+            <button
+              onClick={() => setSyncModalOpen(true)}
+              className={cn(
+                "w-full flex items-center justify-between rounded-lg px-2.5 py-2 text-[11px] font-medium border transition-all text-left group cursor-pointer",
+                !isOnline
+                  ? "bg-amber-950/40 border-amber-800/40 text-amber-300 hover:bg-amber-900/50"
+                  : pendingCount > 0
+                  ? "bg-amber-950/30 border-amber-500/50 text-amber-200 hover:bg-amber-900/40"
+                  : "bg-emerald-950/40 border-emerald-800/40 text-emerald-300 hover:bg-emerald-900/40"
+              )}
+            >
+              <div className="flex items-center gap-2 min-w-0">
+                {isSyncing ? (
                   <>
-                    <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse-dot" />
-                    <span>Synchronisé (En ligne)</span>
+                    <RefreshCw className="h-3 w-3 animate-spin text-amber-400 shrink-0" />
+                    <span className="truncate">Synchronisation ({pendingCount})...</span>
+                  </>
+                ) : !isOnline ? (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse shrink-0" />
+                    <span className="truncate">Hors-ligne ({pendingCount} attente)</span>
+                  </>
+                ) : pendingCount > 0 ? (
+                  <>
+                    <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse shrink-0" />
+                    <span className="truncate">{pendingCount} en attente d'envoi</span>
                   </>
                 ) : (
                   <>
-                    <span className="h-2 w-2 rounded-full bg-amber-400 animate-pulse-dot" />
-                    <span>Mode Hors-ligne (Cache)</span>
+                    <span className="h-2 w-2 rounded-full bg-emerald-400 shrink-0" />
+                    <span className="truncate">Synchronisé (En ligne)</span>
                   </>
                 )}
               </div>
-              <button 
-                title="Actualiser la synchronisation" 
-                onClick={() => window.location.reload()}
-                className="opacity-70 hover:opacity-100 p-0.5"
-              >
-                <RefreshCw className="h-3 w-3" />
-              </button>
-            </div>
+              <span className="text-[10px] opacity-60 group-hover:opacity-100 uppercase tracking-wider shrink-0 ml-1">
+                Gérer
+              </span>
+            </button>
           </div>
 
           {/* User profile & actions */}
@@ -352,6 +353,24 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
                   3
                 </span>
               </Link>
+              {/* Offline / Pending indicator in header if active */}
+              {(!isOnline || pendingCount > 0) && (
+                <button
+                  onClick={() => setSyncModalOpen(true)}
+                  className={cn(
+                    "inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium border transition-colors cursor-pointer",
+                    !isOnline 
+                      ? "bg-rose-500/10 border-rose-500/30 text-rose-600 dark:text-rose-400"
+                      : "bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-400"
+                  )}
+                  title="Cliquer pour gérer la synchronisation"
+                >
+                  <RefreshCw className={cn("h-3 w-3", isSyncing && "animate-spin")} />
+                  <span className="hidden sm:inline">
+                    {!isOnline ? `Hors-ligne (${pendingCount})` : `${pendingCount} en attente`}
+                  </span>
+                </button>
+              )}
               {actions}
             </div>
           </header>
@@ -359,6 +378,9 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
           <main className="px-4 py-6 md:px-8 md:py-8 flex-1">{children}</main>
         </div>
       </div>
+
+      {/* Offline Sync Center Modal */}
+      <OfflineSyncModal open={syncModalOpen} onOpenChange={setSyncModalOpen} />
 
       {/* Mobile bottom nav */}
       <nav className="fixed inset-x-0 bottom-0 z-20 flex items-stretch justify-around border-t border-border bg-card/95 backdrop-blur lg:hidden">
