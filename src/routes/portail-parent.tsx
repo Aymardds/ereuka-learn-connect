@@ -7,13 +7,15 @@ import { useCinetPay } from '@/hooks/useCinetPay';
 import { useAuth } from '@/hooks/useAuth';
 import { getEstablishmentTypeInfo } from '@/lib/school-types';
 import { useParentSchools, useParentChildrenAllSchools, useParentPendingInvitations, ParentChildAllSchools } from '@/hooks/useParentMultiSchool';
+import { useServices } from '@/hooks/useServices';
 import { supabase } from '@/lib/supabase';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   UserCheck, GraduationCap, CreditCard, Calendar, Clock,
   CheckCircle2, AlertCircle, FileText, Download, Phone, ArrowRight,
   UserPlus, HeartPulse, Sparkles, ShieldCheck, Building2, RefreshCw,
-  Globe2, School, ChevronRight, ExternalLink, Mail, Loader2
+  Globe2, School, ChevronRight, ExternalLink, Mail, Loader2,
+  UtensilsCrossed, Bus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -74,18 +76,13 @@ function ParentPortalPage() {
               Le <strong>Portail Parent</strong> est destiné au suivi scolaire des élèves de la Maternelle au Secondaire (bulletins, absences, devoirs, autorisations).
             </p>
             <p className="text-xs text-muted-foreground mt-2">
-              Pour l'enseignement supérieur, vos étudiants disposent d'un portail dédié autonome pour consulter leurs notes, emplois du temps et relevés LMD.
+              Pour l'enseignement supérieur, vos étudiants disposent d'un portail dédié autonome pour consulter leurs notes, emplois du temps et relevés officiels.
             </p>
           </div>
           <div className="pt-2 flex justify-center gap-3">
             <Link to="/portail-etudiant">
               <Button className="gap-2 bg-primary">
-                <GraduationCap className="w-4 h-4" /> Portail Étudiant
-              </Button>
-            </Link>
-            <Link to="/lmd">
-              <Button variant="outline">
-                Système LMD
+                <GraduationCap className="w-4 h-4" /> Accéder au Portail Étudiant
               </Button>
             </Link>
           </div>
@@ -119,6 +116,15 @@ function ParentPortalPage() {
   const [parentName, setParentName] = useState(profile?.full_name?.split(' ')[0] || 'Parent');
   const [parentSurname, setParentSurname] = useState(profile?.full_name?.split(' ').slice(1).join(' ') || '');
   const [parentPhone, setParentPhone] = useState(profile?.phone || '0708091011');
+  const [paymentDescription, setPaymentDescription] = useState('Frais de Scolarité');
+
+  // Services Périscolaires (Cantine & Transport)
+  const {
+    cantineSubscribers,
+    transportSubscribers,
+    recordCantinePayment,
+    recordTransportPayment,
+  } = useServices();
 
   // Merge allChildren from RPC + local students (fallback)
   const displayChildren = useMemo(() => {
@@ -143,6 +149,23 @@ function ParentPortalPage() {
     if (!selectedStudentId && displayChildren.length > 0) return displayChildren[0];
     return displayChildren.find((c: ParentChildAllSchools) => c.student_id === selectedStudentId) || displayChildren[0] || null;
   }, [selectedStudentId, displayChildren]);
+
+  // Subscriptions Cantine & Transport pour l'enfant courant
+  const childCantineSub = useMemo(() => {
+    if (!currentChild) return null;
+    return cantineSubscribers.find(
+      s => s.student_id === currentChild.student_id ||
+      s.student_name.toLowerCase().includes(currentChild.first_name.toLowerCase())
+    );
+  }, [cantineSubscribers, currentChild]);
+
+  const childTransportSub = useMemo(() => {
+    if (!currentChild) return null;
+    return transportSubscribers.find(
+      s => s.student_id === currentChild.student_id ||
+      s.student_name.toLowerCase().includes(currentChild.first_name.toLowerCase())
+    );
+  }, [transportSubscribers, currentChild]);
 
   // For payment we still use the "currentStudent" from local useStudents if possible
   const currentStudentLocal = students.find((s: any) => s.id === currentChild?.student_id);
@@ -204,15 +227,24 @@ function ParentPortalPage() {
   const handlePay = async () => {
     if (!currentChild) return;
     try {
+      const parsedAmt = parseFloat(amount);
       await initiatePayment({
         studentId: currentChild.student_id,
-        amount: parseFloat(amount),
-        description: `Scolarité — ${currentChild.first_name} ${currentChild.last_name}`,
+        amount: parsedAmt,
+        description: `${paymentDescription} — ${currentChild.first_name} ${currentChild.last_name}`,
         customerName: parentName,
         customerSurname: parentSurname,
         customerPhone: parentPhone,
         channel,
       });
+
+      // Synchronisation immédiate des services si paiement cantine / transport
+      if (paymentDescription.includes('Cantine') && childCantineSub) {
+        await recordCantinePayment(childCantineSub.id, parsedAmt, channel, 'Paiement en ligne CinetPay (Parent)');
+      } else if (paymentDescription.includes('Transport') && childTransportSub) {
+        await recordTransportPayment(childTransportSub.id, parsedAmt, channel, 'Paiement en ligne CinetPay (Parent)');
+      }
+
       setIsPayModalOpen(false);
     } catch (e) {
       // handled in hook
@@ -609,11 +641,214 @@ function ParentPortalPage() {
                   </p>
                 </div>
                 <Button
-                  onClick={() => setIsPayModalOpen(true)}
+                  onClick={() => {
+                    setAmount('35000');
+                    setPaymentDescription('Scolarité (1ère Tranche)');
+                    setIsPayModalOpen(true);
+                  }}
                   className="bg-accent text-accent-foreground font-bold hover:opacity-90 text-xs"
                 >
                   Payer avec Mobile Money
                 </Button>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Services Périscolaires de l'Établissement (Cantine & Transport) ── */}
+          <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+            <div className="flex items-center justify-between border-b border-border pb-4 flex-wrap gap-3">
+              <div>
+                <h3 className="font-display text-base font-bold text-foreground flex items-center gap-2">
+                  <span>Services Périscolaires de l'Établissement</span>
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Gestion des abonnements cantine et transport pour <strong>{currentChild.first_name} {currentChild.last_name}</strong>.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                <Link to="/cantine">
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-amber-300 text-amber-900 hover:bg-amber-50">
+                    <UtensilsCrossed className="w-3.5 h-3.5 text-amber-600" /> Menus & Cantine
+                  </Button>
+                </Link>
+                <Link to="/transport">
+                  <Button variant="outline" size="sm" className="h-7 text-[11px] gap-1.5 border-blue-300 text-blue-900 hover:bg-blue-50">
+                    <Bus className="w-3.5 h-3.5 text-blue-600" /> Circuits Transport
+                  </Button>
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5">
+              {/* Carte Cantine */}
+              <div className="rounded-xl border border-amber-200 bg-amber-50/40 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-xs uppercase tracking-wider text-amber-900 flex items-center gap-1.5">
+                      <UtensilsCrossed className="w-4 h-4 text-amber-700" /> Cantine & Restauration
+                    </span>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      !childCantineSub ? 'bg-slate-200 text-slate-700' :
+                      childCantineSub.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                      childCantineSub.status === 'partial' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {!childCantineSub ? 'Non souscrit' :
+                       childCantineSub.status === 'paid' ? 'À jour ✓' :
+                       childCantineSub.status === 'partial' ? 'Paiement partiel' : 'En attente'}
+                    </span>
+                  </div>
+
+                  {childCantineSub ? (
+                    <div className="space-y-2 mt-3 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Formule active :</span>
+                        <span className="font-bold text-foreground">{childCantineSub.plan_name}</span>
+                      </div>
+                      {childCantineSub.dietary_notes && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Régime alimentaire :</span>
+                          <span className="font-medium text-amber-800">{childCantineSub.dietary_notes}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Montant formule :</span>
+                        <span className="font-mono font-bold text-foreground">{childCantineSub.amount_due.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-amber-200/60">
+                        <span className="text-muted-foreground">Déjà versé :</span>
+                        <span className="font-bold text-emerald-600 font-mono">{childCantineSub.amount_paid.toLocaleString('fr-FR')} F</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-rose-700">Reste à payer :</span>
+                        <span className="text-rose-700 font-mono">{childCantineSub.remaining.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      <p>Cet enfant n'a pas encore de forfait cantine enregistré pour ce mois.</p>
+                      <p className="text-[11px] mt-1 text-slate-500">Forfait mensuel complet (25 000 FCFA/mois) avec repas chaud du midi et goûter.</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    {childCantineSub && childCantineSub.remaining === 0 ? "Compte réfectoire soldé ✓" : "Payable par Mobile Money ou Caisse"}
+                  </span>
+                  {childCantineSub && childCantineSub.remaining > 0 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAmount(String(childCantineSub.remaining));
+                        setPaymentDescription(`Cantine Scolaire (${childCantineSub.plan_name})`);
+                        setIsPayModalOpen(true);
+                      }}
+                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Régler la Cantine ({childCantineSub.remaining.toLocaleString('fr-FR')} F)
+                    </Button>
+                  ) : !childCantineSub ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAmount('25000');
+                        setPaymentDescription(`Cantine Scolaire (Forfait Mensuel)`);
+                        setIsPayModalOpen(true);
+                      }}
+                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      Souscrire & Payer (25 000 F)
+                    </Button>
+                  ) : null}
+                </div>
+              </div>
+
+              {/* Carte Transport */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/40 p-4 flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="font-bold text-xs uppercase tracking-wider text-blue-900 flex items-center gap-1.5">
+                      <Bus className="w-4 h-4 text-blue-700" /> Transport & Navette Scolaire
+                    </span>
+                    <span className={`inline-flex items-center gap-1 text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                      !childTransportSub ? 'bg-slate-200 text-slate-700' :
+                      childTransportSub.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                      childTransportSub.status === 'partial' ? 'bg-amber-100 text-amber-800' :
+                      'bg-rose-100 text-rose-800'
+                    }`}>
+                      {!childTransportSub ? 'Non souscrit' :
+                       childTransportSub.status === 'paid' ? 'À jour ✓' :
+                       childTransportSub.status === 'partial' ? 'Paiement partiel' : 'En attente'}
+                    </span>
+                  </div>
+
+                  {childTransportSub ? (
+                    <div className="space-y-2 mt-3 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Circuit / Ligne :</span>
+                        <span className="font-bold text-foreground truncate max-w-[200px]" title={childTransportSub.route_name}>
+                          {childTransportSub.route_name}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Arrêt de ramassage :</span>
+                        <span className="font-semibold text-blue-800">{childTransportSub.pickup_stop}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Type de trajet :</span>
+                        <span className="font-medium text-foreground">
+                          {childTransportSub.trip_type === 'round_trip' ? 'Aller-Retour complet' :
+                           childTransportSub.trip_type === 'morning_only' ? 'Matin seul' : 'Soir seul'}
+                        </span>
+                      </div>
+                      <div className="flex justify-between pt-1 border-t border-blue-200/60">
+                        <span className="text-muted-foreground">Déjà versé :</span>
+                        <span className="font-bold text-emerald-600 font-mono">{childTransportSub.amount_paid.toLocaleString('fr-FR')} F</span>
+                      </div>
+                      <div className="flex justify-between text-xs font-bold">
+                        <span className="text-rose-700">Reste à payer :</span>
+                        <span className="text-rose-700 font-mono">{childTransportSub.remaining.toLocaleString('fr-FR')} FCFA</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-xs text-muted-foreground">
+                      <p>Cet enfant n'a pas encore de circuit de transport enregistré.</p>
+                      <p className="text-[11px] mt-1 text-slate-500">Circuits sécurisés climatisés avec chauffeur attitré (25 000 à 28 000 FCFA/mois).</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="mt-4 pt-3 border-t border-blue-200/60 flex items-center justify-between gap-2">
+                  <span className="text-[11px] text-muted-foreground">
+                    {childTransportSub && childTransportSub.remaining === 0 ? "Abonnement bus soldé ✓" : "Payable par Mobile Money ou Caisse"}
+                  </span>
+                  {childTransportSub && childTransportSub.remaining > 0 ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAmount(String(childTransportSub.remaining));
+                        setPaymentDescription(`Transport Scolaire (${childTransportSub.route_name})`);
+                        setIsPayModalOpen(true);
+                      }}
+                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Régler le Transport ({childTransportSub.remaining.toLocaleString('fr-FR')} F)
+                    </Button>
+                  ) : !childTransportSub ? (
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setAmount('25000');
+                        setPaymentDescription(`Transport Scolaire (Circuit 1 Riviera)`);
+                        setIsPayModalOpen(true);
+                      }}
+                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      Souscrire & Payer (25 000 F)
+                    </Button>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>
@@ -772,6 +1007,7 @@ function ParentPortalPage() {
             {currentChild && (
               <DialogDescription>
                 Pour : <strong>{currentChild.first_name} {currentChild.last_name}</strong>
+                {paymentDescription && <span className="block text-primary font-semibold mt-0.5">Motif : {paymentDescription}</span>}
                 {hasMultipleSchools && <span className="text-muted-foreground"> · {currentChild.school_name}</span>}
               </DialogDescription>
             )}

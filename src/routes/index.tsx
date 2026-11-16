@@ -45,7 +45,7 @@ function Dashboard() {
   return (
     <AppShell
       title="Tableau de bord"
-      subtitle={estInfo.isUniversityOnly ? "Vue direction — Enseignement Supérieur" : estInfo.isMixed ? "Vue direction — Établissement multi-niveaux" : "Vue direction — Groupe Scolaire"}
+      subtitle={estInfo.isUniversityOnly ? "Vue direction — Enseignement Supérieur" : estInfo.isMixed ? "Vue direction — Groupe Scolaire & Supérieur" : "Vue direction — Groupe Scolaire (Maternelle, Primaire, Secondaire)"}
       actions={
         <button className="hidden md:inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm hover:opacity-95">
           <Calendar className="h-4 w-4" />
@@ -64,7 +64,7 @@ function Dashboard() {
               Bonne journée, {profile?.full_name || 'Direction'}.
             </h2>
             <p className="mt-2 max-w-lg text-sm text-primary-foreground/70">
-              Voici le résumé des activités récentes de votre établissement. Vous avez actuellement <b className="text-primary-foreground">{stats.total_students} {estInfo.studentsTerm}</b> inscrits répartis dans <b className="text-primary-foreground">{stats.total_classes} {estInfo.classesTerm}</b>.
+              Voici le résumé des activités récentes de votre établissement. Vous avez actuellement <b className="text-primary-foreground">{stats.total_students} {estInfo.isUniversityOnly ? "étudiants" : "élèves"}</b> inscrits répartis dans <b className="text-primary-foreground">{stats.total_classes} {estInfo.classesTerm}</b>.
             </p>
             <div className="mt-6 flex flex-wrap gap-2">
               <a href="/eleves" className="inline-flex items-center gap-2 rounded-lg bg-accent px-4 py-2 text-sm font-semibold text-accent-foreground hover:opacity-95">
@@ -73,7 +73,17 @@ function Dashboard() {
               <a href="/paiement" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-4 py-2 text-sm text-primary-foreground/90 hover:bg-primary-foreground/10">
                 Portail Paiements CinetPay
               </a>
-              {estInfo.hasSuperieur && (
+              <a href="/bulletins" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
+                Bulletins & Moyennes
+              </a>
+              <a href="/cantine" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
+                Cantine & Menus
+              </a>
+              <a href="/transport" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
+                Transport Scolaire
+              </a>
+              {/* LMD strictly reserved for university context - never shown for Maternelle, Primaire or Secondaire */}
+              {estInfo.isUniversityOnly && (
                 <a href="/lmd" className="inline-flex items-center gap-2 rounded-lg border border-primary-foreground/20 bg-primary-foreground/5 px-3 py-2 text-xs text-primary-foreground/90 hover:bg-primary-foreground/10">
                   Gestion LMD
                 </a>

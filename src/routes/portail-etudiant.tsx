@@ -185,35 +185,37 @@ function StudentPortalPage() {
             )}
           </div>
 
-          {/* LMD Credits & University Section */}
-          <div className="rounded-2xl border border-emerald-500/30 bg-card p-5 shadow-sm">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="font-display font-semibold text-sm text-foreground flex items-center gap-2">
-                <Award className="w-4 h-4 text-emerald-600" /> Système LMD (Supérieur)
-              </h3>
-              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
-                Licence 1
-              </span>
+          {/* LMD Credits & University Section - UNIQUEMENT pour l'enseignement supérieur */}
+          {estInfo.isUniversityOnly && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-card p-5 shadow-sm">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-display font-semibold text-sm text-foreground flex items-center gap-2">
+                  <Award className="w-4 h-4 text-emerald-600" /> Système LMD (Supérieur)
+                </h3>
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-500/10 text-emerald-600">
+                  Licence 1
+                </span>
+              </div>
+              <div className="space-y-2 text-xs">
+                <div className="flex items-center justify-between text-muted-foreground">
+                  <span>Crédits validés Semestre 1 :</span>
+                  <span className="font-bold font-mono text-emerald-600">30 / 30 ECTS</span>
+                </div>
+                <div className="w-full bg-secondary rounded-full h-2">
+                  <div className="bg-emerald-500 h-2 rounded-full w-full" />
+                </div>
+                <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
+                  <span>Progression totale Licence :</span>
+                  <span className="font-mono font-semibold">30 / 180 ECTS (17%)</span>
+                </div>
+              </div>
+              <Link to="/lmd" className="mt-4 block">
+                <Button size="sm" className="w-full text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white">
+                  <GraduationCap className="w-3.5 h-3.5" /> Relevé LMD & Maquette
+                </Button>
+              </Link>
             </div>
-            <div className="space-y-2 text-xs">
-              <div className="flex items-center justify-between text-muted-foreground">
-                <span>Crédits validés Semestre 1 :</span>
-                <span className="font-bold font-mono text-emerald-600">30 / 30 ECTS</span>
-              </div>
-              <div className="w-full bg-secondary rounded-full h-2">
-                <div className="bg-emerald-500 h-2 rounded-full w-full" />
-              </div>
-              <div className="flex items-center justify-between text-[11px] text-muted-foreground pt-1">
-                <span>Progression totale Licence :</span>
-                <span className="font-mono font-semibold">30 / 180 ECTS (17%)</span>
-              </div>
-            </div>
-            <Link to="/lmd" className="mt-4 block">
-              <Button size="sm" className="w-full text-xs gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white">
-                <GraduationCap className="w-3.5 h-3.5" /> Relevé LMD & Maquette
-              </Button>
-            </Link>
-          </div>
+          )}
 
           <div className="rounded-2xl border border-border bg-card p-5 shadow-sm">
             <h3 className="font-display font-semibold text-sm text-foreground flex items-center gap-2 mb-3">

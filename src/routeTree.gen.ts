@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BulletinsRouteImport } from './routes/bulletins'
 import { Route as CahierDeTexteRouteImport } from './routes/cahier-de-texte'
+import { Route as CantineRouteImport } from './routes/cantine'
 import { Route as ClassesRouteImport } from './routes/classes'
 import { Route as CommunicationRouteImport } from './routes/communication'
 import { Route as ElevesRouteImport } from './routes/eleves'
@@ -35,6 +36,7 @@ import { Route as RhRouteImport } from './routes/rh'
 import { Route as StatistiquesRouteImport } from './routes/statistiques'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as TerminauxPaiementRouteImport } from './routes/terminaux-paiement'
+import { Route as TransportRouteImport } from './routes/transport'
 import { Route as PayTokenRouteImport } from './routes/pay.$token'
 import { Route as SuperadminIndexRouteImport } from './routes/superadmin/index'
 import { Route as SuperadminAbonnementsRouteImport } from './routes/superadmin/abonnements'
@@ -55,6 +57,11 @@ const BulletinsRoute = BulletinsRouteImport.update({
 const CahierDeTexteRoute = CahierDeTexteRouteImport.update({
   id: '/cahier-de-texte',
   path: '/cahier-de-texte',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CantineRoute = CantineRouteImport.update({
+  id: '/cantine',
+  path: '/cantine',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ClassesRoute = ClassesRouteImport.update({
@@ -172,6 +179,11 @@ const TerminauxPaiementRoute = TerminauxPaiementRouteImport.update({
   path: '/terminaux-paiement',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TransportRoute = TransportRouteImport.update({
+  id: '/transport',
+  path: '/transport',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PayTokenRoute = PayTokenRouteImport.update({
   id: '/pay/$token',
   path: '/pay/$token',
@@ -208,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
   '/cahier-de-texte': typeof CahierDeTexteRoute
+  '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
@@ -231,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
   '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/transport': typeof TransportRoute
   '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
@@ -242,6 +256,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
   '/cahier-de-texte': typeof CahierDeTexteRoute
+  '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
@@ -264,6 +279,7 @@ export interface FileRoutesByTo {
   '/rh': typeof RhRoute
   '/statistiques': typeof StatistiquesRoute
   '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/transport': typeof TransportRoute
   '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
@@ -276,6 +292,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/bulletins': typeof BulletinsRoute
   '/cahier-de-texte': typeof CahierDeTexteRoute
+  '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
   '/eleves': typeof ElevesRoute
@@ -299,6 +316,7 @@ export interface FileRoutesById {
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
   '/terminaux-paiement': typeof TerminauxPaiementRoute
+  '/transport': typeof TransportRoute
   '/pay/$token': typeof PayTokenRoute
   '/superadmin/abonnements': typeof SuperadminAbonnementsRoute
   '/superadmin/etablissements': typeof SuperadminEtablissementsRoute
@@ -312,6 +330,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bulletins'
     | '/cahier-de-texte'
+    | '/cantine'
     | '/classes'
     | '/communication'
     | '/eleves'
@@ -335,6 +354,7 @@ export interface FileRouteTypes {
     | '/statistiques'
     | '/superadmin'
     | '/terminaux-paiement'
+    | '/transport'
     | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
@@ -346,6 +366,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bulletins'
     | '/cahier-de-texte'
+    | '/cantine'
     | '/classes'
     | '/communication'
     | '/eleves'
@@ -368,6 +389,7 @@ export interface FileRouteTypes {
     | '/rh'
     | '/statistiques'
     | '/terminaux-paiement'
+    | '/transport'
     | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
@@ -379,6 +401,7 @@ export interface FileRouteTypes {
     | '/'
     | '/bulletins'
     | '/cahier-de-texte'
+    | '/cantine'
     | '/classes'
     | '/communication'
     | '/eleves'
@@ -402,6 +425,7 @@ export interface FileRouteTypes {
     | '/statistiques'
     | '/superadmin'
     | '/terminaux-paiement'
+    | '/transport'
     | '/pay/$token'
     | '/superadmin/abonnements'
     | '/superadmin/etablissements'
@@ -414,6 +438,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BulletinsRoute: typeof BulletinsRoute
   CahierDeTexteRoute: typeof CahierDeTexteRoute
+  CantineRoute: typeof CantineRoute
   ClassesRoute: typeof ClassesRoute
   CommunicationRoute: typeof CommunicationRoute
   ElevesRoute: typeof ElevesRoute
@@ -437,6 +462,7 @@ export interface RootRouteChildren {
   StatistiquesRoute: typeof StatistiquesRoute
   SuperadminRoute: typeof SuperadminRouteWithChildren
   TerminauxPaiementRoute: typeof TerminauxPaiementRoute
+  TransportRoute: typeof TransportRoute
   PayTokenRoute: typeof PayTokenRoute
 }
 
@@ -461,6 +487,13 @@ declare module '@tanstack/react-router' {
       path: '/cahier-de-texte'
       fullPath: '/cahier-de-texte'
       preLoaderRoute: typeof CahierDeTexteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cantine': {
+      id: '/cantine'
+      path: '/cantine'
+      fullPath: '/cantine'
+      preLoaderRoute: typeof CantineRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/classes': {
@@ -624,6 +657,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TerminauxPaiementRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/transport': {
+      id: '/transport'
+      path: '/transport'
+      fullPath: '/transport'
+      preLoaderRoute: typeof TransportRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/pay/$token': {
       id: '/pay/$token'
       path: '/pay/$token'
@@ -693,6 +733,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BulletinsRoute: BulletinsRoute,
   CahierDeTexteRoute: CahierDeTexteRoute,
+  CantineRoute: CantineRoute,
   ClassesRoute: ClassesRoute,
   CommunicationRoute: CommunicationRoute,
   ElevesRoute: ElevesRoute,
@@ -716,6 +757,7 @@ const rootRouteChildren: RootRouteChildren = {
   StatistiquesRoute: StatistiquesRoute,
   SuperadminRoute: SuperadminRouteWithChildren,
   TerminauxPaiementRoute: TerminauxPaiementRoute,
+  TransportRoute: TransportRoute,
   PayTokenRoute: PayTokenRoute,
 }
 export const routeTree = rootRouteImport

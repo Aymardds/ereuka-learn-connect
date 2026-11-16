@@ -3,7 +3,8 @@ import {
   LayoutDashboard, GraduationCap, Users, BookOpen, ClipboardList, 
   FileText, Bell, Search, Settings, LogOut, DollarSign, CreditCard,
   CalendarDays, BookCheck, Briefcase, MessageSquare, BarChart3, 
-  Building, UserCheck, Wifi, WifiOff, RefreshCw, Award, QrCode
+  Building, UserCheck, Wifi, WifiOff, RefreshCw, Award, QrCode,
+  UtensilsCrossed, Bus
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { school } from "@/lib/mock-data";
@@ -61,6 +62,22 @@ const ALL_NAV_ITEMS: NavItem[] = [
   },
   { to: "/paiement", label: "Caisse & CinetPay", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'] },
   { to: "/terminaux-paiement", label: "Terminaux QR", icon: QrCode, roles: ['admin', 'director', 'accountant', 'cashier'], badge: 'QR' },
+  { 
+    to: "/cantine", 
+    label: "Cantine Scolaire", 
+    icon: UtensilsCrossed, 
+    roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent', 'teacher'],
+    badge: "Service",
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Restaurant Campus" : "Cantine Scolaire",
+  },
+  { 
+    to: "/transport", 
+    label: "Transport Scolaire", 
+    icon: Bus, 
+    roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent', 'teacher'],
+    badge: "Navette",
+    getDynamicLabel: (info) => info.isUniversityOnly ? "Navettes Campus" : "Transport Scolaire",
+  },
   { 
     to: "/eleves", 
     label: "Élèves & Inscriptions", 

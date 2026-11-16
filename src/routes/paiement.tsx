@@ -6,13 +6,14 @@ import { AppShell } from '@/components/AppShell'
 import { useSchoolAccounting, StudentLedgerItem, OverdueScheduleReminder } from '@/hooks/useSchoolAccounting'
 import { useClasses } from '@/hooks/useClasses'
 import { useAuth } from '@/hooks/useAuth'
+import { useServices } from '@/hooks/useServices'
 import {
   CreditCard, Smartphone, CheckCircle2, FileText, Download, Printer,
   Loader2, Calendar, User, Mail, Clock, ArrowRight, AlertCircle,
   RefreshCw, BadgePercent, ChevronDown, Banknote, School, Search,
   Filter, MessageCircle, BellRing, QrCode, ExternalLink, ShieldCheck,
   TrendingUp, AlertTriangle, Eye, Send, Users, DollarSign, Check,
-  Share2, ArrowUpRight
+  Share2, ArrowUpRight, UtensilsCrossed, Bus
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { PaymentBadge } from '@/components/payment/PaymentLogos'
@@ -93,6 +94,24 @@ function PaymentAndAccountingPage() {
   // ── Hook de comptabilité scolaire ──
   const accounting = useSchoolAccounting()
 
+  // ── Hook des services annexes (Cantine & Transport) ──
+  const {
+    cantineSubscribers,
+    transportSubscribers,
+    cantinePlans,
+    transportRoutes,
+    recordCantinePayment,
+    recordTransportPayment,
+  } = useServices()
+
+  const getStudentCantineSub = (studentId: string, fullName: string) => {
+    return cantineSubscribers.find(c => c.student_id === studentId || c.student_name.toLowerCase() === fullName.toLowerCase())
+  }
+
+  const getStudentTransportSub = (studentId: string, fullName: string) => {
+    return transportSubscribers.find(t => t.student_id === studentId || t.student_name.toLowerCase() === fullName.toLowerCase())
+  }
+
   // ── Filtres & États Comptabilité ──
   const [accountingTab, setAccountingTab] = useState<'students' | 'reminders' | 'cash'>('students')
   const [searchTerm, setSearchTerm] = useState('')
@@ -111,6 +130,14 @@ function PaymentAndAccountingPage() {
   const [cashPaymentMethod, setCashPaymentMethod] = useState<string>('Espèces')
   const [cashPaymentNotes, setCashPaymentNotes] = useState<string>('')
   const [activeReceipt, setActiveReceipt] = useState<any>(null)
+
+  const activeStudentCantine = studentForCashPayment
+    ? getStudentCantineSub(studentForCashPayment.id, `${studentForCashPayment.first_name} ${studentForCashPayment.last_name}`)
+    : null
+
+  const activeStudentTransport = studentForCashPayment
+    ? getStudentTransportSub(studentForCashPayment.id, `${studentForCashPayment.first_name} ${studentForCashPayment.last_name}`)
+    : null
 
   // ── Filtrage des Comptes Élèves (Dissociés) ──
   const filteredStudentsLedger = useMemo(() => {
@@ -154,19 +181,55 @@ function PaymentAndAccountingPage() {
       return
     }
 
+    const isCantine = cashPaymentScheduleId === 'service_cantine' || cashPaymentScheduleId.startsWith('cantine')
+    const isTransport = cashPaymentScheduleId === 'service_transport' || cashPaymentScheduleId.startsWith('transport')
+
     try {
+      // 1. Mise à jour de l'abonnement cantine / transport dans useServices
+      if (isCantine && activeStudentCantine) {
+        await recordCantinePayment(activeStudentCantine.id, amount, cashPaymentMethod, cashPaymentNotes)
+      } else if (isTransport && activeStudentTransport) {
+        await recordTransportPayment(activeStudentTransport.id, amount, cashPaymentMethod, cashPaymentNotes)
+      }
+
+      // 2. Enregistrement comptable dans student_payments
+      const scheduleIdToSave = (isCantine || isTransport) ? null : (cashPaymentScheduleId || null)
+      const computedNotes = isCantine
+        ? (cashPaymentNotes ? `Cantine : ${cashPaymentNotes}` : `Cantine Scolaire — ${activeStudentCantine?.plan_name || 'Forfait'}`)
+        : isTransport
+        ? (cashPaymentNotes ? `Transport : ${cashPaymentNotes}` : `Transport Scolaire — ${activeStudentTransport?.route_name || 'Navette'}`)
+        : cashPaymentNotes
+
       const res = await accounting.recordPayment({
         studentId: studentForCashPayment.id,
-        scheduleId: cashPaymentScheduleId || null,
+        scheduleId: scheduleIdToSave,
         amount,
         method: cashPaymentMethod,
-        notes: cashPaymentNotes,
+        notes: computedNotes,
         payerName: studentForCashPayment.parent_name,
         payerPhone: studentForCashPayment.parent_phone,
         payerEmail: studentForCashPayment.parent_email,
       })
 
       const targetSchedule = studentForCashPayment.schedules.find(s => s.schedule_id === cashPaymentScheduleId)
+
+      let receiptTitle = 'Frais de scolarité'
+      let totalDue = amount
+      let remaining = 0
+
+      if (isCantine) {
+        receiptTitle = `Restauration / Cantine Scolaire (${activeStudentCantine?.plan_name || 'Forfait'})`
+        totalDue = activeStudentCantine?.amount_due || amount
+        remaining = activeStudentCantine ? Math.max(0, activeStudentCantine.remaining - amount) : 0
+      } else if (isTransport) {
+        receiptTitle = `Transport Scolaire & Navette (${activeStudentTransport?.route_name || 'Circuit'})`
+        totalDue = activeStudentTransport?.amount_due || amount
+        remaining = activeStudentTransport ? Math.max(0, activeStudentTransport.remaining - amount) : 0
+      } else if (targetSchedule) {
+        receiptTitle = targetSchedule.title
+        totalDue = targetSchedule.amount
+        remaining = Math.max(0, targetSchedule.remaining - amount)
+      }
 
       // Reçu officiel
       setActiveReceipt({
@@ -175,15 +238,15 @@ function PaymentAndAccountingPage() {
         studentName: `${studentForCashPayment.first_name} ${studentForCashPayment.last_name}`,
         className: studentForCashPayment.class_name,
         schoolName: (profile?.tenants as any)?.name || 'Eurêka Établissement',
-        title: targetSchedule?.title || 'Frais de scolarité',
+        title: receiptTitle,
         amount,
-        totalDue: targetSchedule?.amount || amount,
-        remaining: targetSchedule ? Math.max(0, targetSchedule.remaining - amount) : 0,
+        totalDue,
+        remaining,
         method: cashPaymentMethod,
         paidAt: new Date().toLocaleString('fr-FR'),
         parentName: studentForCashPayment.parent_name,
         parentEmail: studentForCashPayment.parent_email,
-        isPartial: targetSchedule ? (targetSchedule.remaining - amount > 0) : false,
+        isPartial: remaining > 0,
       })
 
       setStudentForCashPayment(null)
@@ -469,7 +532,31 @@ function PaymentAndAccountingPage() {
                               </div>
                               <div>
                                 <p className="font-bold text-foreground text-xs">{st.first_name} {st.last_name}</p>
-                                <p className="text-[10px] text-muted-foreground font-mono">{st.student_code || 'ID:' + st.id.slice(0, 6)}</p>
+                                <div className="flex items-center gap-1.5 flex-wrap mt-0.5">
+                                  <p className="text-[10px] text-muted-foreground font-mono">{st.student_code || 'ID:' + st.id.slice(0, 6)}</p>
+                                  {(() => {
+                                    const cSub = getStudentCantineSub(st.id, `${st.first_name} ${st.last_name}`)
+                                    const tSub = getStudentTransportSub(st.id, `${st.first_name} ${st.last_name}`)
+                                    return (
+                                      <>
+                                        {cSub && (
+                                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                            cSub.remaining === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                                          }`} title={`Cantine: ${cSub.plan_name} (${cSub.remaining > 0 ? `Reste ${cSub.remaining.toLocaleString('fr-FR')} F` : 'Soldé'})`}>
+                                            <UtensilsCrossed className="w-2.5 h-2.5" /> Cantine
+                                          </span>
+                                        )}
+                                        {tSub && (
+                                          <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold ${
+                                            tSub.remaining === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                          }`} title={`Transport: ${tSub.route_name} (${tSub.remaining > 0 ? `Reste ${tSub.remaining.toLocaleString('fr-FR')} F` : 'Soldé'})`}>
+                                            <Bus className="w-2.5 h-2.5" /> Transport
+                                          </span>
+                                        )}
+                                      </>
+                                    )
+                                  })()}
+                                </div>
                               </div>
                             </div>
                           </td>
@@ -802,7 +889,28 @@ function PaymentAndAccountingPage() {
                             <span className="text-[10px] text-muted-foreground block">{t.class_name}</span>
                           </td>
                           <td className="py-3 px-3 font-medium text-slate-800">
-                            {t.schedule_title}
+                            {(() => {
+                              const title = t.schedule_title || 'Paiement scolarité'
+                              const isCant = title.toLowerCase().includes('cantine')
+                              const isTrans = title.toLowerCase().includes('transport')
+                              if (isCant) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-amber-900 font-bold">
+                                    <UtensilsCrossed className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                                    {title}
+                                  </span>
+                                )
+                              }
+                              if (isTrans) {
+                                return (
+                                  <span className="inline-flex items-center gap-1 text-blue-900 font-bold">
+                                    <Bus className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                                    {title}
+                                  </span>
+                                )
+                              }
+                              return title
+                            })()}
                           </td>
                           <td className="py-3 px-3">
                             <PaymentBadge method={t.payment_method} size="sm" />
@@ -951,6 +1059,104 @@ function PaymentAndAccountingPage() {
                   </div>
                 </div>
 
+                {/* Services de l'établissement : Cantine & Transport */}
+                <div className="space-y-2 mt-4">
+                  <h4 className="text-xs font-bold text-foreground uppercase tracking-wide">
+                    Services de l'établissement (Cantine & Transport)
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                    {/* Cantine */}
+                    {(() => {
+                      const cSub = getStudentCantineSub(selectedStudentForDetails.id, `${selectedStudentForDetails.first_name} ${selectedStudentForDetails.last_name}`)
+                      return (
+                        <div className="p-3 rounded-xl border border-amber-200 bg-amber-50/50 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="font-bold flex items-center gap-1.5 text-amber-900">
+                                <UtensilsCrossed className="w-3.5 h-3.5 text-amber-700" /> Cantine Scolaire
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                !cSub ? 'bg-slate-200 text-slate-700' :
+                                cSub.remaining === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-200 text-amber-900'
+                              }`}>
+                                {!cSub ? 'Non inscrit' : cSub.remaining === 0 ? 'Soldé' : 'À payer'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground">
+                              {cSub ? cSub.plan_name : "Aucun forfait actif"}
+                            </p>
+                            {cSub && (
+                              <p className="text-xs font-bold text-foreground mt-1">
+                                Dû: {cSub.amount_due.toLocaleString('fr-FR')} F · Reste: <span className="text-rose-600">{cSub.remaining.toLocaleString('fr-FR')} F</span>
+                              </p>
+                            )}
+                          </div>
+                          {cSub && cSub.remaining > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setStudentForCashPayment(selectedStudentForDetails)
+                                setCashPaymentScheduleId('service_cantine')
+                                setCashPaymentAmount(String(cSub.remaining))
+                                setCashPaymentNotes(`Cantine Scolaire — ${cSub.plan_name}`)
+                                setSelectedStudentForDetails(null)
+                              }}
+                              className="mt-2 h-7 text-[10px] font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                            >
+                              Encaisser la Cantine
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    })()}
+
+                    {/* Transport */}
+                    {(() => {
+                      const tSub = getStudentTransportSub(selectedStudentForDetails.id, `${selectedStudentForDetails.first_name} ${selectedStudentForDetails.last_name}`)
+                      return (
+                        <div className="p-3 rounded-xl border border-blue-200 bg-blue-50/50 flex flex-col justify-between">
+                          <div>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className="font-bold flex items-center gap-1.5 text-blue-900">
+                                <Bus className="w-3.5 h-3.5 text-blue-700" /> Transport Scolaire
+                              </span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                                !tSub ? 'bg-slate-200 text-slate-700' :
+                                tSub.remaining === 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-200 text-blue-900'
+                              }`}>
+                                {!tSub ? 'Non inscrit' : tSub.remaining === 0 ? 'Soldé' : 'À payer'}
+                              </span>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {tSub ? `${tSub.route_name} (${tSub.pickup_stop})` : "Aucune navette active"}
+                            </p>
+                            {tSub && (
+                              <p className="text-xs font-bold text-foreground mt-1">
+                                Dû: {tSub.amount_due.toLocaleString('fr-FR')} F · Reste: <span className="text-rose-600">{tSub.remaining.toLocaleString('fr-FR')} F</span>
+                              </p>
+                            )}
+                          </div>
+                          {tSub && tSub.remaining > 0 && (
+                            <Button
+                              size="sm"
+                              onClick={() => {
+                                setStudentForCashPayment(selectedStudentForDetails)
+                                setCashPaymentScheduleId('service_transport')
+                                setCashPaymentAmount(String(tSub.remaining))
+                                setCashPaymentNotes(`Transport Scolaire — ${tSub.route_name}`)
+                                setSelectedStudentForDetails(null)
+                              }}
+                              className="mt-2 h-7 text-[10px] font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                            >
+                              Encaisser le Transport
+                            </Button>
+                          )}
+                        </div>
+                      )
+                    })()}
+                  </div>
+                </div>
+
                 <DialogFooter className="mt-4 pt-2 border-t border-border flex items-center justify-between sm:justify-between">
                   <Button
                     variant="outline"
@@ -993,24 +1199,55 @@ function PaymentAndAccountingPage() {
 
                 {/* Choix de l'échéance / tranche */}
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-foreground">Échéance / Tranche concernée *</Label>
+                  <Label className="text-xs font-semibold text-foreground">Prestation ou Tranche concernée *</Label>
                   <Select value={cashPaymentScheduleId} onValueChange={(val) => {
-                    setCashPaymentScheduleId(val);
-                    const target = studentForCashPayment.schedules.find(s => s.schedule_id === val);
-                    if (target) {
-                      setCashPaymentAmount(String(target.remaining > 0 ? target.remaining : target.amount));
+                    setCashPaymentScheduleId(val)
+                    if (val === 'service_cantine') {
+                      setCashPaymentAmount(activeStudentCantine ? String(activeStudentCantine.remaining || activeStudentCantine.amount_due) : '25000')
+                      setCashPaymentNotes(`Cantine Scolaire — ${activeStudentCantine?.plan_name || 'Forfait repas'}`)
+                    } else if (val === 'service_transport') {
+                      setCashPaymentAmount(activeStudentTransport ? String(activeStudentTransport.remaining || activeStudentTransport.amount_due) : '25000')
+                      setCashPaymentNotes(`Transport Scolaire — ${activeStudentTransport?.route_name || 'Ligne navette'}`)
+                    } else {
+                      const target = studentForCashPayment.schedules.find(s => s.schedule_id === val)
+                      if (target) {
+                        setCashPaymentAmount(String(target.remaining > 0 ? target.remaining : target.amount))
+                        setCashPaymentNotes(`Scolarité — ${target.title}`)
+                      } else {
+                        setCashPaymentNotes('Acompte scolarité libre')
+                      }
                     }
                   }}>
                     <SelectTrigger className="text-xs h-9">
-                      <SelectValue placeholder="Sélectionner la tranche" />
+                      <SelectValue placeholder="Sélectionner la prestation" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Paiement libre / Acompte global</SelectItem>
-                      {studentForCashPayment.schedules.map(sc => (
-                        <SelectItem key={sc.schedule_id} value={sc.schedule_id}>
-                          {sc.title} — Reste : {sc.remaining.toLocaleString('fr-FR')} F (Total : {sc.amount.toLocaleString('fr-FR')} F)
-                        </SelectItem>
-                      ))}
+                      <SelectItem value="">Paiement libre / Acompte scolarité global</SelectItem>
+                      
+                      {studentForCashPayment.schedules.length > 0 && (
+                        <>
+                          <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/40 my-1 rounded">
+                            Échéances de Scolarité
+                          </div>
+                          {studentForCashPayment.schedules.map(sc => (
+                            <SelectItem key={sc.schedule_id} value={sc.schedule_id}>
+                              📚 {sc.title} — Reste : {sc.remaining.toLocaleString('fr-FR')} F (Total : {sc.amount.toLocaleString('fr-FR')} F)
+                            </SelectItem>
+                          ))}
+                        </>
+                      )}
+
+                      <div className="px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-amber-900 bg-amber-100/60 my-1 rounded flex items-center justify-between">
+                        <span>Services de l'Établissement</span>
+                      </div>
+                      
+                      <SelectItem value="service_cantine">
+                        🍽️ Cantine Scolaire {activeStudentCantine ? `(${activeStudentCantine.plan_name} — Reste: ${activeStudentCantine.remaining.toLocaleString('fr-FR')} F)` : '(Forfait Mensuel — 25 000 F)'}
+                      </SelectItem>
+                      
+                      <SelectItem value="service_transport">
+                        🚌 Transport Scolaire {activeStudentTransport ? `(${activeStudentTransport.route_name} — Reste: ${activeStudentTransport.remaining.toLocaleString('fr-FR')} F)` : '(Circuit Navette — 25 000 F)'}
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -1187,6 +1424,46 @@ function PaymentAndAccountingPage() {
                     ))}
                   </div>
                 </div>
+
+                {/* Services Cantine & Transport */}
+                {(() => {
+                  const cSub = getStudentCantineSub(child.id, `${child.first_name} ${child.last_name}`)
+                  const tSub = getStudentTransportSub(child.id, `${child.first_name} ${child.last_name}`)
+                  if (!cSub && !tSub) return null
+                  return (
+                    <div className="space-y-1.5 pt-1">
+                      <span className="text-[11px] font-bold text-foreground">Services de l'établissement :</span>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        {cSub && (
+                          <div className="p-2 rounded-lg bg-amber-50 border border-amber-200">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-bold text-amber-900 flex items-center gap-1">
+                                <UtensilsCrossed className="w-3 h-3 text-amber-600" /> Cantine
+                              </span>
+                              <span className={cSub.remaining === 0 ? "text-emerald-700 font-bold" : "text-amber-800 font-bold"}>
+                                {cSub.remaining === 0 ? "Soldé" : `${cSub.remaining.toLocaleString('fr-FR')} F`}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{cSub.plan_name}</p>
+                          </div>
+                        )}
+                        {tSub && (
+                          <div className="p-2 rounded-lg bg-blue-50 border border-blue-200">
+                            <div className="flex items-center justify-between text-[10px]">
+                              <span className="font-bold text-blue-900 flex items-center gap-1">
+                                <Bus className="w-3 h-3 text-blue-600" /> Transport
+                              </span>
+                              <span className={tSub.remaining === 0 ? "text-emerald-700 font-bold" : "text-blue-800 font-bold"}>
+                                {tSub.remaining === 0 ? "Soldé" : `${tSub.remaining.toLocaleString('fr-FR')} F`}
+                              </span>
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate mt-0.5">{tSub.route_name}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })()}
 
                 <div className="pt-2">
                   <a
