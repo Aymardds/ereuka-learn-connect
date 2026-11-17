@@ -3,7 +3,7 @@ import {
   X, Printer, User, Award, FileText, HeartPulse, ShieldAlert,
   Calendar, Phone, Mail, MapPin, CheckCircle2, AlertTriangle, 
   Stethoscope, Clock, QrCode, RefreshCw, Edit3, Save, Activity,
-  GraduationCap, Building2, Share2, Sparkles, AlertCircle
+  GraduationCap, Building2, Share2, Sparkles, AlertCircle, UtensilsCrossed
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -23,7 +23,7 @@ interface Props {
   onOpenChange: (open: boolean) => void;
 }
 
-type TabType = 'carte' | 'bulletin' | 'fiche' | 'attestation' | 'sante';
+type TabType = 'carte' | 'bulletin' | 'fiche' | 'attestation' | 'sante' | 'cantine';
 
 export function StudentDossierDialog({ student, open, onOpenChange }: Props) {
   const { profile } = useAuth();
@@ -233,6 +233,42 @@ export function StudentDossierDialog({ student, open, onOpenChange }: Props) {
 
   const mention = getMention(overallAvg);
   const isDoctorOrAdmin = ['admin', 'director', 'doctor', 'medecin', 'superadmin'].includes(profile?.role || '');
+  const isCanteenAuthorized = ['admin', 'director', 'superadmin', 'accountant', 'cashier', 'parent', 'responsible'].includes(profile?.role || '');
+
+  // Canteen subscription & today attendance queries
+  const { data: studentCanteenSub } = useQuery({
+    queryKey: ['canteen_student_sub', student?.id, student?.tenant_id],
+    queryFn: async () => {
+      if (!student?.id || !student?.tenant_id) return null;
+      const { data, error } = await supabase
+        .from('canteen_subscriptions')
+        .select('*')
+        .eq('student_id', student.id)
+        .eq('tenant_id', student.tenant_id)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!student?.id && isCanteenAuthorized,
+  });
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const { data: studentTodayAttendance } = useQuery({
+    queryKey: ['canteen_student_att', student?.id, todayStr],
+    queryFn: async () => {
+      if (!student?.id || !student?.tenant_id) return null;
+      const { data, error } = await supabase
+        .from('canteen_attendance')
+        .select('*')
+        .eq('student_id', student.id)
+        .eq('tenant_id', student.tenant_id)
+        .eq('date', todayStr)
+        .maybeSingle();
+      if (error) return null;
+      return data;
+    },
+    enabled: !!student?.id && isCanteenAuthorized,
+  });
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -269,7 +305,7 @@ export function StudentDossierDialog({ student, open, onOpenChange }: Props) {
           </div>
         </div>
 
-        {/* 5-TAB SELECTOR NAVIGATION */}
+        {/* 6-TAB SELECTOR NAVIGATION */}
         <div className="flex items-center gap-1 px-4 py-2 bg-slate-50 border-b border-slate-200 overflow-x-auto shrink-0">
           {[
             { id: 'carte' as const, label: "🪪 Carte d'Élève", icon: QrCode },
@@ -277,6 +313,7 @@ export function StudentDossierDialog({ student, open, onOpenChange }: Props) {
             { id: 'fiche' as const, label: "👤 Fiche Individuelle", icon: User },
             { id: 'attestation' as const, label: "📜 Attestation Scolarité", icon: FileText },
             { id: 'sante' as const, label: "🩺 Dossier Santé", icon: HeartPulse },
+            ...(isCanteenAuthorized ? [{ id: 'cantine' as const, label: "🍽️ Cantine Scolaire", icon: UtensilsCrossed }] : []),
           ].map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -1110,6 +1147,114 @@ export function StudentDossierDialog({ student, open, onOpenChange }: Props) {
                 )}
               </div>
 
+            </div>
+          )}
+
+          {/* ========================================================= */}
+          {/* TAB 6: CANTINE & RESTAURATION SCOLAIRE                    */}
+          {/* ========================================================= */}
+          {activeTab === 'cantine' && (
+            <div className="space-y-6 max-w-3xl mx-auto">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold text-slate-800 flex items-center gap-2">
+                    <UtensilsCrossed className="w-5 h-5 text-amber-700" />
+                    Restauration & Cantine Scolaire
+                  </h3>
+                  <p className="text-xs text-slate-500">
+                    Abonnement repas, suivi financier, régime alimentaire et pointage réfectoire
+                  </p>
+                </div>
+                <span className="text-[11px] font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 border border-amber-200">
+                  Confidentiel • Admin / Intendance / Famille
+                </span>
+              </div>
+
+              {/* Status Card */}
+              <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm space-y-4">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-xl bg-amber-500/10 text-amber-700 flex items-center justify-center font-bold text-xl">
+                      🍽️
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-base text-slate-900">
+                        {studentCanteenSub?.plan_name || "Formule Demi-Pension Standard"}
+                      </h4>
+                      <p className="text-xs text-slate-500">
+                        {studentCanteenSub ? `Inscrit le ${studentCanteenSub.registered_at}` : "Abonnement de l'établissement"}
+                      </p>
+                    </div>
+                  </div>
+
+                  <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+                    studentCanteenSub?.status === 'paid' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                    studentCanteenSub?.status === 'partial' ? 'bg-blue-100 text-blue-800 border border-blue-200' :
+                    studentCanteenSub?.status === 'pending' ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                    'bg-slate-100 text-slate-700 border border-slate-200'
+                  }`}>
+                    {studentCanteenSub?.status === 'paid' ? 'Soldé ✓' :
+                     studentCanteenSub?.status === 'partial' ? 'Paiement partiel' :
+                     studentCanteenSub?.status === 'pending' ? 'Impayé / En attente' : 'Inscrit'}
+                  </span>
+                </div>
+
+                {/* Financial overview */}
+                <div className="grid grid-cols-3 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200 text-xs">
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase block">Montant Forfait</span>
+                    <span className="font-mono font-bold text-slate-800 text-sm">
+                      {(studentCanteenSub?.amount_due || 25000).toLocaleString('fr-FR')} FCFA
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase block">Déjà Réglé</span>
+                    <span className="font-mono font-bold text-emerald-600 text-sm">
+                      {(studentCanteenSub?.amount_paid || 0).toLocaleString('fr-FR')} FCFA
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-slate-500 font-semibold uppercase block">Solde Restant</span>
+                    <span className="font-mono font-bold text-amber-700 text-sm">
+                      {(studentCanteenSub?.remaining !== undefined ? studentCanteenSub.remaining : 25000).toLocaleString('fr-FR')} FCFA
+                    </span>
+                  </div>
+                </div>
+
+                {/* Meal Check-in today */}
+                <div className="p-3.5 rounded-xl border border-slate-200 bg-white flex items-center justify-between text-xs">
+                  <div className="flex items-center gap-2.5">
+                    <Clock className="w-4 h-4 text-slate-400" />
+                    <div>
+                      <span className="font-bold text-slate-800 block">Service du Midi Aujourd'hui</span>
+                      <span className="text-[11px] text-slate-500">Pointage au réfectoire de l'établissement</span>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                    studentTodayAttendance?.checked_in
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                      : 'bg-slate-100 text-slate-600 border border-slate-200'
+                  }`}>
+                    {studentTodayAttendance?.checked_in ? '✓ Présent au réfectoire' : 'Non pointé ce jour'}
+                  </span>
+                </div>
+
+                {/* Dietary restrictions & Allergies */}
+                <div className="p-3.5 rounded-xl border border-amber-200 bg-amber-50/50 space-y-1 text-xs text-amber-900">
+                  <div className="font-bold flex items-center gap-1.5">
+                    <span>⚠️ Régime alimentaire & Allergies</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed">
+                    {studentCanteenSub?.dietary_notes || student.allergies || "Aucune restriction ou allergie alimentaire signalée."}
+                  </p>
+                </div>
+
+                {/* Contact information for lunch service */}
+                <div className="pt-2 flex items-center justify-between text-[11px] text-slate-500 border-t border-slate-100">
+                  <span>Contact parent : {guardianName} ({guardianPhone})</span>
+                  <span>Établissement : {schoolName}</span>
+                </div>
+              </div>
             </div>
           )}
 

@@ -115,81 +115,30 @@ const DEFAULT_WEEKLY_MENUS: DailyMenu[] = [
   { id: 'm_5', day: 'Vendredi', date_label: 'Vendredi', starter: 'Salade composée maïs & thon', main_dish: 'Plat de frites fraîches & brochettes de bœuf grillées', dessert: 'Crème caramel vanillée', snack: 'Crêpes au miel ou chocolat' },
 ];
 
-const DEFAULT_CANTINE_SUBSCRIBERS: CantineSubscriber[] = [
-  { id: 'cs_1', student_id: 'st_1', student_name: 'Kouassi Aïcha', student_code: 'ERK-2025-0142', class_name: 'Tle S', parent_name: 'M. Kouassi Jean', parent_phone: '+225 07 48 12 34 56', plan_id: 'cp_1', plan_name: 'Forfait Mensuel Complet', amount_due: 25000, amount_paid: 25000, remaining: 0, status: 'paid', dietary_notes: 'Sans arachide', is_active: true, registered_at: '2025-09-15' },
-  { id: 'cs_2', student_id: 'st_2', student_name: 'Traoré Moussa', student_code: 'ERK-2025-0087', class_name: 'Tle S', parent_name: 'Mme Traoré Fatou', parent_phone: '+225 05 12 89 76 43', plan_id: 'cp_2', plan_name: 'Forfait Trimestriel', amount_due: 68000, amount_paid: 35000, remaining: 33000, status: 'partial', is_active: true, registered_at: '2025-09-16' },
-  { id: 'cs_3', student_id: 'st_3', student_name: 'Diallo Fatoumata', student_code: 'ERK-2025-0231', class_name: '3ème 2', parent_name: 'Dr. Diallo Mamadou', parent_phone: '+225 01 77 44 22 11', plan_id: 'cp_1', plan_name: 'Forfait Mensuel Complet', amount_due: 25000, amount_paid: 25000, remaining: 0, status: 'paid', is_active: true, registered_at: '2025-09-20' },
-  { id: 'cs_4', student_id: 'st_4', student_name: 'Ouédraogo Salimata', student_code: 'ERK-2025-0322', class_name: 'CM2 A', parent_name: 'Mme Ouédraogo Alice', parent_phone: '+225 07 88 55 33 22', plan_id: 'cp_1', plan_name: 'Forfait Mensuel Complet', amount_due: 25000, amount_paid: 0, remaining: 25000, status: 'pending', dietary_notes: 'Végétarienne le vendredi', is_active: true, registered_at: '2025-10-01' },
-  { id: 'cs_5', student_id: 'st_5', student_name: 'Sy Awa', student_code: 'ERK-2025-0505', class_name: 'CP1 A', parent_name: 'M. Sy Ousmane', parent_phone: '+225 05 66 99 88 77', plan_id: 'cp_3', plan_name: 'Demi-Forfait (3 jours/semaine)', amount_due: 18000, amount_paid: 18000, remaining: 0, status: 'paid', is_active: true, registered_at: '2025-09-22' },
-];
+const DEFAULT_CANTINE_SUBSCRIBERS: CantineSubscriber[] = [];
 
 const DEFAULT_TRANSPORT_ROUTES: TransportRoute[] = [
   {
     id: 'tr_1',
-    name: 'Circuit 1 — Riviera / Cocody / Faya',
+    name: 'Circuit 1 — Ligne Nord',
     code: 'LIGNE-1',
-    driver_name: 'Koffi Germain',
-    driver_phone: '+225 07 09 88 77 66',
-    vehicle_plate: '4589-KJ-01',
+    driver_name: 'Chauffeur Établissement',
+    driver_phone: '+225 07 00 00 00 00',
+    vehicle_plate: 'CI-01-BUS',
     vehicle_capacity: 32,
-    stops_count: 5,
+    stops_count: 3,
     stops: [
-      { name: 'Palmeraie Rond-point Ado', morning_time: '06:40', evening_time: '17:15' },
-      { name: 'Riviera 2 Sainte Famille', morning_time: '06:55', evening_time: '17:00' },
-      { name: 'Carrefour Faya Nouveau Goudron', morning_time: '07:10', evening_time: '16:45' },
-      { name: 'Abatta Village Cité Sir', morning_time: '07:25', evening_time: '16:30' },
-      { name: 'Arrivée Établissement', morning_time: '07:45', evening_time: '16:15' },
-    ],
-    monthly_rate_cfa: 25000,
-  },
-  {
-    id: 'tr_2',
-    name: 'Circuit 2 — Yopougon / Niangon / Toit-Rouge',
-    code: 'LIGNE-2',
-    driver_name: 'Bamba Souleymane',
-    driver_phone: '+225 05 44 33 22 11',
-    vehicle_plate: '8912-HM-01',
-    vehicle_capacity: 28,
-    stops_count: 4,
-    stops: [
-      { name: 'Niangon Sud Pharmacie Concorde', morning_time: '06:30', evening_time: '17:30' },
-      { name: 'Yopougon Siporex', morning_time: '06:50', evening_time: '17:10' },
-      { name: 'Toit-Rouge Carrefour Lubafrique', morning_time: '07:10', evening_time: '16:50' },
-      { name: 'Arrivée Établissement', morning_time: '07:40', evening_time: '16:20' },
-    ],
-    monthly_rate_cfa: 28000,
-  },
-  {
-    id: 'tr_3',
-    name: 'Circuit 3 — Marcory / Koumassi / Zone 4',
-    code: 'LIGNE-3',
-    driver_name: 'Diarra Moussa',
-    driver_phone: '+225 01 22 33 44 55',
-    vehicle_plate: '1245-LL-01',
-    vehicle_capacity: 30,
-    stops_count: 4,
-    stops: [
-      { name: 'Koumassi Grand Carrefour', morning_time: '06:45', evening_time: '17:20' },
-      { name: 'Marcory Résidentiel Église Ste Thérèse', morning_time: '07:05', evening_time: '17:00' },
-      { name: 'Zone 4 Rue du Canal', morning_time: '07:20', evening_time: '16:45' },
-      { name: 'Arrivée Établissement', morning_time: '07:45', evening_time: '16:15' },
+      { name: 'Arrêt 1', morning_time: '06:40', evening_time: '17:15' },
+      { name: 'Arrêt 2', morning_time: '07:00', evening_time: '17:00' },
+      { name: 'Arrivée Établissement', morning_time: '07:30', evening_time: '16:30' },
     ],
     monthly_rate_cfa: 25000,
   },
 ];
 
-const DEFAULT_TRANSPORT_SUBSCRIBERS: TransportSubscriber[] = [
-  { id: 'ts_1', student_id: 'st_1', student_name: 'Kouassi Aïcha', student_code: 'ERK-2025-0142', class_name: 'Tle S', parent_name: 'M. Kouassi Jean', parent_phone: '+225 07 48 12 34 56', route_id: 'tr_1', route_name: 'Circuit 1 — Riviera / Cocody / Faya', pickup_stop: 'Palmeraie Rond-point Ado', trip_type: 'round_trip', amount_due: 25000, amount_paid: 25000, remaining: 0, status: 'paid', is_active: true, registered_at: '2025-09-15' },
-  { id: 'ts_2', student_id: 'st_3', student_name: 'Diallo Fatoumata', student_code: 'ERK-2025-0231', class_name: '3ème 2', parent_name: 'Dr. Diallo Mamadou', parent_phone: '+225 01 77 44 22 11', route_id: 'tr_1', route_name: 'Circuit 1 — Riviera / Cocody / Faya', pickup_stop: 'Carrefour Faya Nouveau Goudron', trip_type: 'round_trip', amount_due: 25000, amount_paid: 15000, remaining: 10000, status: 'partial', is_active: true, registered_at: '2025-09-20' },
-  { id: 'ts_3', student_id: 'st_4', student_name: 'Ouédraogo Salimata', student_code: 'ERK-2025-0322', class_name: 'CM2 A', parent_name: 'Mme Ouédraogo Alice', parent_phone: '+225 07 88 55 33 22', route_id: 'tr_2', route_name: 'Circuit 2 — Yopougon / Niangon / Toit-Rouge', pickup_stop: 'Yopougon Siporex', trip_type: 'round_trip', amount_due: 28000, amount_paid: 0, remaining: 28000, status: 'pending', is_active: true, registered_at: '2025-10-01' },
-  { id: 'ts_4', student_id: 'st_5', student_name: 'Sy Awa', student_code: 'ERK-2025-0505', class_name: 'CP1 A', parent_name: 'M. Sy Ousmane', parent_phone: '+225 05 66 99 88 77', route_id: 'tr_3', route_name: 'Circuit 3 — Marcory / Koumassi / Zone 4', pickup_stop: 'Marcory Résidentiel', trip_type: 'round_trip', amount_due: 25000, amount_paid: 25000, remaining: 0, status: 'paid', is_active: true, registered_at: '2025-09-22' },
-];
+const DEFAULT_TRANSPORT_SUBSCRIBERS: TransportSubscriber[] = [];
 
-const DEFAULT_VEHICLES: Vehicle[] = [
-  { id: 'v_1', plate_number: '4589-KJ-01', model: 'Toyota Coaster (Climatisé)', capacity: 32, driver_name: 'Koffi Germain', driver_phone: '+225 07 09 88 77 66', insurance_expiry: '2026-08-30', status: 'operational' },
-  { id: 'v_2', plate_number: '8912-HM-01', model: 'Hyundai County (Climatisé)', capacity: 28, driver_name: 'Bamba Souleymane', driver_phone: '+225 05 44 33 22 11', insurance_expiry: '2026-09-15', status: 'operational' },
-  { id: 'v_3', plate_number: '1245-LL-01', model: 'Mercedes-Benz Sprinter 516', capacity: 30, driver_name: 'Diarra Moussa', driver_phone: '+225 01 22 33 44 55', insurance_expiry: '2026-11-20', status: 'operational' },
-];
+const DEFAULT_VEHICLES: Vehicle[] = [];
 
 export function useServices() {
   const { profile } = useAuth();
@@ -237,13 +186,86 @@ export function useServices() {
   );
 
   const [mealAttendance, setMealAttendance] = useState<Record<string, boolean>>(() =>
-    getStored(ATTENDANCE_KEY, {
-      'st_1': true,
-      'st_2': true,
-      'st_3': true,
-      'st_5': true,
-    })
+    getStored(ATTENDANCE_KEY, {})
   );
+
+  // ── CHARGEMENT DEPUIS SUPABASE (SI DISPONIBLE) ─────────────
+  useEffect(() => {
+    if (!tenantId || tenantId === 'default_tenant') return;
+
+    // Charger les abonnés réels depuis Supabase
+    const fetchSupabaseData = async () => {
+      try {
+        const { data: dbSubs, error: subsErr } = await supabase
+          .from('canteen_subscriptions')
+          .select(`
+            *,
+            students (
+              id,
+              first_name,
+              last_name,
+              student_code,
+              guardian_name,
+              guardian_phone,
+              classes (name)
+            )
+          `)
+          .eq('tenant_id', tenantId);
+
+        if (!subsErr && dbSubs && dbSubs.length > 0) {
+          const formatted: CantineSubscriber[] = dbSubs.map((item: any) => ({
+            id: item.id,
+            student_id: item.student_id,
+            student_name: item.students ? `${item.students.first_name} ${item.students.last_name}` : 'Élève',
+            student_code: item.students?.student_code || 'ERK-MAT',
+            class_name: item.students?.classes?.name || 'Sans classe',
+            parent_name: item.students?.guardian_name || 'Parent d\'élève',
+            parent_phone: item.students?.guardian_phone || '',
+            plan_id: item.plan_id || '',
+            plan_name: item.plan_name || 'Formule Cantine',
+            amount_due: Number(item.amount_due) || 0,
+            amount_paid: Number(item.amount_paid) || 0,
+            remaining: Number(item.remaining) || 0,
+            status: item.status || 'pending',
+            dietary_notes: item.dietary_notes || '',
+            is_active: item.is_active ?? true,
+            registered_at: item.registered_at || new Date().toISOString().split('T')[0],
+          }));
+          setCantineSubscribers(formatted);
+        }
+
+        // Charger les menus depuis Supabase si configurés
+        const { data: dbMenus, error: menuErr } = await supabase
+          .from('canteen_menus')
+          .select('*')
+          .eq('tenant_id', tenantId);
+
+        if (!menuErr && dbMenus && dbMenus.length > 0) {
+          setWeeklyMenus(dbMenus as any);
+        }
+
+        // Charger le pointage repas du jour
+        const todayStr = new Date().toISOString().split('T')[0];
+        const { data: dbAtt, error: attErr } = await supabase
+          .from('canteen_attendance')
+          .select('student_id, checked_in')
+          .eq('tenant_id', tenantId)
+          .eq('date', todayStr);
+
+        if (!attErr && dbAtt && dbAtt.length > 0) {
+          const attMap: Record<string, boolean> = {};
+          dbAtt.forEach((a: any) => {
+            attMap[a.student_id] = !!a.checked_in;
+          });
+          setMealAttendance(attMap);
+        }
+      } catch (err) {
+        console.warn("Could not fetch canteen data from Supabase, using local fallback", err);
+      }
+    };
+
+    fetchSupabaseData();
+  }, [tenantId]);
 
   // ── 2. ÉTAT TRANSPORT ──────────────────────────────────────────────────────
   const [transportRoutes, setTransportRoutes] = useState<TransportRoute[]>(() =>
@@ -298,6 +320,25 @@ export function useServices() {
       registered_at: new Date().toISOString().split('T')[0],
     };
     setCantineSubscribers(prev => [sub, ...prev]);
+
+    // Sauvegarde Supabase
+    if (tenantId && tenantId !== 'default_tenant') {
+      supabase.from('canteen_subscriptions').upsert([{
+        tenant_id: tenantId,
+        student_id: newSub.student_id,
+        plan_name: plan.name,
+        amount_due: plan.price_cfa,
+        amount_paid: 0,
+        remaining: plan.price_cfa,
+        status: 'pending',
+        dietary_notes: newSub.dietary_notes || null,
+        is_active: true,
+        registered_at: new Date().toISOString().split('T')[0],
+      }]).then(({ error }) => {
+        if (error) console.warn("Could not save subscriber to Supabase", error);
+      });
+    }
+
     toast.success(`Élève ${sub.student_name} inscrit à la cantine (${plan.name})`);
     return sub;
   };
@@ -316,10 +357,23 @@ export function useServices() {
       };
     }));
 
-    // Inscription du paiement en caisse dans Supabase student_payments
+    // Inscription du paiement en caisse dans Supabase student_payments et mise à jour de la souscription
     try {
       const sub = cantineSubscribers.find(s => s.id === subscriberId);
       if (sub && tenantId) {
+        const newPaid = sub.amount_paid + amount;
+        const newRemaining = Math.max(0, sub.amount_due - newPaid);
+        const newStatus = newRemaining === 0 ? 'paid' : (newPaid > 0 ? 'partial' : 'pending');
+
+        await supabase.from('canteen_subscriptions')
+          .update({
+            amount_paid: newPaid,
+            remaining: newRemaining,
+            status: newStatus,
+          })
+          .eq('tenant_id', tenantId)
+          .eq('student_id', sub.student_id);
+
         const receiptNumber = `REC-CANT-${Date.now().toString().slice(-5)}`;
         await supabase.from('student_payments').insert([{
           tenant_id: tenantId,
@@ -344,14 +398,43 @@ export function useServices() {
 
   const toggleMealAttendance = (studentId: string) => {
     setMealAttendance(prev => {
-      const next = { ...prev, [studentId]: !prev[studentId] };
-      toast.success(next[studentId] ? "Élève pointé présent au réfectoire" : "Pointage retiré");
+      const nextState = !prev[studentId];
+      const next = { ...prev, [studentId]: nextState };
+
+      if (tenantId && tenantId !== 'default_tenant') {
+        const todayStr = new Date().toISOString().split('T')[0];
+        supabase.from('canteen_attendance').upsert([{
+          tenant_id: tenantId,
+          student_id: studentId,
+          date: todayStr,
+          checked_in: nextState,
+        }]).then(({ error }) => {
+          if (error) console.warn("Could not save canteen attendance", error);
+        });
+      }
+
+      toast.success(nextState ? "Élève pointé présent au réfectoire" : "Pointage retiré");
       return next;
     });
   };
 
   const updateMenu = (updatedMenu: DailyMenu) => {
     setWeeklyMenus(prev => prev.map(m => m.id === updatedMenu.id ? updatedMenu : m));
+
+    if (tenantId && tenantId !== 'default_tenant') {
+      supabase.from('canteen_menus').upsert([{
+        tenant_id: tenantId,
+        day: updatedMenu.day,
+        date_label: updatedMenu.date_label,
+        starter: updatedMenu.starter,
+        main_dish: updatedMenu.main_dish,
+        dessert: updatedMenu.dessert,
+        snack: updatedMenu.snack,
+      }]).then(({ error }) => {
+        if (error) console.warn("Could not save canteen menu", error);
+      });
+    }
+
     toast.success(`Menu du ${updatedMenu.day} mis à jour`);
   };
 

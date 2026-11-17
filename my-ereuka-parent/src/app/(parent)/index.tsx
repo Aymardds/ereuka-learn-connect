@@ -252,6 +252,41 @@ export default function ParentHome() {
           </TouchableOpacity>
         </View>
 
+        {/* Canteen & Meals Family Service Banner */}
+        <TouchableOpacity
+          style={[
+            Shadows.sm,
+            {
+              backgroundColor: '#FFFBEB',
+              borderColor: '#FDE68A',
+              borderWidth: 1,
+              borderRadius: Radius.lg,
+              padding: Spacing.md,
+              marginBottom: Spacing.md,
+              flexDirection: 'row',
+              alignItems: 'center',
+              gap: Spacing.md,
+            }
+          ]}
+          onPress={() => children.length > 0 && openFullDossier(children[0])}
+          activeOpacity={0.8}
+        >
+          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
+            <Ionicons name="restaurant" size={22} color="#D97706" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>Restauration & Cantine Scolaire</Text>
+              <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>Dossier repas →</Text>
+            </View>
+            <Text style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>
+              {children.length > 0
+                ? `Formules et repas servis pour ${children.map(c => c.first_name).join(', ')}`
+                : 'Consultez les menus de la semaine et formules demi-pension'}
+            </Text>
+          </View>
+        </TouchableOpacity>
+
         {/* Children Section */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionTitle}>Mes Enfants ({children.length})</Text>

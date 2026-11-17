@@ -66,7 +66,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     to: "/cantine", 
     label: "Cantine Scolaire", 
     icon: UtensilsCrossed, 
-    roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent', 'teacher'],
+    roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'],
     badge: "Service",
     getDynamicLabel: (info) => info.isUniversityOnly ? "Restaurant Campus" : "Cantine Scolaire",
   },

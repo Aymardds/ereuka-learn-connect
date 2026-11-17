@@ -1,5 +1,5 @@
-import { createFileRoute } from '@tanstack/react-router';
-import { useState } from 'react';
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { useState, useMemo } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useServices, CantineSubscriber, DailyMenu } from '@/hooks/useServices';
 import { useStudents } from '@/hooks/useStudents';
@@ -9,7 +9,8 @@ import {
   UtensilsCrossed, Calendar, CheckCircle2, Clock, Users,
   Plus, Search, Filter, DollarSign, AlertCircle, ChefHat,
   Sparkles, Check, X, ArrowRight, Printer, Download, Banknote,
-  Receipt, Coffee, Salad, Apple, Trash2, RefreshCw, CalendarDays
+  Receipt, Coffee, Salad, Apple, Trash2, RefreshCw, CalendarDays,
+  ShieldAlert, ExternalLink
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,28 @@ export function CantinePage() {
   const { students } = useStudents();
   const { classes } = useClasses();
 
+  // ── SÉCURITÉ & RESTRICTION PAR RÔLE ────────────────────────
+  // Seuls les Admins, Comptables et Parents d'élèves ont accès à la cantine
+  const userRole = profile?.role || '';
+  const isAdmin = ['admin', 'director', 'superadmin'].includes(userRole);
+  const isAccountant = ['accountant', 'cashier'].includes(userRole);
+  const isParent = ['parent', 'responsible'].includes(userRole);
+  const isAuthorized = isAdmin || isAccountant || isParent;
+
+  // Filtrage des enfants rattachés pour le rôle parent
+  const myChildren = useMemo(() => {
+    if (!isParent) return [];
+    return students.filter((s: any) => {
+      const emailMatch = profile?.email && s.guardian_email && s.guardian_email.toLowerCase() === profile.email.toLowerCase();
+      const phoneMatch = profile?.phone && s.guardian_phone && s.guardian_phone.replace(/\s+/g, '').includes(profile.phone.replace(/\s+/g, ''));
+      const userMatch = s.user_id === profile?.id;
+      const nameMatch = profile?.full_name && s.guardian_name && s.guardian_name.toLowerCase().includes(profile.full_name.toLowerCase());
+      return emailMatch || phoneMatch || userMatch || nameMatch;
+    });
+  }, [students, profile, isParent]);
+
+  const myChildrenIds = useMemo(() => new Set(myChildren.map((c: any) => c.id)), [myChildren]);
+
   // Filtres
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'paid' | 'partial' | 'pending'>('all');
@@ -79,6 +102,11 @@ export function CantinePage() {
 
   // Filtrage des abonnés
   const filteredSubscribers = cantineSubscribers.filter(sub => {
+    // Si c'est un parent, filtrer UNIQUEMENT ses propres enfants
+    if (isParent && !myChildrenIds.has(sub.student_id)) {
+      return false;
+    }
+
     const matchesSearch =
       sub.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       sub.class_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -89,6 +117,34 @@ export function CantinePage() {
     return matchesSearch && matchesStatus;
   });
 
+  // Si l'utilisateur n'est pas autorisé (ex: enseignant, médecin, élève)
+  if (!isAuthorized) {
+    return (
+      <AppShell
+        title="Restauration & Cantine Scolaire"
+        subtitle="Accès réservé"
+      >
+        <div className="max-w-xl mx-auto my-16 p-8 bg-card border border-border rounded-2xl shadow-sm text-center space-y-4">
+          <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto shadow-inner">
+            <ShieldAlert className="w-8 h-8" />
+          </div>
+          <h2 className="text-xl font-bold text-foreground">Accès Restreint</h2>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Les données et la gestion de la restauration scolaire sont confidentielles et strictement réservées à la <strong>direction</strong>, au <strong>service comptabilité / intendance</strong> et aux <strong>parents d'élèves</strong>.
+          </p>
+          <div className="pt-2">
+            <Link
+              to="/"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-primary-foreground font-bold text-xs hover:bg-primary/90 transition-colors"
+            >
+              Retour au tableau de bord
+            </Link>
+          </div>
+        </div>
+      </AppShell>
+    );
+  }
+
   const handleRegisterSubscriber = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newSubStudentId) {
@@ -96,7 +152,7 @@ export function CantinePage() {
       return;
     }
 
-    const st = students.find(s => s.id === newSubStudentId);
+    const st = students.find((s: any) => s.id === newSubStudentId);
     if (!st) {
       toast.error("Élève introuvable");
       return;
@@ -164,130 +220,281 @@ export function CantinePage() {
 
   return (
     <AppShell
-      title="Restauration & Cantine Scolaire"
-      subtitle="Gestion des forfaits repas, menus hebdomadaires, abonnements élèves et encaissements"
+      title={isParent ? "Restauration & Cantine • Espace Famille" : "Restauration & Cantine Scolaire"}
+      subtitle={
+        isParent
+          ? "Menus de la semaine, forfaits repas et pointage réfectoire de vos enfants"
+          : isAccountant
+          ? "Gestion comptable, encaissements cantine et suivi financier des abonnés"
+          : "Gestion des forfaits repas, menus hebdomadaires, abonnements élèves et encaissements"
+      }
       actions={
         <div className="flex items-center gap-2">
-          <Button
-            onClick={() => setIsNewSubscriberOpen(true)}
-            className="gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> Inscrire à la cantine
-          </Button>
+          {isParent ? (
+            <Button
+              onClick={() => setIsPrintMenuOpen(true)}
+              variant="outline"
+              className="gap-2 text-xs font-bold border-amber-300 text-amber-900 hover:bg-amber-50"
+            >
+              <Printer className="w-4 h-4" /> Imprimer les menus
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setIsNewSubscriberOpen(true)}
+              className="gap-2 bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> Inscrire à la cantine
+            </Button>
+          )}
         </div>
       }
     >
       <div className="space-y-6">
 
-        {/* ── BANDEAU KPI ── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Abonnés Actifs</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
-                <Users className="w-4 h-4" />
+        {/* ── BANDEAU KPI ADAPTÉ AU RÔLE ── */}
+        {isParent ? (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Mes Enfants Inscrits</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                  <Users className="w-4 h-4" />
+                </div>
               </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-foreground">
+                {cantineSubscribers.filter(s => myChildrenIds.has(s.student_id)).length}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Sur {myChildren.length} enfant{myChildren.length > 1 ? 's' : ''} rattaché{myChildren.length > 1 ? 's' : ''}
+              </p>
             </div>
-            <div className="font-display text-2xl sm:text-3xl font-black text-foreground">
-              {cantineStats.totalSubscribers}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Élèves inscrits au réfectoire</p>
-          </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Repas Servis Aujourd'hui</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
-                <ChefHat className="w-4 h-4" />
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Repas Aujourd'hui</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                  <ChefHat className="w-4 h-4" />
+                </div>
               </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-emerald-600">
+                {cantineSubscribers.filter(s => myChildrenIds.has(s.student_id) && mealAttendance[s.student_id]).length}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Pointage réfectoire ce midi</p>
             </div>
-            <div className="font-display text-2xl sm:text-3xl font-black text-emerald-600">
-              {cantineStats.todayPresent}
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Pointages réfectoire validés</p>
-          </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Recettes Encaissées</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-100 text-cyan-800">
-                <Banknote className="w-4 h-4" />
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Reste à Régler</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-800">
+                  <DollarSign className="w-4 h-4" />
+                </div>
               </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-amber-700">
+                {cantineSubscribers.filter(s => myChildrenIds.has(s.student_id)).reduce((acc, s) => acc + s.remaining, 0).toLocaleString('fr-FR')} <span className="text-xs text-muted-foreground font-normal">FCFA</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Solde cantine famille</p>
             </div>
-            <div className="font-display text-2xl sm:text-3xl font-black text-foreground">
-              {cantineStats.totalRevenue.toLocaleString('fr-FR')} <span className="text-xs text-muted-foreground font-normal">FCFA</span>
-            </div>
-            <p className="text-[11px] text-muted-foreground mt-1">Total payé par les familles</p>
           </div>
+        ) : (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Abonnés Actifs</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-100 text-amber-800">
+                  <Users className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-foreground">
+                {cantineStats.totalSubscribers}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Élèves inscrits au réfectoire</p>
+            </div>
 
-          <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
-            <div className="flex items-center justify-between text-muted-foreground mb-2">
-              <span className="text-xs font-semibold uppercase tracking-wider">Taux de Recouvrement</span>
-              <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-800">
-                <DollarSign className="w-4 h-4" />
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Repas Servis Aujourd'hui</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-emerald-100 text-emerald-800">
+                  <ChefHat className="w-4 h-4" />
+                </div>
               </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-emerald-600">
+                {cantineStats.todayPresent}
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Pointages réfectoire validés</p>
             </div>
-            <div className="font-display text-2xl sm:text-3xl font-black text-amber-700">
-              {cantineStats.recoveryRate} %
+
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Recettes Encaissées</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-cyan-100 text-cyan-800">
+                  <Banknote className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-foreground">
+                {cantineStats.totalRevenue.toLocaleString('fr-FR')} <span className="text-xs text-muted-foreground font-normal">FCFA</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">Total payé par les familles</p>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Reste à recouvrer : {cantineStats.totalRemaining.toLocaleString('fr-FR')} F
-            </p>
+
+            <div className="rounded-2xl border border-border bg-card p-4 sm:p-5 shadow-xs">
+              <div className="flex items-center justify-between text-muted-foreground mb-2">
+                <span className="text-xs font-semibold uppercase tracking-wider">Taux de Recouvrement</span>
+                <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-purple-100 text-purple-800">
+                  <DollarSign className="w-4 h-4" />
+                </div>
+              </div>
+              <div className="font-display text-2xl sm:text-3xl font-black text-amber-700">
+                {cantineStats.recoveryRate} %
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Reste à recouvrer : {cantineStats.totalRemaining.toLocaleString('fr-FR')} F
+              </p>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* ── ONGLETS DE GESTION ── */}
         <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
           <div className="flex items-center justify-between flex-wrap gap-4 border-b border-border pb-3">
             <TabsList className="bg-muted/70 p-1 rounded-xl">
               <TabsTrigger value="subscribers" className="gap-2 text-xs font-bold py-1.5 px-3">
-                <Users className="w-3.5 h-3.5" /> Abonnés & Facturation ({cantineSubscribers.length})
+                <Users className="w-3.5 h-3.5" />
+                {isParent
+                  ? `Mes Enfants (${cantineSubscribers.filter(s => myChildrenIds.has(s.student_id)).length})`
+                  : `Abonnés & Facturation (${cantineSubscribers.length})`
+                }
               </TabsTrigger>
               <TabsTrigger value="menus" className="gap-2 text-xs font-bold py-1.5 px-3">
                 <UtensilsCrossed className="w-3.5 h-3.5" /> Menus de la Semaine
               </TabsTrigger>
-              <TabsTrigger value="attendance" className="gap-2 text-xs font-bold py-1.5 px-3">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Pointage du Jour ({cantineStats.todayPresent}/{cantineStats.totalSubscribers})
-              </TabsTrigger>
-              <TabsTrigger value="plans" className="gap-2 text-xs font-bold py-1.5 px-3">
-                <DollarSign className="w-3.5 h-3.5" /> Formules & Tarifs
-              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="attendance" className="gap-2 text-xs font-bold py-1.5 px-3">
+                  <CheckCircle2 className="w-3.5 h-3.5" /> Pointage du Jour ({cantineStats.todayPresent}/{cantineStats.totalSubscribers})
+                </TabsTrigger>
+              )}
+              {!isParent && (
+                <TabsTrigger value="plans" className="gap-2 text-xs font-bold py-1.5 px-3">
+                  <DollarSign className="w-3.5 h-3.5" /> Formules & Tarifs
+                </TabsTrigger>
+              )}
             </TabsList>
           </div>
 
-          {/* ── TAB 1 : ABONNÉS & FACTURATION ── */}
+          {/* ── TAB 1 : ABONNÉS & FACTURATION / VUE FAMILLE ── */}
           <TabsContent value="subscribers" className="mt-6 space-y-4">
             
-            {/* Barre de recherche et filtre */}
-            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-card p-3 rounded-2xl border border-border">
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Rechercher par élève, classe, matricule, parent..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9 text-xs"
-                />
-              </div>
+            {isParent ? (
+              /* VUE FAMILLE POUR LES PARENTS D'ÉLÈVES */
+              <div className="space-y-4">
+                {filteredSubscribers.length === 0 ? (
+                  <div className="rounded-2xl border border-dashed border-border bg-card p-10 text-center space-y-3">
+                    <div className="w-16 h-16 rounded-2xl bg-amber-100 text-amber-800 flex items-center justify-center mx-auto">
+                      <UtensilsCrossed className="w-8 h-8" />
+                    </div>
+                    <h4 className="font-bold text-foreground text-base">Aucun forfait cantine actif</h4>
+                    <p className="text-xs text-muted-foreground max-w-md mx-auto leading-relaxed">
+                      Aucun de vos enfants n'a pour le moment de forfait repas enregistré. Contactez l'administration ou le service intendance de l'établissement pour inscrire votre enfant à la demi-pension.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {filteredSubscribers.map((sub) => {
+                      const isPresentToday = !!mealAttendance[sub.student_id];
+                      return (
+                        <div key={sub.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold text-lg shrink-0">
+                                {sub.student_name.charAt(0)}
+                              </div>
+                              <div>
+                                <h4 className="font-bold text-base text-foreground">{sub.student_name}</h4>
+                                <p className="text-xs text-muted-foreground">{sub.class_name} · Matricule {sub.student_code}</p>
+                              </div>
+                            </div>
+                            <span className={`px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                              sub.status === 'paid' ? 'bg-emerald-100 text-emerald-800' :
+                              sub.status === 'partial' ? 'bg-blue-100 text-blue-800' :
+                              'bg-rose-100 text-rose-800'
+                            }`}>
+                              {sub.status === 'paid' ? 'Soldé ✓' : sub.status === 'partial' ? 'Partiel' : 'En attente'}
+                            </span>
+                          </div>
 
-              <div className="flex items-center gap-2">
-                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
-                  <SelectTrigger className="text-xs h-9 w-44">
-                    <SelectValue placeholder="Statut paiement" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tous les statuts</SelectItem>
-                    <SelectItem value="paid">Payé en totalité</SelectItem>
-                    <SelectItem value="partial">Paiement partiel</SelectItem>
-                    <SelectItem value="pending">En attente / Impayé</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
+                          <div className="grid grid-cols-2 gap-3 text-xs bg-muted/40 p-3 rounded-xl">
+                            <div>
+                              <span className="text-muted-foreground text-[10px] block uppercase font-semibold">Formule souscrite</span>
+                              <span className="font-bold text-foreground">{sub.plan_name}</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-[10px] block uppercase font-semibold">Pointage ce midi</span>
+                              <span className={`font-bold ${isPresentToday ? 'text-emerald-700' : 'text-stone-500'}`}>
+                                {isPresentToday ? '✓ Servi au réfectoire' : 'Non pointé'}
+                              </span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-[10px] block uppercase font-semibold">Montant Réglé</span>
+                              <span className="font-mono font-bold text-emerald-600">{sub.amount_paid.toLocaleString('fr-FR')} F</span>
+                            </div>
+                            <div>
+                              <span className="text-muted-foreground text-[10px] block uppercase font-semibold">Reste à Payer</span>
+                              <span className="font-mono font-bold text-amber-700">{sub.remaining.toLocaleString('fr-FR')} F</span>
+                            </div>
+                          </div>
 
-            {/* Table des abonnés */}
-            <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
-              <div className="overflow-x-auto">
+                          {sub.dietary_notes && (
+                            <div className="p-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs">
+                              <strong>Régime / Allergies :</strong> {sub.dietary_notes}
+                            </div>
+                          )}
+
+                          {sub.remaining > 0 && (
+                            <Link
+                              to="/paiement"
+                              className="w-full inline-flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs shadow-sm transition-colors"
+                            >
+                              <Banknote className="w-4 h-4" /> Régler la cantine ({sub.remaining.toLocaleString('fr-FR')} FCFA)
+                            </Link>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* VUE ADMINISTRATIVE / COMPTABLE */
+              <>
+                {/* Barre de recherche et filtre */}
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between bg-card p-3 rounded-2xl border border-border">
+                  <div className="relative flex-1 max-w-md">
+                    <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Rechercher par élève, classe, matricule, parent..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 h-9 text-xs"
+                    />
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                      <SelectTrigger className="text-xs h-9 w-44">
+                        <SelectValue placeholder="Statut paiement" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Tous les statuts</SelectItem>
+                        <SelectItem value="paid">Payé en totalité</SelectItem>
+                        <SelectItem value="partial">Paiement partiel</SelectItem>
+                        <SelectItem value="pending">En attente / Impayé</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                {/* Table des abonnés */}
+                <div className="rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+                  <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs">
                   <thead className="bg-muted/50 border-b border-border text-muted-foreground font-semibold uppercase text-[10px] tracking-wider">
                     <tr>
@@ -387,26 +594,36 @@ export function CantinePage() {
                 </table>
               </div>
             </div>
-          </TabsContent>
+          </>
+        )}
+      </TabsContent>
 
-          {/* ── TAB 2 : MENUS DE LA SEMAINE ── */}
-          <TabsContent value="menus" className="mt-6 space-y-4">
-            <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between bg-card p-4 rounded-2xl border border-border">
-              <div>
-                <h3 className="text-base font-bold text-foreground">Gestion des Menus & Planification de la Cantine</h3>
-                <p className="text-xs text-muted-foreground">L'établissement définit les repas équilibrés servis aux élèves tout au long de la semaine.</p>
-              </div>
+      {/* ── TAB 2 : MENUS DE LA SEMAINE ── */}
+      <TabsContent value="menus" className="mt-6 space-y-4">
+        <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center justify-between bg-card p-4 rounded-2xl border border-border">
+          <div>
+            <h3 className="text-base font-bold text-foreground">
+              {isParent ? "Menus Équilibrés de la Semaine" : "Gestion des Menus & Planification de la Cantine"}
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              {isParent
+                ? "Découvrez la composition des repas sains et équilibrés servis à vos enfants du lundi au vendredi."
+                : "L'établissement définit les repas équilibrés servis aux élèves tout au long de la semaine."}
+            </p>
+          </div>
 
-              <div className="flex items-center gap-2 flex-wrap">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => setIsPrintMenuOpen(true)}
-                  className="gap-1.5 text-xs h-8 border-border"
-                >
-                  <Printer className="w-3.5 h-3.5" /> Imprimer le Menu
-                </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setIsPrintMenuOpen(true)}
+              className="gap-1.5 text-xs h-8 border-border"
+            >
+              <Printer className="w-3.5 h-3.5" /> Imprimer le Menu
+            </Button>
 
+            {isAdmin && (
+              <>
                 <Button
                   size="sm"
                   variant="outline"
@@ -427,176 +644,184 @@ export function CantinePage() {
                 >
                   <Plus className="w-3.5 h-3.5" /> Nouveau Jour
                 </Button>
-              </div>
-            </div>
+              </>
+            )}
+          </div>
+        </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-              {weeklyMenus.map((menu) => (
-                <div
-                  key={menu.id}
-                  className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col justify-between hover:border-amber-400 transition-colors"
-                >
-                  <div>
-                    <div className="flex items-center justify-between pb-3 border-b border-border">
-                      <span className="font-display font-black text-base text-amber-800">{menu.day}</span>
-                      <div className="flex items-center gap-1">
-                        {weeklyMenus.length > 1 && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (confirm(`Supprimer la journée du ${menu.day} ?`)) {
-                                deleteMenu(menu.id);
-                              }
-                            }}
-                            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
-                            title="Supprimer cette journée"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        )}
-                        <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
-                          <UtensilsCrossed className="w-3.5 h-3.5" />
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="mt-3 space-y-3 text-xs">
-                      <div className="bg-muted/30 p-2 rounded-lg">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                          <Salad className="w-3 h-3 text-emerald-600" /> Entrée
-                        </span>
-                        <p className="mt-0.5 text-foreground font-medium">{menu.starter || "—"}</p>
-                      </div>
-
-                      <div className="bg-amber-50/50 border border-amber-100 p-2 rounded-lg">
-                        <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
-                          <ChefHat className="w-3 h-3 text-amber-600" /> Plat Principal
-                        </span>
-                        <p className="mt-0.5 text-foreground font-bold">{menu.main_dish}</p>
-                      </div>
-
-                      <div className="bg-muted/30 p-2 rounded-lg">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                          <Apple className="w-3 h-3 text-rose-500" /> Dessert
-                        </span>
-                        <p className="mt-0.5 text-foreground font-medium">{menu.dessert || "—"}</p>
-                      </div>
-
-                      <div className="bg-muted/30 p-2 rounded-lg">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
-                          <Coffee className="w-3 h-3 text-purple-600" /> Goûter de 16h
-                        </span>
-                        <p className="mt-0.5 text-foreground font-medium">{menu.snack || "—"}</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 pt-3 border-t border-border">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditingMenu(menu)}
-                      className="w-full text-xs h-7 gap-1 border-amber-300 text-amber-900 hover:bg-amber-50"
-                    >
-                      Modifier le menu
-                    </Button>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          {weeklyMenus.map((menu) => (
+            <div
+              key={menu.id}
+              className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col justify-between hover:border-amber-400 transition-colors"
+            >
+              <div>
+                <div className="flex items-center justify-between pb-3 border-b border-border">
+                  <span className="font-display font-black text-base text-amber-800">{menu.day}</span>
+                  <div className="flex items-center gap-1">
+                    {isAdmin && weeklyMenus.length > 1 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          if (confirm(`Supprimer la journée du ${menu.day} ?`)) {
+                            deleteMenu(menu.id);
+                          }
+                        }}
+                        className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-600 hover:bg-rose-50"
+                        title="Supprimer cette journée"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    )}
+                    <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-100 text-amber-800">
+                      <UtensilsCrossed className="w-3.5 h-3.5" />
+                    </span>
                   </div>
                 </div>
-              ))}
-            </div>
-          </TabsContent>
 
-          {/* ── TAB 3 : POINTAGE DU JOUR ── */}
-          <TabsContent value="attendance" className="mt-6 space-y-4">
-            <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border">
-              <div>
-                <h3 className="text-base font-bold text-foreground">Pointage du Réfectoire — Aujourd'hui</h3>
-                <p className="text-xs text-muted-foreground">
-                  Cochez les élèves présents pour le service du midi pour ajuster le nombre exact de portions
-                </p>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200">
-                  {cantineStats.todayPresent} / {cantineStats.totalSubscribers} élèves présents
-                </span>
-              </div>
-            </div>
+                <div className="mt-3 space-y-3 text-xs">
+                  <div className="bg-muted/30 p-2 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                      <Salad className="w-3 h-3 text-emerald-600" /> Entrée
+                    </span>
+                    <p className="mt-0.5 text-foreground font-medium">{menu.starter || "—"}</p>
+                  </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {cantineSubscribers.map((sub) => {
-                const isPresent = !!mealAttendance[sub.student_id];
-                return (
-                  <div
-                    key={sub.id}
-                    onClick={() => toggleMealAttendance(sub.student_id)}
-                    className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between ${
-                      isPresent
-                        ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
-                        : 'bg-card border-border hover:border-amber-300'
-                    }`}
+                  <div className="bg-amber-50/50 border border-amber-100 p-2 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
+                      <ChefHat className="w-3 h-3 text-amber-600" /> Plat Principal
+                    </span>
+                    <p className="mt-0.5 text-foreground font-bold">{menu.main_dish}</p>
+                  </div>
+
+                  <div className="bg-muted/30 p-2 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                      <Apple className="w-3 h-3 text-rose-500" /> Dessert
+                    </span>
+                    <p className="mt-0.5 text-foreground font-medium">{menu.dessert || "—"}</p>
+                  </div>
+
+                  <div className="bg-muted/30 p-2 rounded-lg">
+                    <span className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-1">
+                      <Coffee className="w-3 h-3 text-purple-600" /> Goûter de 16h
+                    </span>
+                    <p className="mt-0.5 text-foreground font-medium">{menu.snack || "—"}</p>
+                  </div>
+                </div>
+              </div>
+
+              {isAdmin && (
+                <div className="mt-4 pt-3 border-t border-border">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingMenu(menu)}
+                    className="w-full text-xs h-7 gap-1 border-amber-300 text-amber-900 hover:bg-amber-50"
                   >
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold transition-colors ${
-                          isPresent
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-muted text-muted-foreground'
-                        }`}
-                      >
-                        {isPresent ? <Check className="w-5 h-5" /> : sub.student_name.charAt(0)}
-                      </div>
-                      <div>
-                        <div className="font-bold text-xs text-foreground">{sub.student_name}</div>
-                        <div className="text-[11px] text-muted-foreground">
-                          {sub.class_name} · <span className="font-medium text-amber-800">{sub.plan_name}</span>
-                        </div>
-                        {sub.dietary_notes && (
-                          <div className="text-[10px] text-rose-700 font-semibold">⚠️ {sub.dietary_notes}</div>
-                        )}
-                      </div>
-                    </div>
+                    Modifier le menu
+                  </Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      </TabsContent>
 
+      {/* ── TAB 3 : POINTAGE DU JOUR (ADMIN UNIQUEMENT) ── */}
+      {isAdmin && (
+        <TabsContent value="attendance" className="mt-6 space-y-4">
+          <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border">
+            <div>
+              <h3 className="text-base font-bold text-foreground">Pointage du Réfectoire — Aujourd'hui</h3>
+              <p className="text-xs text-muted-foreground">
+                Cochez les élèves présents pour le service du midi pour ajuster le nombre exact de portions
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-bold text-emerald-800 bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200">
+                {cantineStats.todayPresent} / {cantineStats.totalSubscribers} élèves présents
+              </span>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {cantineSubscribers.map((sub) => {
+              const isPresent = !!mealAttendance[sub.student_id];
+              return (
+                <div
+                  key={sub.id}
+                  onClick={() => toggleMealAttendance(sub.student_id)}
+                  className={`cursor-pointer p-4 rounded-2xl border transition-all flex items-center justify-between ${
+                    isPresent
+                      ? 'bg-emerald-50/70 border-emerald-300 shadow-xs'
+                      : 'bg-card border-border hover:border-amber-300'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className={`flex h-10 w-10 items-center justify-center rounded-xl font-bold transition-colors ${
+                        isPresent
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-muted text-muted-foreground'
+                      }`}
+                    >
+                      {isPresent ? <Check className="w-5 h-5" /> : sub.student_name.charAt(0)}
+                    </div>
                     <div>
-                      {isPresent ? (
-                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
-                          Présent
-                        </span>
-                      ) : (
-                        <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
-                          Non pointé
-                        </span>
+                      <div className="font-bold text-xs text-foreground">{sub.student_name}</div>
+                      <div className="text-[11px] text-muted-foreground">
+                        {sub.class_name} · <span className="font-medium text-amber-800">{sub.plan_name}</span>
+                      </div>
+                      {sub.dietary_notes && (
+                        <div className="text-[10px] text-rose-700 font-semibold">⚠️ {sub.dietary_notes}</div>
                       )}
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          </TabsContent>
 
-          {/* ── TAB 4 : FORMULES & TARIFS ── */}
-          <TabsContent value="plans" className="mt-6 space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {cantinePlans.map((plan) => (
-                <div key={plan.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between">
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">{plan.code}</span>
-                      <UtensilsCrossed className="w-4 h-4 text-amber-700" />
-                    </div>
-                    <h4 className="font-bold text-foreground text-base">{plan.name}</h4>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{plan.description}</p>
-                    <div className="mt-4 font-display text-2xl font-black text-amber-800">
-                      {plan.price_cfa.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
-                    </div>
-                  </div>
-                  <div className="mt-4 pt-3 border-t border-border text-[11px] text-stone-600">
-                    {plan.meals_per_week > 0 ? `${plan.meals_per_week} repas / semaine` : 'Tickets unitaires'}
+                    {isPresent ? (
+                      <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
+                        Présent
+                      </span>
+                    ) : (
+                      <span className="text-[10px] font-semibold text-stone-500 bg-stone-100 px-2 py-0.5 rounded-full">
+                        Non pointé
+                      </span>
+                    )}
                   </div>
                 </div>
-              ))}
-            </div>
-          </TabsContent>
+              );
+            })}
+          </div>
+        </TabsContent>
+      )}
+
+      {/* ── TAB 4 : FORMULES & TARIFS (ADMIN & COMPTABLE) ── */}
+      {!isParent && (
+        <TabsContent value="plans" className="mt-6 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {cantinePlans.map((plan) => (
+              <div key={plan.id} className="rounded-2xl border border-border bg-card p-5 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">{plan.code}</span>
+                    <UtensilsCrossed className="w-4 h-4 text-amber-700" />
+                  </div>
+                  <h4 className="font-bold text-foreground text-base">{plan.name}</h4>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{plan.description}</p>
+                  <div className="mt-4 font-display text-2xl font-black text-amber-800">
+                    {plan.price_cfa.toLocaleString('fr-FR')} <span className="text-xs font-normal text-muted-foreground">FCFA</span>
+                  </div>
+                </div>
+                <div className="mt-4 pt-3 border-t border-border text-[11px] text-stone-600">
+                  {plan.meals_per_week > 0 ? `${plan.meals_per_week} repas / semaine` : 'Tickets unitaires'}
+                </div>
+              </div>
+            ))}
+          </div>
+        </TabsContent>
+      )}
 
         </Tabs>
 
@@ -621,7 +846,7 @@ export function CantinePage() {
                     <SelectValue placeholder="Sélectionner l'élève" />
                   </SelectTrigger>
                   <SelectContent>
-                    {students.map((st) => (
+                    {students.map((st: any) => (
                       <SelectItem key={st.id} value={st.id}>
                         {st.first_name} {st.last_name} ({(st as any).classes?.name || 'Sans classe'})
                       </SelectItem>

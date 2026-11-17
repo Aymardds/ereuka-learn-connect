@@ -156,6 +156,59 @@ export interface MedicalVisit {
   student?: Student;
 }
 
+export interface CanteenPlan {
+  id: string;
+  tenant_id: string;
+  name: string;
+  code: string;
+  description?: string | null;
+  price_cfa: number;
+  period: 'monthly' | 'trimester' | 'annual' | 'ticket';
+  meals_per_week: number;
+  is_active: boolean;
+  created_at: string;
+}
+
+export interface CanteenSubscription {
+  id: string;
+  tenant_id: string;
+  student_id: string;
+  plan_id?: string | null;
+  plan_name: string;
+  amount_due: number;
+  amount_paid: number;
+  remaining: number;
+  status: 'paid' | 'partial' | 'pending';
+  dietary_notes?: string | null;
+  is_active: boolean;
+  registered_at: string;
+  created_at: string;
+  student?: Student;
+}
+
+export interface CanteenMenu {
+  id: string;
+  tenant_id: string;
+  day: 'Lundi' | 'Mardi' | 'Mercredi' | 'Jeudi' | 'Vendredi' | 'Samedi';
+  date_label?: string | null;
+  starter?: string | null;
+  main_dish: string;
+  dessert?: string | null;
+  snack?: string | null;
+  week_number?: number;
+  updated_at: string;
+}
+
+export interface CanteenAttendance {
+  id: string;
+  tenant_id: string;
+  student_id: string;
+  date: string;
+  checked_in: boolean;
+  check_in_time?: string;
+  student?: Student;
+}
+
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
 
 export interface AttendanceRecord {
