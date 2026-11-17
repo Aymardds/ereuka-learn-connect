@@ -3,6 +3,12 @@
 -- Accès strictement réservé : Admin, Comptable et Parents d'élèves
 -- ============================================================
 
+-- 0. Garantir la présence des colonnes de rattachement parent sur students
+ALTER TABLE public.students
+    ADD COLUMN IF NOT EXISTS responsible_id UUID REFERENCES public.user_profiles(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS guardian_email TEXT,
+    ADD COLUMN IF NOT EXISTS guardian_phone TEXT;
+
 -- 1. Table des Formules de Cantine
 CREATE TABLE IF NOT EXISTS public.canteen_plans (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -166,9 +172,9 @@ CREATE POLICY "canteen_sub_parent_own_children" ON public.canteen_subscriptions
             SELECT s.id FROM public.students s
             WHERE s.tenant_id = public.get_user_tenant_id()
             AND (
-                s.guardian_email = (auth.jwt() ->> 'email')
-                OR s.guardian_phone = (SELECT phone FROM public.user_profiles WHERE id = auth.uid())
-                OR s.user_id = auth.uid()
+                s.responsible_id = auth.uid()
+                OR (s.guardian_email IS NOT NULL AND s.guardian_email = (auth.jwt() ->> 'email'))
+                OR (s.guardian_phone IS NOT NULL AND s.guardian_phone = (SELECT phone FROM public.user_profiles WHERE id = auth.uid()))
             )
         )
     );
@@ -199,9 +205,9 @@ CREATE POLICY "canteen_att_parent_own_children" ON public.canteen_attendance
             SELECT s.id FROM public.students s
             WHERE s.tenant_id = public.get_user_tenant_id()
             AND (
-                s.guardian_email = (auth.jwt() ->> 'email')
-                OR s.guardian_phone = (SELECT phone FROM public.user_profiles WHERE id = auth.uid())
-                OR s.user_id = auth.uid()
+                s.responsible_id = auth.uid()
+                OR (s.guardian_email IS NOT NULL AND s.guardian_email = (auth.jwt() ->> 'email'))
+                OR (s.guardian_phone IS NOT NULL AND s.guardian_phone = (SELECT phone FROM public.user_profiles WHERE id = auth.uid()))
             )
         )
     );
