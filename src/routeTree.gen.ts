@@ -33,6 +33,7 @@ import { Route as PresencesRouteImport } from './routes/presences'
 import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as RhRouteImport } from './routes/rh'
+import { Route as SanteRouteImport } from './routes/sante'
 import { Route as StatistiquesRouteImport } from './routes/statistiques'
 import { Route as SuperadminRouteImport } from './routes/superadmin'
 import { Route as TerminauxPaiementRouteImport } from './routes/terminaux-paiement'
@@ -164,6 +165,11 @@ const RhRoute = RhRouteImport.update({
   path: '/rh',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SanteRoute = SanteRouteImport.update({
+  id: '/sante',
+  path: '/sante',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const StatistiquesRoute = StatistiquesRouteImport.update({
   id: '/statistiques',
   path: '/statistiques',
@@ -241,6 +247,7 @@ export interface FileRoutesByFullPath {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rh': typeof RhRoute
+  '/sante': typeof SanteRoute
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
   '/terminaux-paiement': typeof TerminauxPaiementRoute
@@ -277,6 +284,7 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rh': typeof RhRoute
+  '/sante': typeof SanteRoute
   '/statistiques': typeof StatistiquesRoute
   '/terminaux-paiement': typeof TerminauxPaiementRoute
   '/transport': typeof TransportRoute
@@ -313,6 +321,7 @@ export interface FileRoutesById {
   '/register': typeof RegisterRoute
   '/reset-password': typeof ResetPasswordRoute
   '/rh': typeof RhRoute
+  '/sante': typeof SanteRoute
   '/statistiques': typeof StatistiquesRoute
   '/superadmin': typeof SuperadminRouteWithChildren
   '/terminaux-paiement': typeof TerminauxPaiementRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/rh'
+    | '/sante'
     | '/statistiques'
     | '/superadmin'
     | '/terminaux-paiement'
@@ -387,6 +397,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/rh'
+    | '/sante'
     | '/statistiques'
     | '/terminaux-paiement'
     | '/transport'
@@ -422,6 +433,7 @@ export interface FileRouteTypes {
     | '/register'
     | '/reset-password'
     | '/rh'
+    | '/sante'
     | '/statistiques'
     | '/superadmin'
     | '/terminaux-paiement'
@@ -459,6 +471,7 @@ export interface RootRouteChildren {
   RegisterRoute: typeof RegisterRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   RhRoute: typeof RhRoute
+  SanteRoute: typeof SanteRoute
   StatistiquesRoute: typeof StatistiquesRoute
   SuperadminRoute: typeof SuperadminRouteWithChildren
   TerminauxPaiementRoute: typeof TerminauxPaiementRoute
@@ -636,6 +649,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof RhRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/sante': {
+      id: '/sante'
+      path: '/sante'
+      fullPath: '/sante'
+      preLoaderRoute: typeof SanteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/statistiques': {
       id: '/statistiques'
       path: '/statistiques'
@@ -754,6 +774,7 @@ const rootRouteChildren: RootRouteChildren = {
   RegisterRoute: RegisterRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   RhRoute: RhRoute,
+  SanteRoute: SanteRoute,
   StatistiquesRoute: StatistiquesRoute,
   SuperadminRoute: SuperadminRouteWithChildren,
   TerminauxPaiementRoute: TerminauxPaiementRoute,

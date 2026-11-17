@@ -48,6 +48,8 @@ const ROLE_LABELS: Record<UserRole, { label: string; badge: string }> = {
   surveillance: { label: 'Surveillant Général', badge: 'bg-orange-100 text-orange-800 border-orange-200' },
   student: { label: 'Élève / Étudiant', badge: 'bg-sky-100 text-sky-800 border-sky-200' },
   parent: { label: 'Parent d\'élève', badge: 'bg-rose-100 text-rose-800 border-rose-200' },
+  doctor: { label: 'Médecin / Infirmier Scolaire', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  medecin: { label: 'Médecin / Infirmier Scolaire', badge: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
   superadmin: { label: 'Super Admin', badge: 'bg-red-100 text-red-800 border-red-200' },
 };
 
@@ -296,6 +298,9 @@ function EquipeRoute() {
                     <SelectItem value="accountant">Comptable / Économe</SelectItem>
                     <SelectItem value="cashier">Caissier</SelectItem>
                     <SelectItem value="teacher">Enseignant</SelectItem>
+                    <SelectItem value="doctor">Médecin / Infirmier Scolaire</SelectItem>
+                    <SelectItem value="secretary">Secrétaire</SelectItem>
+                    <SelectItem value="surveillance">Surveillant Général</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -375,6 +380,9 @@ function EquipeRoute() {
                     <SelectItem value="accountant">Comptable / Économe</SelectItem>
                     <SelectItem value="cashier">Caissier</SelectItem>
                     <SelectItem value="teacher">Enseignant</SelectItem>
+                    <SelectItem value="doctor">Médecin / Infirmier Scolaire</SelectItem>
+                    <SelectItem value="secretary">Secrétaire</SelectItem>
+                    <SelectItem value="surveillance">Surveillant Général</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

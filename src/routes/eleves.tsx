@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { 
   Search, Plus, MoreHorizontal, Edit2, Trash2, Mail, UserPlus, 
   CheckCircle2, Copy, Users, Phone, UserCheck, Key, AlertCircle, Unlink,
-  ExternalLink, UserX, Globe, Loader2, Building2, Link2
+  ExternalLink, UserX, Globe, Loader2, Building2, Link2, FolderOpen
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useStudents, StudentWithClass } from "@/hooks/useStudents";
@@ -10,6 +10,7 @@ import { useClasses } from "@/hooks/useClasses";
 import { useParents, ParentWithChildren } from "@/hooks/useParents";
 import { useParentSearch } from "@/hooks/useParentSearch";
 import { InvitationSuccessDialog, InvitationSuccessData } from "@/components/InvitationSuccessDialog";
+import { StudentDossierDialog } from "@/components/StudentDossierDialog";
 import { useState } from "react";
 import { Student } from "@/types/database";
 import { toast } from "sonner";
@@ -82,6 +83,10 @@ function ElevesPage() {
   // State for Invitation Success Share Dialog
   const [invitationSuccessData, setInvitationSuccessData] = useState<InvitationSuccessData | null>(null);
   const [isInvitationSuccessOpen, setIsInvitationSuccessOpen] = useState(false);
+
+  // State for Student Full Dossier Dialog
+  const [dossierStudent, setDossierStudent] = useState<StudentWithClass | null>(null);
+  const [isDossierOpen, setIsDossierOpen] = useState(false);
 
   // Active Tab: 'students' or 'parents'
   const [activeTab, setActiveTab] = useState<'students' | 'parents'>('students');
@@ -598,6 +603,13 @@ function ElevesPage() {
                                 </button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
+                                <DropdownMenuItem 
+                                  onClick={() => { setDossierStudent(s); setIsDossierOpen(true); }} 
+                                  className="cursor-pointer text-indigo-700 focus:text-indigo-800"
+                                >
+                                  <FolderOpen className="h-4 w-4 mr-2 text-indigo-600" /> Dossier complet
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
                                 <DropdownMenuItem onClick={() => setLinkStudentTarget(s)} className="cursor-pointer">
                                   <UserPlus className="h-4 w-4 mr-2 text-emerald-600" /> 
                                   {hasParent ? "Modifier le parent" : "Associer un parent"}
@@ -1681,6 +1693,16 @@ function ElevesPage() {
           setInvitationSuccessData(null);
         }}
         data={invitationSuccessData}
+      />
+
+      {/* Dossier Complet de l'Élève / Étudiant */}
+      <StudentDossierDialog
+        student={dossierStudent}
+        open={isDossierOpen}
+        onOpenChange={(open) => {
+          setIsDossierOpen(open);
+          if (!open) setDossierStudent(null);
+        }}
       />
 
     </AppShell>

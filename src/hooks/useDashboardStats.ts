@@ -10,6 +10,10 @@ export interface DashboardStats {
   unpaid_total: number;
   classes_stats: { name: string; students_count: number }[];
   recent_activities: { type: string; detail: string; time: string }[];
+  /** Taux de réussite calculé depuis les vraies notes (null = aucune note saisie encore) */
+  success_rate: number | null;
+  /** Nombre d'absences aujourd'hui */
+  absent_today: number;
 }
 
 export function useDashboardStats() {
@@ -27,5 +31,8 @@ export function useDashboardStats() {
       return data as DashboardStats;
     },
     enabled: !!tenantId,
+    // Rafraîchissement toutes les 2 minutes
+    refetchInterval: 2 * 60 * 1000,
+    staleTime: 60 * 1000,
   });
 }

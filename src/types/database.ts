@@ -11,7 +11,9 @@ export type UserRole =
   | 'secretary'
   | 'surveillance'
   | 'student'
-  | 'parent';
+  | 'parent'
+  | 'doctor'
+  | 'medecin';
 
 export interface Tenant {
   id: string;
@@ -125,7 +127,33 @@ export interface Student {
   guardian_email?: string | null;
   guardian_relationship?: string | null;
   blood_group?: string | null;
+  allergies?: string | null;
+  medical_conditions?: string | null;
+  doctor_name?: string | null;
+  doctor_phone?: string | null;
+  emergency_contact?: string | null;
+  eps_aptitude?: 'Apte' | 'Inapte partiel' | 'Inapte' | string | null;
+  vaccines_status?: 'À jour' | 'En attente rappel' | 'Non vacciné' | string | null;
   medical_notes?: string | null;
+}
+
+export interface MedicalVisit {
+  id: string;
+  tenant_id: string;
+  student_id: string;
+  doctor_id?: string | null;
+  doctor_name?: string | null;
+  visit_date: string;
+  reason: string;
+  symptoms?: string | null;
+  diagnosis?: string | null;
+  treatment?: string | null;
+  prescription?: string | null;
+  eps_dispense: boolean;
+  eps_dispense_days?: number | null;
+  notes?: string | null;
+  created_at: string;
+  student?: Student;
 }
 
 export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';

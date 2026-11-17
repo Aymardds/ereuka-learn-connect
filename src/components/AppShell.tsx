@@ -4,7 +4,7 @@ import {
   FileText, Bell, Search, Settings, LogOut, DollarSign, CreditCard,
   CalendarDays, BookCheck, Briefcase, MessageSquare, BarChart3, 
   Building, UserCheck, Wifi, WifiOff, RefreshCw, Award, QrCode,
-  UtensilsCrossed, Bus
+  UtensilsCrossed, Bus, HeartPulse
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { school } from "@/lib/mock-data";
@@ -82,8 +82,15 @@ const ALL_NAV_ITEMS: NavItem[] = [
     to: "/eleves", 
     label: "Élèves & Inscriptions", 
     icon: GraduationCap, 
-    roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean'],
+    roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean', 'doctor', 'medecin'],
     getDynamicLabel: (info) => info.isUniversityOnly ? "Étudiants & Dossiers" : (info.isMixed ? "Élèves & Étudiants" : "Élèves & Inscriptions"),
+  },
+  { 
+    to: "/sante", 
+    label: "Infirmerie & Santé", 
+    icon: HeartPulse, 
+    roles: ['admin', 'director', 'doctor', 'medecin'],
+    badge: "Santé",
   },
   { 
     to: "/classes", 
@@ -136,8 +143,11 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
       navigate({ to: "/login" });
     } else if (!isLoading && profile?.role === 'superadmin') {
       navigate({ to: "/superadmin" });
+    } else if (!isLoading && (profile?.role === 'doctor' || profile?.role === 'medecin')) {
+      // Doctors land on the health/infirmary page by default
+      if (pathname === '/') navigate({ to: "/sante" });
     }
-  }, [isLoading, user, profile?.role, navigate]);
+  }, [isLoading, user, profile?.role, pathname, navigate]);
 
   // Show loading state while fetching auth
   if (isLoading || (!user && !isLoading) || (profile?.role === 'superadmin' && !isLoading)) {

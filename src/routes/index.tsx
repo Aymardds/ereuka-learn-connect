@@ -155,12 +155,20 @@ function Dashboard() {
         <div className="rounded-2xl border border-border bg-card p-5">
           <div className="text-xs uppercase tracking-wider text-muted-foreground">Taux de Réussite Académique</div>
           <div className="mt-2 flex items-baseline gap-2">
-            <div className="font-display text-3xl font-semibold text-emerald-600">79.5%</div>
-            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
-              <TrendingUp className="h-3 w-3" />
-            </span>
+            {stats.success_rate !== null && stats.success_rate !== undefined ? (
+              <>
+                <div className="font-display text-3xl font-semibold text-emerald-600">{stats.success_rate}%</div>
+                <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">
+                  <TrendingUp className="h-3 w-3" />
+                </span>
+              </>
+            ) : (
+              <div className="font-display text-lg font-semibold text-muted-foreground">Aucune note saisie</div>
+            )}
           </div>
-          <div className="mt-1 text-xs text-muted-foreground">Moyennes trimestrielles validées</div>
+          <div className="mt-1 text-xs text-muted-foreground">
+            {stats.success_rate !== null ? "Notes réelles de cet établissement" : "Saisissez des notes pour voir le taux"}
+          </div>
         </div>
       </div>
 
