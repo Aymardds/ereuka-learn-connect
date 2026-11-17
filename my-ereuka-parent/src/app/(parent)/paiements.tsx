@@ -12,6 +12,7 @@ import {
   TextInput,
   Alert,
   Share,
+  Image,
   KeyboardAvoidingView,
   Platform,
   TouchableWithoutFeedback,
@@ -40,20 +41,77 @@ interface PaymentMethod {
   id: 'wave' | 'orange' | 'mtn' | 'moov' | 'card' | 'applepay' | 'bank';
   name: string;
   category: 'mobile' | 'card' | 'bank';
-  icon: keyof typeof Ionicons.glyphMap;
+  icon?: keyof typeof Ionicons.glyphMap;
+  image?: any;
   color: string;
   bg: string;
   badge: string;
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = [
-  { id: 'wave', name: 'Wave', category: 'mobile', icon: 'water', color: '#00D1FF', bg: '#E0F9FF', badge: '0% Frais' },
-  { id: 'orange', name: 'Orange Money', category: 'mobile', icon: 'phone-portrait', color: '#FF7900', bg: '#FFF3E6', badge: 'CI / SN / BF' },
-  { id: 'mtn', name: 'MTN MoMo', category: 'mobile', icon: 'flash', color: '#FBBF24', bg: '#FEF9C3', badge: 'Instantané' },
-  { id: 'moov', name: 'Moov Money', category: 'mobile', icon: 'wallet', color: '#0066B2', bg: '#EBF4FF', badge: 'Flooz' },
-  { id: 'card', name: 'Carte (Visa/MC)', category: 'card', icon: 'card', color: '#2563EB', bg: '#EFF6FF', badge: '3D Secure' },
-  { id: 'applepay', name: 'Apple Pay', category: 'card', icon: 'logo-apple', color: '#0F172A', bg: '#F8FAFC', badge: 'Touch/Face ID' },
-  { id: 'bank', name: 'Virement RIB', category: 'bank', icon: 'business', color: '#7C3AED', bg: '#F5F3FF', badge: 'Bancaire' },
+  {
+    id: 'wave',
+    name: 'Wave',
+    category: 'mobile',
+    image: require('@/assets/images/payments/Wave.jpg'),
+    color: '#00D1FF',
+    bg: '#FFFFFF',
+    badge: '0% Frais',
+  },
+  {
+    id: 'orange',
+    name: 'Orange Money',
+    category: 'mobile',
+    image: require('@/assets/images/payments/Orange.png'),
+    color: '#FF7900',
+    bg: '#FFFFFF',
+    badge: 'CI / SN / BF',
+  },
+  {
+    id: 'mtn',
+    name: 'MTN MoMo',
+    category: 'mobile',
+    image: require('@/assets/images/payments/MoMo.png'),
+    color: '#FFCC00',
+    bg: '#FFFBE6',
+    badge: 'Instantané',
+  },
+  {
+    id: 'moov',
+    name: 'Moov Money',
+    category: 'mobile',
+    icon: 'wallet',
+    color: '#0066B2',
+    bg: '#EBF4FF',
+    badge: 'Flooz',
+  },
+  {
+    id: 'card',
+    name: 'Carte (Visa/MC)',
+    category: 'card',
+    icon: 'card',
+    color: '#2563EB',
+    bg: '#EFF6FF',
+    badge: '3D Secure',
+  },
+  {
+    id: 'applepay',
+    name: 'Apple Pay',
+    category: 'card',
+    icon: 'logo-apple',
+    color: '#0F172A',
+    bg: '#F8FAFC',
+    badge: 'Touch/Face ID',
+  },
+  {
+    id: 'bank',
+    name: 'Virement RIB',
+    category: 'bank',
+    icon: 'business',
+    color: '#7C3AED',
+    bg: '#F5F3FF',
+    badge: 'Bancaire',
+  },
 ];
 
 export default function ParentPaiements() {
@@ -792,7 +850,15 @@ export default function ParentPaiements() {
                         activeOpacity={0.8}
                       >
                         <View style={[styles.methodIconBox, { backgroundColor: method.bg }]}>
-                          <Ionicons name={method.icon} size={20} color={method.color} />
+                          {method.image ? (
+                            <Image
+                              source={method.image}
+                              style={styles.methodLogoImage}
+                              resizeMode="contain"
+                            />
+                          ) : (
+                            <Ionicons name={method.icon!} size={20} color={method.color} />
+                          )}
                         </View>
                         <View>
                           <Text style={[styles.methodChipName, isSelected && styles.methodChipNameActive]}>
@@ -1252,7 +1318,8 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   methodCardChipActive: { backgroundColor: '#FFFFFF', borderColor: Brand.blue, borderWidth: 2 },
-  methodIconBox: { width: 32, height: 32, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
+  methodIconBox: { width: 40, height: 40, borderRadius: Radius.md, alignItems: 'center', justifyContent: 'center' },
+  methodLogoImage: { width: 30, height: 30, borderRadius: 4 },
   methodChipName: { fontSize: 12, fontWeight: '800', color: '#0F172A' },
   methodChipNameActive: { color: Brand.blue },
   methodBadgeTxt: { fontSize: 10, color: '#64748B', fontWeight: '600' },
