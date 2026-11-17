@@ -467,9 +467,9 @@ export function StudentFullDossier({
                 <Text style={styles.infoLabel}>Email de contact</Text>
                 <Text style={styles.infoValue}>{student.guardian_email}</Text>
               </View>
-              <View style={styles.infoLine}>
-                <Text style={styles.infoLabel}>Adresse Domicile</Text>
-                <Text style={styles.infoValue}>{student.home_address}</Text>
+              <View style={[styles.infoLine, { flexDirection: 'column', gap: 2, paddingVertical: 8 }]}>
+                <Text style={[styles.infoLabel, { width: '100%' }]}>Adresse Domicile</Text>
+                <Text style={[styles.infoValue, { textAlign: 'left', fontSize: 11 }]}>{student.home_address}</Text>
               </View>
             </View>
           </View>
@@ -585,7 +585,7 @@ export function StudentFullDossier({
 
               <View style={styles.infoLine}>
                 <Text style={styles.infoLabel}>Médecin Traitant</Text>
-                <Text style={styles.infoValue}>{student.doctor_name}</Text>
+                <Text style={[styles.infoValue, { flexWrap: 'wrap' }]} numberOfLines={2}>{student.doctor_name}</Text>
               </View>
               <View style={styles.infoLine}>
                 <Text style={styles.infoLabel}>Téléphone Médecin</Text>
@@ -661,9 +661,9 @@ export function StudentFullDossier({
               </View>
 
               <View style={styles.serviceBody}>
-                <View style={styles.serviceDataLine}>
+                <View style={[styles.serviceDataLine, { flexDirection: 'column', gap: 2 }]}>
                   <Text style={styles.serviceDataLabel}>Point de Ramassage</Text>
-                  <Text style={styles.serviceDataValBold}>{student.transport_stop}</Text>
+                  <Text style={[styles.serviceDataValBold, { textAlign: 'left' }]}>{student.transport_stop}</Text>
                 </View>
                 <View style={styles.serviceDataLine}>
                   <Text style={styles.serviceDataLabel}>Chauffeur / Convoyeur</Text>
