@@ -6,7 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "myereukaparent",
-    "sdkVersion": "57.0.0",
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",

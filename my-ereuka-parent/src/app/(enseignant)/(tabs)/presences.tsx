@@ -4,7 +4,7 @@ import {
   StatusBar, TouchableOpacity, Alert, Switch,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 import { Brand, Radius, Shadows, Spacing } from '@/constants/theme';
 
 interface Student {

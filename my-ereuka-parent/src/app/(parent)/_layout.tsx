@@ -1,5 +1,6 @@
 import { Tabs } from 'expo-router';
 import { NativeTabBar, TabIconConfig } from '@/components/NativeTabBar';
+import { Brand } from '@/constants/theme';
 
 const PARENT_TAB_ICONS: Record<string, TabIconConfig> = {
   index: { active: 'home', inactive: 'home-outline', label: 'Accueil' },
@@ -12,7 +13,13 @@ const PARENT_TAB_ICONS: Record<string, TabIconConfig> = {
 export default function ParentLayout() {
   return (
     <Tabs
-      tabBar={(props) => <NativeTabBar {...props} icons={PARENT_TAB_ICONS} />}
+      tabBar={(props) => (
+        <NativeTabBar
+          {...props}
+          icons={PARENT_TAB_ICONS}
+          activeColor={Brand.blue}
+        />
+      )}
       screenOptions={{
         headerShown: false,
       }}

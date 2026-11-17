@@ -42,7 +42,7 @@ const styles = StyleSheet.create({
     height: 71,
   },
   splashOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: '#208AEF',
     alignItems: 'center',
     justifyContent: 'center',

@@ -1,17 +1,24 @@
 import { Tabs } from 'expo-router';
 import { NativeTabBar, TabIconConfig } from '@/components/NativeTabBar';
+import { Brand } from '@/constants/theme';
 
 const STUDENT_TAB_ICONS: Record<string, TabIconConfig> = {
   index: { active: 'book', inactive: 'book-outline', label: 'Accueil' },
   notes: { active: 'stats-chart', inactive: 'stats-chart-outline', label: 'Notes' },
-  emploidutemps: { active: 'time', inactive: 'time-outline', label: 'Emploi du temps' },
+  emploidutemps: { active: 'time', inactive: 'time-outline', label: 'EDT' },
   presences: { active: 'checkmark-circle', inactive: 'checkmark-circle-outline', label: 'Présences' },
 };
 
 export default function EtudiantLayout() {
   return (
     <Tabs
-      tabBar={(props) => <NativeTabBar {...props} icons={STUDENT_TAB_ICONS} />}
+      tabBar={(props) => (
+        <NativeTabBar
+          {...props}
+          icons={STUDENT_TAB_ICONS}
+          activeColor={Brand.green}
+        />
+      )}
       screenOptions={{
         headerShown: false,
       }}

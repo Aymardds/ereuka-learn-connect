@@ -1,6 +1,5 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform, useColorScheme } from 'react-native';
-import { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { BlurView } from 'expo-blur';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,16 +12,53 @@ export interface TabIconConfig {
   label: string;
 }
 
-export interface NativeTabBarOptions {
-  icons: Record<string, TabIconConfig>;
+export interface BottomTabBarProps {
+  state: {
+    index: number;
+    routes: Array<{ key: string; name: string; params?: any }>;
+  };
+  descriptors: Record<string, any>;
+  navigation?: {
+    emit?: (event: any) => any;
+    navigate?: (name: string, params?: any) => void;
+  };
+  navigateToTab?: (routeKey: string) => void;
+  emitter?: {
+    emit?: (event: any) => any;
+  };
+  insets?: any;
 }
 
-export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTabBarProps & NativeTabBarOptions) {
+export interface NativeTabBarOptions {
+  icons: Record<string, TabIconConfig>;
+  activeColor?: string;
+  badges?: Record<string, number | string | boolean>;
+}
+
+export function NativeTabBar({
+  state,
+  descriptors,
+  navigation,
+  navigateToTab,
+  icons,
+  activeColor: propActiveColor,
+  badges = {},
+}: BottomTabBarProps & NativeTabBarOptions) {
   const scheme = useColorScheme();
   const isDark = scheme === 'dark';
   const insets = useSafeAreaInsets();
 
   const bottomInset = Math.max(insets.bottom, Platform.OS === 'ios' ? 24 : 12);
+
+  // Auto-detect role color if not specified
+  const routeNames = state.routes.map(r => r.name);
+  const detectedColor =
+    propActiveColor ||
+    (routeNames.includes('emploidutemps')
+      ? Brand.green
+      : routeNames.includes('eleves')
+      ? Brand.violet
+      : Brand.blue);
 
   const handlePress = (route: any, isFocused: boolean) => {
     if (Platform.OS === 'ios') {
@@ -31,31 +67,39 @@ export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTa
       Haptics.selectionAsync();
     }
 
-    const event = navigation.emit({
-      type: 'tabPress',
-      target: route.key,
-      canPreventDefault: true,
-    });
+    if (navigation?.emit) {
+      const event = navigation.emit({
+        type: 'tabPress',
+        target: route.key,
+        canPreventDefault: true,
+      });
 
-    if (!isFocused && !event.defaultPrevented) {
-      navigation.navigate(route.name, route.params);
+      if (!isFocused && !event?.defaultPrevented) {
+        navigation.navigate?.(route.name, route.params);
+      }
+    } else if (navigateToTab) {
+      if (!isFocused) {
+        navigateToTab(route.key);
+      }
     }
   };
 
   const renderContent = () => (
     <View style={[styles.tabsContainer, { paddingBottom: bottomInset }]}>
       {state.routes.map((route, index) => {
-        const { options } = descriptors[route.key];
+        const { options } = descriptors[route.key] || { options: {} };
         const isFocused = state.index === index;
         const config = icons[route.name] || {
-          active: 'grid',
-          inactive: 'grid-outline',
+          active: 'grid' as const,
+          inactive: 'grid-outline' as const,
           label: options.title || route.name,
         };
 
         const iconName = isFocused ? config.active : config.inactive;
-        const activeColor = Brand.blue;
+        const activeColor = detectedColor;
         const inactiveColor = isDark ? '#94A3B8' : '#64748B';
+
+        const badgeValue = badges[route.name] ?? options.tabBarBadge;
 
         return (
           <TouchableOpacity
@@ -65,7 +109,7 @@ export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTa
             accessibilityLabel={options.tabBarAccessibilityLabel}
             testID={options.tabBarButtonTestID}
             onPress={() => handlePress(route, isFocused)}
-            activeOpacity={0.7}
+            activeOpacity={0.75}
             style={styles.tabItem}
           >
             {Platform.OS === 'android' ? (
@@ -74,7 +118,9 @@ export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTa
                 style={[
                   styles.androidPill,
                   isFocused && {
-                    backgroundColor: isDark ? 'rgba(37, 99, 235, 0.25)' : '#EFF6FF',
+                    backgroundColor: isDark
+                      ? `${activeColor}33`
+                      : `${activeColor}15`,
                     transform: [{ scale: 1.05 }],
                   },
                 ]}
@@ -84,15 +130,41 @@ export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTa
                   size={22}
                   color={isFocused ? activeColor : inactiveColor}
                 />
+                {badgeValue ? (
+                  <View style={[styles.badgeCircle, { backgroundColor: Brand.red }]}>
+                    {typeof badgeValue === 'number' || typeof badgeValue === 'string' ? (
+                      <Text style={styles.badgeText}>{badgeValue}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             ) : (
-              // iOS Icon with filled/outline state
+              // iOS Icon with filled/outline state + subtle active glow
               <View style={styles.iosIconWrapper}>
-                <Ionicons
-                  name={iconName}
-                  size={24}
-                  color={isFocused ? activeColor : inactiveColor}
-                />
+                <View
+                  style={[
+                    styles.iosActiveGlow,
+                    isFocused && {
+                      backgroundColor: isDark
+                        ? `${activeColor}25`
+                        : `${activeColor}15`,
+                    },
+                  ]}
+                >
+                  <Ionicons
+                    name={iconName}
+                    size={23}
+                    color={isFocused ? activeColor : inactiveColor}
+                  />
+                </View>
+
+                {badgeValue ? (
+                  <View style={[styles.badgeCircle, { backgroundColor: Brand.red }]}>
+                    {typeof badgeValue === 'number' || typeof badgeValue === 'string' ? (
+                      <Text style={styles.badgeText}>{badgeValue}</Text>
+                    ) : null}
+                  </View>
+                ) : null}
               </View>
             )}
 
@@ -115,12 +187,12 @@ export function NativeTabBar({ state, descriptors, navigation, icons }: BottomTa
   if (Platform.OS === 'ios') {
     return (
       <BlurView
-        intensity={85}
+        intensity={92}
         tint={isDark ? 'dark' : 'systemChromeMaterialLight'}
         style={[
           styles.iosBlurContainer,
           {
-            borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.08)',
+            borderTopColor: isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.06)',
           },
         ]}
       >
@@ -169,7 +241,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-around',
-    paddingTop: 10,
+    paddingTop: 8,
   },
   tabItem: {
     flex: 1,
@@ -185,8 +257,16 @@ const styles = StyleSheet.create({
     marginBottom: 3,
   },
   iosIconWrapper: {
-    marginBottom: 4,
-    height: 26,
+    position: 'relative',
+    marginBottom: 3,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iosActiveGlow: {
+    width: 44,
+    height: 28,
+    borderRadius: 14,
+    alignItems: 'center',
     justifyContent: 'center',
   },
   tabLabel: {
@@ -195,6 +275,24 @@ const styles = StyleSheet.create({
     letterSpacing: -0.1,
   },
   tabLabelActive: {
-    fontWeight: '700',
+    fontWeight: '800',
+  },
+  badgeCircle: {
+    position: 'absolute',
+    top: -2,
+    right: 2,
+    minWidth: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: '#FFFFFF',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 9,
+    fontWeight: '900',
   },
 });

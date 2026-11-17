@@ -5,8 +5,9 @@ import {
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { supabase } from '../../../lib/supabase';
+import { supabase } from '../../../../lib/supabase';
 import { Brand, Radius, Shadows, Spacing } from '@/constants/theme';
+import { AppTopHeader } from '@/components/AppTopHeader';
 
 interface ClassInfo {
   id: string;
@@ -98,16 +99,13 @@ export default function EnseignantHome() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <StatusBar barStyle="light-content" />
 
-      {/* Hero violet */}
-      <View style={styles.hero}>
-        <View>
-          <Text style={styles.heroGreeting}>Bonjour, {teacherName} 👩‍🏫</Text>
-          <Text style={styles.heroSub}>Espace Enseignant • MyEreuka</Text>
-        </View>
-        <TouchableOpacity style={styles.signOutBtn} onPress={handleSignOut}>
-          <Text style={styles.signOutText}>Quitter</Text>
-        </TouchableOpacity>
-      </View>
+      {/* Top Header */}
+      <AppTopHeader
+        role="enseignant"
+        title="Eurêka Professeur"
+        subtitle={`Espace Enseignant • ${stats.classesCount} classe${stats.classesCount > 1 ? 's' : ''}`}
+        userName={teacherName}
+      />
 
       <ScrollView
         style={styles.scroll}
@@ -138,7 +136,12 @@ export default function EnseignantHome() {
           </View>
         ) : (
           classes.map((cls, i) => (
-            <TouchableOpacity key={cls.id} style={[styles.classCard, Shadows.sm]}>
+            <TouchableOpacity
+              key={cls.id}
+              style={[styles.classCard, Shadows.sm]}
+              onPress={() => router.push('/(enseignant)/eleves' as any)}
+              activeOpacity={0.8}
+            >
               <View style={[styles.classIcon, { backgroundColor: Brand.violetLight }]}>
                 <Text style={[styles.classIconText, { color: Brand.violet }]}>
                   {cls.name.substring(0, 2).toUpperCase()}

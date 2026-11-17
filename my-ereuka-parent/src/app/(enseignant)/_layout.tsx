@@ -1,26 +1,15 @@
-import { Tabs } from 'expo-router';
-import { NativeTabBar, TabIconConfig } from '@/components/NativeTabBar';
-
-const TEACHER_TAB_ICONS: Record<string, TabIconConfig> = {
-  index: { active: 'school', inactive: 'school-outline', label: 'Classes' },
-  presences: { active: 'clipboard', inactive: 'clipboard-outline', label: 'Présences' },
-  notes: { active: 'create', inactive: 'create-outline', label: 'Saisie Notes' },
-  eleves: { active: 'people', inactive: 'people-outline', label: 'Élèves' },
-};
+import { Stack } from 'expo-router';
 
 export default function EnseignantLayout() {
   return (
-    <Tabs
-      tabBar={(props) => <NativeTabBar {...props} icons={TEACHER_TAB_ICONS} />}
-      screenOptions={{
-        headerShown: false,
-      }}
-    >
-      <Tabs.Screen name="index" options={{ title: 'Classes' }} />
-      <Tabs.Screen name="presences" options={{ title: 'Présences' }} />
-      <Tabs.Screen name="notes" options={{ title: 'Notes' }} />
-      <Tabs.Screen name="eleves" options={{ title: 'Élèves' }} />
-    </Tabs>
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* Tabs group */}
+      <Stack.Screen name="(tabs)" />
+      {/* Student detail — slides on top of the tabs */}
+      <Stack.Screen
+        name="eleve/[id]"
+        options={{ animation: 'slide_from_right' }}
+      />
+    </Stack>
   );
 }
-
