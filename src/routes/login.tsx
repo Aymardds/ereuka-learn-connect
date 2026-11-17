@@ -6,6 +6,7 @@ import { Input } from '../components/ui/input'
 import { Label } from '../components/ui/label'
 import { toast } from 'sonner'
 import { useAuth } from '../hooks/useAuth'
+import { useIsDesktop } from '../hooks/useIsDesktop'
 import { GraduationCap, Eye, EyeOff, Loader2, Mail, Lock, ArrowLeft, CheckCircle2 } from 'lucide-react'
 
 export const Route = createFileRoute('/login')({
@@ -13,6 +14,7 @@ export const Route = createFileRoute('/login')({
 })
 
 function LoginRoute() {
+  const isDesktop = useIsDesktop()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -110,15 +112,17 @@ function LoginRoute() {
       {/* ── COLONNE DROITE : FORMULAIRE DE CONNEXION ── */}
       <div className="flex-1 flex flex-col justify-between p-6 sm:p-10 lg:p-14 relative z-10 overflow-y-auto">
         
-        {/* En-tête avec lien retour */}
-        <div className="flex items-center justify-between">
-          <Link
-            to="/landing"
-            className="inline-flex items-center gap-2 text-xs font-bold text-stone-700 hover:text-amber-800 transition-colors py-1.5 px-3 rounded-xl hover:bg-white/60 border border-[#DFCBA0]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Retour à l'accueil</span>
-          </Link>
+        {/* En-tête avec lien retour (masqué sur desktop) */}
+        <div className={`flex items-center ${isDesktop ? 'justify-end' : 'justify-between'}`}>
+          {!isDesktop && (
+            <Link
+              to="/landing"
+              className="inline-flex items-center gap-2 text-xs font-bold text-stone-700 hover:text-amber-800 transition-colors py-1.5 px-3 rounded-xl hover:bg-white/60 border border-[#DFCBA0]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Retour à l'accueil</span>
+            </Link>
+          )}
 
           <Link
             to="/register"

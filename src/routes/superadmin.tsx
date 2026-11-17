@@ -3,6 +3,7 @@ import { LayoutDashboard, Building2, Settings, LogOut, FileCheck } from "lucide-
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from "@/lib/utils";
+import { useIsDesktop } from '@/hooks/useIsDesktop';
 
 export const Route = createFileRoute('/superadmin')({
   component: SuperAdminLayout,
@@ -18,13 +19,18 @@ function SuperAdminLayout() {
   const { profile, user, isLoading, signOut } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const isDesktop = useIsDesktop();
 
   if (!isLoading && profile?.role !== 'superadmin') {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
         <h1 className="text-2xl font-bold text-red-600">Accès Refusé</h1>
         <p>Vous n'avez pas les droits SuperAdmin.</p>
-        <button onClick={() => navigate({ to: '/' })} className="text-primary hover:underline">Retour à l'accueil</button>
+        {!isDesktop ? (
+          <button onClick={() => navigate({ to: '/' })} className="text-primary hover:underline">Retour à l'accueil</button>
+        ) : (
+          <button onClick={() => navigate({ to: '/login' })} className="text-primary hover:underline">Retour à la connexion</button>
+        )}
       </div>
     );
   }

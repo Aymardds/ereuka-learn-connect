@@ -1,5 +1,6 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
+import { isDesktopApp } from "@/hooks/useIsDesktop";
 import {
   Download,
   ArrowRight,
@@ -53,10 +54,17 @@ interface EducationLevel {
 }
 
 function LandingPage() {
+  const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [downloadOpen, setDownloadOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<EducationLevelId>("secondaire");
+
+  useEffect(() => {
+    if (isDesktopApp()) {
+      navigate({ to: "/login" });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);

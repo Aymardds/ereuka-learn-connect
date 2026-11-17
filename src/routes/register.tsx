@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { useIsDesktop } from '@/hooks/useIsDesktop'
 
 export const Route = createFileRoute('/register')({
   component: RegisterPage,
@@ -70,6 +71,7 @@ const AFRICAN_COUNTRIES = [
 ];
 
 function RegisterPage() {
+  const isDesktop = useIsDesktop()
   const [step, setStep] = useState(1)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [applicationId, setApplicationId] = useState<string | null>(null)
@@ -209,14 +211,16 @@ function RegisterPage() {
       <div className="flex-1 flex flex-col justify-between p-6 sm:p-8 lg:p-12 relative z-10 overflow-y-auto">
 
         {/* En-tête avec lien retour et lien vers connexion */}
-        <div className="flex items-center justify-between w-full max-w-xl mx-auto">
-          <Link
-            to="/landing"
-            className="inline-flex items-center gap-2 text-xs font-bold text-stone-700 hover:text-amber-800 transition-colors py-1.5 px-3 rounded-xl hover:bg-white/60 border border-[#DFCBA0]"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Retour à l'accueil</span>
-          </Link>
+        <div className={`flex items-center ${isDesktop ? 'justify-end' : 'justify-between'} w-full max-w-xl mx-auto`}>
+          {!isDesktop && (
+            <Link
+              to="/landing"
+              className="inline-flex items-center gap-2 text-xs font-bold text-stone-700 hover:text-amber-800 transition-colors py-1.5 px-3 rounded-xl hover:bg-white/60 border border-[#DFCBA0]"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span>Retour à l'accueil</span>
+            </Link>
+          )}
 
           <Link
             to="/login"
@@ -603,11 +607,13 @@ function RegisterPage() {
                     <p className="font-mono font-bold text-amber-900 text-xs break-all">{applicationId}</p>
                   </div>
                   <div className="pt-2 flex flex-col sm:flex-row items-center justify-center gap-2.5">
-                    <Link to="/landing">
-                      <Button variant="outline" className="rounded-xl border-[#D5C28F] bg-white text-stone-800 text-xs h-9">
-                        Retour à l'accueil
-                      </Button>
-                    </Link>
+                    {!isDesktop && (
+                      <Link to="/landing">
+                        <Button variant="outline" className="rounded-xl border-[#D5C28F] bg-white text-stone-800 text-xs h-9">
+                          Retour à l'accueil
+                        </Button>
+                      </Link>
+                    )}
                     <Link to="/login">
                       <Button className="rounded-xl bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs h-9">
                         Aller à la connexion
