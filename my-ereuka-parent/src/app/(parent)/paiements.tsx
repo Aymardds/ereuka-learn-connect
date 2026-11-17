@@ -695,20 +695,21 @@ export default function ParentPaiements() {
           setCheckoutModalVisible(false);
         }}
       >
-        <View style={styles.modalOverlay}>
-          {/* Backdrop dismiss */}
+        <View style={styles.modalOverlay} pointerEvents="box-none">
+          {/* Backdrop dismiss — only captures taps outside the sheet */}
           <TouchableWithoutFeedback
             onPress={() => {
               Keyboard.dismiss();
               setCheckoutModalVisible(false);
             }}
           >
-            <View style={StyleSheet.absoluteFill} />
+            <View style={[StyleSheet.absoluteFill, { zIndex: 0 }]} />
           </TouchableWithoutFeedback>
 
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalKeyboardAvoid}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
+            style={[styles.modalKeyboardAvoid, { zIndex: 1 }]}
           >
             <View style={styles.modalSheet}>
               {/* Drag handle */}
@@ -731,29 +732,27 @@ export default function ParentPaiements() {
                 </TouchableOpacity>
               </View>
 
-              {/* Keyboard Accessory Bar (when keyboard is open) */}
-              {keyboardVisible && (
-                <View style={styles.keyboardToolbar}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-                    <Ionicons name="keypad" size={15} color={Brand.blue} />
-                    <Text style={styles.keyboardToolbarText}>Saisie en cours</Text>
-                  </View>
-                  <TouchableOpacity
-                    style={styles.keyboardToolbarDismissBtn}
-                    onPress={() => Keyboard.dismiss()}
-                    activeOpacity={0.7}
-                  >
-                    <Text style={styles.keyboardToolbarDismissTxt}>Masquer le clavier ⌵</Text>
-                  </TouchableOpacity>
+              {/* Keyboard Accessory Bar — always rendered, only visible when keyboard is open */}
+              <View style={[styles.keyboardToolbar, { opacity: keyboardVisible ? 1 : 0, height: keyboardVisible ? undefined : 0, overflow: 'hidden' }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Ionicons name="keypad" size={15} color={Brand.blue} />
+                  <Text style={styles.keyboardToolbarText}>Saisie en cours</Text>
                 </View>
-              )}
+                <TouchableOpacity
+                  style={styles.keyboardToolbarDismissBtn}
+                  onPress={() => Keyboard.dismiss()}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.keyboardToolbarDismissTxt}>Masquer le clavier ⌵</Text>
+                </TouchableOpacity>
+              </View>
 
               {/* Scrollable Modal Content */}
               <ScrollView
                 ref={checkoutScrollRef}
                 showsVerticalScrollIndicator={false}
                 keyboardShouldPersistTaps="handled"
-                keyboardDismissMode="on-drag"
+                keyboardDismissMode="none"
                 contentContainerStyle={[
                   styles.modalScrollBody,
                   { paddingBottom: Math.max(insets.bottom, 20) + 24 }
@@ -836,7 +835,7 @@ export default function ParentPaiements() {
 
                 {/* Select Payment Method */}
                 <Text style={styles.fieldSectionLabel}>Mode de Règlement</Text>
-                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.methodsRow}>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.methodsRow} keyboardShouldPersistTaps="always">
                   {PAYMENT_METHODS.map(method => {
                     const isSelected = selectedMethod.id === method.id;
                     return (
@@ -844,7 +843,6 @@ export default function ParentPaiements() {
                         key={method.id}
                         style={[styles.methodCardChip, isSelected && styles.methodCardChipActive]}
                         onPress={() => {
-                          Keyboard.dismiss();
                           setSelectedMethod(method);
                         }}
                         activeOpacity={0.8}
