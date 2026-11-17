@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   StyleSheet, Text, View, ScrollView, ActivityIndicator,
   StatusBar, TextInput, TouchableOpacity, RefreshControl, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { supabase } from '../../../lib/supabase';
@@ -82,7 +83,11 @@ export default function ParentMessages() {
   }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <KeyboardAvoidingView
+      style={[styles.container, { paddingTop: insets.top }]}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+    >
       <StatusBar barStyle="light-content" />
       <View style={styles.header}>
         <Text style={styles.headerTitle}>💬 Messagerie École</Text>
@@ -93,6 +98,8 @@ export default function ParentMessages() {
         style={styles.messageList}
         contentContainerStyle={{ padding: Spacing.base, paddingBottom: 20 }}
         showsVerticalScrollIndicator={false}
+        keyboardDismissMode="on-drag"
+        keyboardShouldPersistTaps="handled"
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Brand.blue} />}
       >
         {messages.length === 0 ? (
@@ -157,7 +164,7 @@ export default function ParentMessages() {
           }
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 

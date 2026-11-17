@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -12,6 +12,10 @@ import {
   TextInput,
   Alert,
   Share,
+  KeyboardAvoidingView,
+  Platform,
+  TouchableWithoutFeedback,
+  Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -73,6 +77,9 @@ export default function ParentPaiements() {
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvc, setCardCvc] = useState('');
   const [processingPayment, setProcessingPayment] = useState(false);
+  const [focusedInput, setFocusedInput] = useState<string | null>(null);
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  const checkoutScrollRef = useRef<any>(null);
 
   // Success Receipt Modal State
   const [receiptModalVisible, setReceiptModalVisible] = useState(false);
@@ -85,7 +92,25 @@ export default function ParentPaiements() {
     date: string;
   } | null>(null);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      () => setKeyboardVisible(true)
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+        setFocusedInput(null);
+      }
+    );
+    return () => {
+      showSub.remove();
+      hideSub.remove();
+    };
+  }, []);
 
   const loadData = async () => {
     try {
@@ -603,186 +628,342 @@ export default function ParentPaiements() {
       </ScrollView>
 
       {/* Checkout Payment Modal Sheet */}
-      <Modal visible={checkoutModalVisible} animationType="slide" transparent>
+      <Modal
+        visible={checkoutModalVisible}
+        animationType="slide"
+        transparent
+        onRequestClose={() => {
+          Keyboard.dismiss();
+          setCheckoutModalVisible(false);
+        }}
+      >
         <View style={styles.modalOverlay}>
-          <View style={[styles.modalSheet, { paddingBottom: insets.bottom + 20 }]}>
-            <View style={styles.modalHeader}>
-              <View>
-                <Text style={styles.modalHeaderSubtitle}>Guichet de Paiement Sécurisé</Text>
-                <Text style={styles.modalHeaderTitle}>{activePaymentRecord?.label}</Text>
+          {/* Backdrop dismiss */}
+          <TouchableWithoutFeedback
+            onPress={() => {
+              Keyboard.dismiss();
+              setCheckoutModalVisible(false);
+            }}
+          >
+            <View style={StyleSheet.absoluteFill} />
+          </TouchableWithoutFeedback>
+
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={styles.modalKeyboardAvoid}
+          >
+            <View style={styles.modalSheet}>
+              {/* Drag handle */}
+              <View style={styles.modalDragHandle} />
+
+              {/* Fixed Header */}
+              <View style={styles.modalHeader}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.modalHeaderSubtitle}>Guichet de Paiement Sécurisé</Text>
+                  <Text style={styles.modalHeaderTitle} numberOfLines={1}>{activePaymentRecord?.label}</Text>
+                </View>
+                <TouchableOpacity
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setCheckoutModalVisible(false);
+                  }}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <Ionicons name="close-circle" size={26} color="#94A3B8" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={() => setCheckoutModalVisible(false)}>
-                <Ionicons name="close-circle" size={26} color="#94A3B8" />
-              </TouchableOpacity>
-            </View>
 
-            {/* Total to pay banner */}
-            <View style={styles.checkoutTotalBanner}>
-              <Text style={styles.checkoutTotalLabel}>Montant à débiter</Text>
-              <Text style={styles.checkoutTotalVal}>
-                {isPartialCustom ? fmt(parseInt(customAmount || '0', 10)) : fmt((activePaymentRecord?.amount_due || 0) - (activePaymentRecord?.amount_paid || 0))}
-              </Text>
-              <Text style={styles.checkoutStudentMeta}>
-                Élève : {activePaymentRecord?.student_name}
-              </Text>
-            </View>
-
-            {/* Payment Amount toggle: Total vs Partial */}
-            <View style={styles.amountToggleRow}>
-              <TouchableOpacity
-                style={[styles.amountToggleBtn, !isPartialCustom && styles.amountToggleBtnActive]}
-                onPress={() => {
-                  setIsPartialCustom(false);
-                  const rem = (activePaymentRecord?.amount_due || 0) - (activePaymentRecord?.amount_paid || 0);
-                  setCustomAmount(rem.toString());
-                }}
-              >
-                <Text style={[styles.amountToggleTxt, !isPartialCustom && styles.amountToggleTxtActive]}>
-                  Totalité du solde
-                </Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[styles.amountToggleBtn, isPartialCustom && styles.amountToggleBtnActive]}
-                onPress={() => setIsPartialCustom(true)}
-              >
-                <Text style={[styles.amountToggleTxt, isPartialCustom && styles.amountToggleTxtActive]}>
-                  Payer un acompte
-                </Text>
-              </TouchableOpacity>
-            </View>
-
-            {isPartialCustom && (
-              <View style={styles.customAmountBox}>
-                <Text style={styles.inputFieldLabel}>Saisir le montant partiel (FCFA)</Text>
-                <TextInput
-                  style={styles.customAmountInput}
-                  value={customAmount}
-                  onChangeText={setCustomAmount}
-                  keyboardType="numeric"
-                  placeholder="Ex: 50000"
-                  placeholderTextColor="#94A3B8"
-                />
-              </View>
-            )}
-
-            {/* Select Payment Method */}
-            <Text style={styles.fieldSectionLabel}>Mode de Règlement</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.methodsRow}>
-              {PAYMENT_METHODS.map(method => {
-                const isSelected = selectedMethod.id === method.id;
-                return (
+              {/* Keyboard Accessory Bar (when keyboard is open) */}
+              {keyboardVisible && (
+                <View style={styles.keyboardToolbar}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Ionicons name="keypad" size={15} color={Brand.blue} />
+                    <Text style={styles.keyboardToolbarText}>Saisie en cours</Text>
+                  </View>
                   <TouchableOpacity
-                    key={method.id}
-                    style={[styles.methodCardChip, isSelected && styles.methodCardChipActive]}
-                    onPress={() => setSelectedMethod(method)}
-                    activeOpacity={0.8}
+                    style={styles.keyboardToolbarDismissBtn}
+                    onPress={() => Keyboard.dismiss()}
+                    activeOpacity={0.7}
                   >
-                    <View style={[styles.methodIconBox, { backgroundColor: method.bg }]}>
-                      <Ionicons name={method.icon} size={20} color={method.color} />
-                    </View>
-                    <View>
-                      <Text style={[styles.methodChipName, isSelected && styles.methodChipNameActive]}>
-                        {method.name}
-                      </Text>
-                      <Text style={styles.methodBadgeTxt}>{method.badge}</Text>
-                    </View>
+                    <Text style={styles.keyboardToolbarDismissTxt}>Masquer le clavier ⌵</Text>
                   </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-
-            {/* Conditional Input Fields */}
-            {selectedMethod.category === 'mobile' && (
-              <View style={styles.inputFormGroup}>
-                <Text style={styles.inputFieldLabel}>Numéro Mobile Money ({selectedMethod.name})</Text>
-                <View style={styles.inputPhoneWrapper}>
-                  <Text style={styles.phoneCountryCode}>+225</Text>
-                  <TextInput
-                    style={styles.phoneInputField}
-                    value={phoneNumber}
-                    onChangeText={setPhoneNumber}
-                    placeholder="07 00 00 00 00"
-                    keyboardType="phone-pad"
-                    placeholderTextColor="#94A3B8"
-                  />
                 </View>
-                <Text style={styles.inputHelperTxt}>
-                  💡 Vous recevrez une invite USSD / Push sur votre mobile pour valider avec votre code secret.
-                </Text>
-              </View>
-            )}
-
-            {selectedMethod.id === 'card' && (
-              <View style={styles.inputFormGroup}>
-                <Text style={styles.inputFieldLabel}>Numéro de Carte Bancaire</Text>
-                <TextInput
-                  style={styles.cardInputField}
-                  value={cardNumber}
-                  onChangeText={setCardNumber}
-                  placeholder="4000 1234 5678 9010"
-                  keyboardType="numeric"
-                  placeholderTextColor="#94A3B8"
-                />
-
-                <View style={styles.cardRowTwo}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputFieldLabel}>Exp (MM/AA)</Text>
-                    <TextInput
-                      style={styles.cardInputHalf}
-                      value={cardExpiry}
-                      onChangeText={setCardExpiry}
-                      placeholder="12/28"
-                      placeholderTextColor="#94A3B8"
-                    />
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.inputFieldLabel}>CVC / CVV</Text>
-                    <TextInput
-                      style={styles.cardInputHalf}
-                      value={cardCvc}
-                      onChangeText={setCardCvc}
-                      placeholder="123"
-                      keyboardType="numeric"
-                      secureTextEntry
-                      placeholderTextColor="#94A3B8"
-                    />
-                  </View>
-                </View>
-              </View>
-            )}
-
-            {selectedMethod.id === 'bank' && (
-              <View style={styles.bankInstructionBox}>
-                <Ionicons name="information-circle-outline" size={24} color="#7C3AED" />
-                <Text style={styles.bankInstructionTxt}>
-                  Effectuez votre virement vers le compte Eurêka : <Text style={{ fontWeight: '800' }}>CI93 0100 1234 5678 9000</Text> avec la référence <Text style={{ fontWeight: '800' }}>"{activePaymentRecord?.student_name}"</Text>.
-                </Text>
-              </View>
-            )}
-
-            {/* Confirm Payment Action Button */}
-            <TouchableOpacity
-              style={[styles.confirmPayBtn, processingPayment && { opacity: 0.7 }]}
-              onPress={processPaymentSubmission}
-              disabled={processingPayment}
-              activeOpacity={0.8}
-            >
-              {processingPayment ? (
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                  <ActivityIndicator color="#FFFFFF" size="small" />
-                  <Text style={styles.confirmPayBtnTxt}>Traitement en cours...</Text>
-                </View>
-              ) : (
-                <>
-                  <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
-                  <Text style={styles.confirmPayBtnTxt}>
-                    Valider le Paiement Sécurisé
-                  </Text>
-                </>
               )}
-            </TouchableOpacity>
-          </View>
+
+              {/* Scrollable Modal Content */}
+              <ScrollView
+                ref={checkoutScrollRef}
+                showsVerticalScrollIndicator={false}
+                keyboardShouldPersistTaps="handled"
+                keyboardDismissMode="on-drag"
+                contentContainerStyle={[
+                  styles.modalScrollBody,
+                  { paddingBottom: Math.max(insets.bottom, 20) + 24 }
+                ]}
+              >
+                {/* Total to pay banner */}
+                <View style={styles.checkoutTotalBanner}>
+                  <Text style={styles.checkoutTotalLabel}>Montant à débiter</Text>
+                  <Text style={styles.checkoutTotalVal}>
+                    {isPartialCustom ? fmt(parseInt(customAmount || '0', 10)) : fmt((activePaymentRecord?.amount_due || 0) - (activePaymentRecord?.amount_paid || 0))}
+                  </Text>
+                  <Text style={styles.checkoutStudentMeta}>
+                    Élève : {activePaymentRecord?.student_name}
+                  </Text>
+                </View>
+
+                {/* Payment Amount toggle: Total vs Partial */}
+                <View style={styles.amountToggleRow}>
+                  <TouchableOpacity
+                    style={[styles.amountToggleBtn, !isPartialCustom && styles.amountToggleBtnActive]}
+                    onPress={() => {
+                      Keyboard.dismiss();
+                      setIsPartialCustom(false);
+                      const rem = (activePaymentRecord?.amount_due || 0) - (activePaymentRecord?.amount_paid || 0);
+                      setCustomAmount(rem.toString());
+                    }}
+                  >
+                    <Text style={[styles.amountToggleTxt, !isPartialCustom && styles.amountToggleTxtActive]}>
+                      Totalité du solde
+                    </Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity
+                    style={[styles.amountToggleBtn, isPartialCustom && styles.amountToggleBtnActive]}
+                    onPress={() => {
+                      setIsPartialCustom(true);
+                      setTimeout(() => {
+                        checkoutScrollRef.current?.scrollTo({ y: 80, animated: true });
+                      }, 100);
+                    }}
+                  >
+                    <Text style={[styles.amountToggleTxt, isPartialCustom && styles.amountToggleTxtActive]}>
+                      Payer un acompte
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {isPartialCustom && (
+                  <View style={styles.customAmountBox}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={styles.inputFieldLabel}>Saisir le montant partiel (FCFA)</Text>
+                      {focusedInput === 'amount' && (
+                        <TouchableOpacity onPress={Keyboard.dismiss} style={styles.inlineDismissBtn}>
+                          <Text style={styles.inlineDismissTxt}>OK ✓</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={[styles.customAmountWrapper, focusedInput === 'amount' && styles.inputWrapperFocused]}>
+                      <TextInput
+                        style={styles.customAmountInput}
+                        value={customAmount}
+                        onChangeText={setCustomAmount}
+                        onFocus={() => {
+                          setFocusedInput('amount');
+                          setTimeout(() => {
+                            checkoutScrollRef.current?.scrollTo({ y: 120, animated: true });
+                          }, 150);
+                        }}
+                        onBlur={() => setFocusedInput(null)}
+                        keyboardType="numeric"
+                        returnKeyType="done"
+                        onSubmitEditing={Keyboard.dismiss}
+                        placeholder="Ex: 50000"
+                        placeholderTextColor="#94A3B8"
+                      />
+                      <Text style={styles.currencyBadge}>FCFA</Text>
+                    </View>
+                  </View>
+                )}
+
+                {/* Select Payment Method */}
+                <Text style={styles.fieldSectionLabel}>Mode de Règlement</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.methodsRow}>
+                  {PAYMENT_METHODS.map(method => {
+                    const isSelected = selectedMethod.id === method.id;
+                    return (
+                      <TouchableOpacity
+                        key={method.id}
+                        style={[styles.methodCardChip, isSelected && styles.methodCardChipActive]}
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          setSelectedMethod(method);
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <View style={[styles.methodIconBox, { backgroundColor: method.bg }]}>
+                          <Ionicons name={method.icon} size={20} color={method.color} />
+                        </View>
+                        <View>
+                          <Text style={[styles.methodChipName, isSelected && styles.methodChipNameActive]}>
+                            {method.name}
+                          </Text>
+                          <Text style={styles.methodBadgeTxt}>{method.badge}</Text>
+                        </View>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Conditional Input Fields */}
+                {selectedMethod.category === 'mobile' && (
+                  <View style={styles.inputFormGroup}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={styles.inputFieldLabel}>Numéro Mobile Money ({selectedMethod.name})</Text>
+                      {focusedInput === 'phone' && (
+                        <TouchableOpacity onPress={Keyboard.dismiss} style={styles.inlineDismissBtn}>
+                          <Text style={styles.inlineDismissTxt}>OK ✓</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={[styles.inputPhoneWrapper, focusedInput === 'phone' && styles.inputWrapperFocused]}>
+                      <Text style={styles.phoneCountryCode}>+225</Text>
+                      <TextInput
+                        style={styles.phoneInputField}
+                        value={phoneNumber}
+                        onChangeText={setPhoneNumber}
+                        onFocus={() => {
+                          setFocusedInput('phone');
+                          setTimeout(() => {
+                            checkoutScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 150);
+                        }}
+                        onBlur={() => setFocusedInput(null)}
+                        placeholder="07 00 00 00 00"
+                        keyboardType="phone-pad"
+                        returnKeyType="done"
+                        onSubmitEditing={Keyboard.dismiss}
+                        placeholderTextColor="#94A3B8"
+                      />
+                      {phoneNumber.length > 0 && (
+                        <TouchableOpacity
+                          onPress={() => setPhoneNumber('')}
+                          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                          style={{ paddingHorizontal: 6 }}
+                        >
+                          <Ionicons name="close-circle" size={18} color="#94A3B8" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <Text style={styles.inputHelperTxt}>
+                      💡 Vous recevrez une invite USSD / Push sur votre mobile pour valider avec votre code secret.
+                    </Text>
+                  </View>
+                )}
+
+                {selectedMethod.id === 'card' && (
+                  <View style={styles.inputFormGroup}>
+                    <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                      <Text style={styles.inputFieldLabel}>Numéro de Carte Bancaire</Text>
+                      {focusedInput === 'card' && (
+                        <TouchableOpacity onPress={Keyboard.dismiss} style={styles.inlineDismissBtn}>
+                          <Text style={styles.inlineDismissTxt}>OK ✓</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                    <View style={[styles.cardInputWrapper, focusedInput === 'card' && styles.inputWrapperFocused]}>
+                      <TextInput
+                        style={styles.cardInputField}
+                        value={cardNumber}
+                        onChangeText={setCardNumber}
+                        onFocus={() => {
+                          setFocusedInput('card');
+                          setTimeout(() => {
+                            checkoutScrollRef.current?.scrollToEnd({ animated: true });
+                          }, 150);
+                        }}
+                        onBlur={() => setFocusedInput(null)}
+                        placeholder="4000 1234 5678 9010"
+                        keyboardType="numeric"
+                        returnKeyType="next"
+                        placeholderTextColor="#94A3B8"
+                      />
+                    </View>
+
+                    <View style={styles.cardRowTwo}>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputFieldLabel}>Exp (MM/AA)</Text>
+                        <View style={[styles.cardInputWrapper, focusedInput === 'expiry' && styles.inputWrapperFocused]}>
+                          <TextInput
+                            style={styles.cardInputHalf}
+                            value={cardExpiry}
+                            onChangeText={setCardExpiry}
+                            onFocus={() => {
+                              setFocusedInput('expiry');
+                              setTimeout(() => {
+                                checkoutScrollRef.current?.scrollToEnd({ animated: true });
+                              }, 150);
+                            }}
+                            onBlur={() => setFocusedInput(null)}
+                            placeholder="12/28"
+                            keyboardType="numeric"
+                            maxLength={5}
+                            returnKeyType="next"
+                            placeholderTextColor="#94A3B8"
+                          />
+                        </View>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.inputFieldLabel}>CVC / CVV</Text>
+                        <View style={[styles.cardInputWrapper, focusedInput === 'cvc' && styles.inputWrapperFocused]}>
+                          <TextInput
+                            style={styles.cardInputHalf}
+                            value={cardCvc}
+                            onChangeText={setCardCvc}
+                            onFocus={() => {
+                              setFocusedInput('cvc');
+                              setTimeout(() => {
+                                checkoutScrollRef.current?.scrollToEnd({ animated: true });
+                              }, 150);
+                            }}
+                            onBlur={() => setFocusedInput(null)}
+                            placeholder="123"
+                            keyboardType="numeric"
+                            maxLength={4}
+                            secureTextEntry
+                            returnKeyType="done"
+                            onSubmitEditing={Keyboard.dismiss}
+                            placeholderTextColor="#94A3B8"
+                          />
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                )}
+
+                {selectedMethod.id === 'bank' && (
+                  <View style={styles.bankInstructionBox}>
+                    <Ionicons name="information-circle-outline" size={24} color="#7C3AED" />
+                    <Text style={styles.bankInstructionTxt}>
+                      Effectuez votre virement vers le compte Eurêka : <Text style={{ fontWeight: '800' }}>CI93 0100 1234 5678 9000</Text> avec la référence <Text style={{ fontWeight: '800' }}>"{activePaymentRecord?.student_name}"</Text>.
+                    </Text>
+                  </View>
+                )}
+
+                {/* Confirm Payment Action Button */}
+                <TouchableOpacity
+                  style={[styles.confirmPayBtn, processingPayment && { opacity: 0.7 }]}
+                  onPress={processPaymentSubmission}
+                  disabled={processingPayment}
+                  activeOpacity={0.8}
+                >
+                  {processingPayment ? (
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                      <ActivityIndicator color="#FFFFFF" size="small" />
+                      <Text style={styles.confirmPayBtnTxt}>Traitement en cours...</Text>
+                    </View>
+                  ) : (
+                    <>
+                      <Ionicons name="lock-closed" size={18} color="#FFFFFF" />
+                      <Text style={styles.confirmPayBtnTxt}>
+                        Valider le Paiement Sécurisé
+                      </Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </View>
       </Modal>
 
@@ -970,16 +1151,65 @@ const styles = StyleSheet.create({
   },
   payNowActionText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
   /* Modal */
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalKeyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
   modalSheet: {
     backgroundColor: '#FFFFFF',
-    borderTopLeftRadius: Radius.xxl,
-    borderTopRightRadius: Radius.xxl,
-    padding: Spacing.xl,
+    borderTopLeftRadius: 28,
+    borderTopRightRadius: 28,
+    maxHeight: '88%',
+    overflow: 'hidden',
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  modalDragHandle: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: '#CBD5E1',
+    alignSelf: 'center',
+    marginTop: 10,
+    marginBottom: 4,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingTop: 6,
+    paddingBottom: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: '#F1F5F9',
+  },
   modalHeaderSubtitle: { fontSize: 11, color: '#64748B', fontWeight: '700', textTransform: 'uppercase' },
   modalHeaderTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A', marginTop: 2 },
+  modalScrollBody: {
+    paddingHorizontal: Spacing.xl,
+    paddingTop: 12,
+  },
+  keyboardToolbar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: 7,
+    borderBottomWidth: 1,
+    borderBottomColor: '#DBEAFE',
+  },
+  keyboardToolbarText: { fontSize: 11, color: Brand.blue, fontWeight: '700' },
+  keyboardToolbarDismissBtn: {
+    backgroundColor: Brand.blue,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: Radius.full,
+  },
+  keyboardToolbarDismissTxt: { fontSize: 11, color: '#FFFFFF', fontWeight: '800' },
+  inlineDismissBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: Radius.full,
+    backgroundColor: '#EFF6FF',
+  },
+  inlineDismissTxt: { fontSize: 11, color: Brand.blue, fontWeight: '800' },
   checkoutTotalBanner: { backgroundColor: '#EFF6FF', padding: 12, borderRadius: Radius.lg, alignItems: 'center', marginBottom: 12 },
   checkoutTotalLabel: { fontSize: 11, color: Brand.blue, fontWeight: '700', textTransform: 'uppercase' },
   checkoutTotalVal: { fontSize: 24, fontWeight: '900', color: Brand.blue, marginTop: 2 },
@@ -990,7 +1220,23 @@ const styles = StyleSheet.create({
   amountToggleTxt: { fontSize: 12, color: '#64748B', fontWeight: '700' },
   amountToggleTxtActive: { color: '#FFFFFF' },
   customAmountBox: { marginBottom: 12 },
-  customAmountInput: { backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: Brand.blue, borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, fontSize: 16, fontWeight: '800', color: '#0F172A' },
+  customAmountWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#CBD5E1',
+    borderRadius: Radius.lg,
+    paddingHorizontal: 12,
+  },
+  customAmountInput: {
+    flex: 1,
+    paddingVertical: 11,
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#0F172A',
+  },
+  currencyBadge: { fontSize: 12, fontWeight: '800', color: '#64748B', paddingLeft: 6 },
   fieldSectionLabel: { fontSize: 12, fontWeight: '800', color: '#0F172A', marginBottom: 8 },
   methodsRow: { marginBottom: 12 },
   methodCardChip: {
@@ -1012,13 +1258,39 @@ const styles = StyleSheet.create({
   methodBadgeTxt: { fontSize: 10, color: '#64748B', fontWeight: '600' },
   inputFormGroup: { marginBottom: 12 },
   inputFieldLabel: { fontSize: 11, fontWeight: '700', color: '#334155', marginBottom: 4 },
-  inputPhoneWrapper: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: Radius.lg, paddingHorizontal: 12 },
+  inputPhoneWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: Radius.lg,
+    paddingHorizontal: 12,
+  },
   phoneCountryCode: { fontSize: 15, fontWeight: '800', color: '#0F172A', paddingRight: 8 },
   phoneInputField: { flex: 1, paddingVertical: 12, fontSize: 15, fontWeight: '700', color: '#0F172A' },
   inputHelperTxt: { fontSize: 11, color: '#64748B', marginTop: 4 },
-  cardInputField: { backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, fontSize: 15, fontWeight: '700', color: '#0F172A', marginBottom: 8 },
+  cardInputWrapper: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    borderRadius: Radius.lg,
+    paddingHorizontal: 12,
+    marginBottom: 8,
+  },
+  cardInputField: { paddingVertical: 11, fontSize: 15, fontWeight: '700', color: '#0F172A' },
   cardRowTwo: { flexDirection: 'row', gap: 10 },
-  cardInputHalf: { backgroundColor: '#F8FAFC', borderWidth: 1.5, borderColor: '#E2E8F0', borderRadius: Radius.lg, paddingHorizontal: 12, paddingVertical: 10, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  cardInputHalf: { paddingVertical: 11, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  inputWrapperFocused: {
+    borderColor: Brand.blue,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 2,
+    shadowColor: Brand.blue,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.12,
+    shadowRadius: 5,
+    elevation: 3,
+  },
   bankInstructionBox: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#F5F3FF', padding: 10, borderRadius: Radius.lg, marginBottom: 12 },
   bankInstructionTxt: { flex: 1, fontSize: 11, color: '#6B21A8', lineHeight: 16 },
   confirmPayBtn: {
@@ -1029,6 +1301,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: Radius.lg,
     gap: 8,
+    marginTop: 6,
   },
   confirmPayBtnTxt: { color: '#FFFFFF', fontWeight: '900', fontSize: 15 },
   /* Digital Receipt Ticket */
