@@ -23,12 +23,12 @@ type NavItem = {
   badge?: string;
   requiresSuperieur?: boolean;
   requiresK12?: boolean;
-  getDynamicLabel?: (info: EstablishmentTypeInfo) => string;
+  getDynamicLabel?: (info: EstablishmentTypeInfo, role?: string) => string;
   getDynamicBadge?: (info: EstablishmentTypeInfo) => string | undefined;
 };
 
 const ALL_NAV_ITEMS: NavItem[] = [
-  { to: "/", label: "Tableau de bord", icon: LayoutDashboard, roles: ['admin', 'director', 'accountant', 'dean', 'department_head'] },
+  { to: "/", label: "Tableau de bord", icon: LayoutDashboard, roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head'] },
   { 
     to: "/portail-parent", 
     label: "Portail Parent", 
@@ -83,7 +83,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     label: "Élèves & Inscriptions", 
     icon: GraduationCap, 
     roles: ['admin', 'director', 'accountant', 'teacher', 'surveillance', 'secretary', 'dean', 'doctor', 'medecin'],
-    getDynamicLabel: (info) => info.isUniversityOnly ? "Étudiants & Dossiers" : (info.isMixed ? "Élèves & Étudiants" : "Élèves & Inscriptions"),
+    getDynamicLabel: (info, role) => role === 'teacher' ? "Dossiers Élèves" : (info.isUniversityOnly ? "Étudiants & Dossiers" : (info.isMixed ? "Élèves & Étudiants" : "Élèves & Inscriptions")),
   },
   { 
     to: "/sante", 
@@ -96,7 +96,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     to: "/classes", 
     label: "Classes & Niveaux", 
     icon: Users, 
-    roles: ['admin', 'director', 'accountant', 'teacher', 'dean', 'department_head'],
+    roles: ['admin', 'director', 'accountant', 'dean', 'department_head'],
     getDynamicLabel: (info) => info.isUniversityOnly ? "Filières & Promotions" : (info.isMixed ? "Classes & Filières" : "Classes & Niveaux"),
   },
   { to: "/emploi-du-temps", label: "Emploi du Temps", icon: CalendarDays, roles: ['admin', 'director', 'teacher', 'student', 'parent', 'surveillance', 'dean', 'secretary'] },
@@ -123,7 +123,7 @@ const ALL_NAV_ITEMS: NavItem[] = [
     getDynamicLabel: (info) => info.isUniversityOnly ? "Relevés LMD & PV" : "Bulletins & Moyennes",
   },
   { to: "/rh", label: "RH & Personnel", icon: Briefcase, roles: ['admin', 'director', 'accountant'] },
-  { to: "/communication", label: "Communication & SMS", icon: MessageSquare },
+  { to: "/communication", label: "Communication & SMS", icon: MessageSquare, roles: ['admin', 'director', 'secretary', 'dean'] },
   { to: "/statistiques", label: "Statistiques & BI", icon: BarChart3, roles: ['admin', 'director', 'accountant', 'dean'] },
   { to: "/equipe", label: "Équipe & Accès", icon: Users, roles: ['admin', 'director'] },
 ];
@@ -179,7 +179,7 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
     })
     .map(item => ({
       ...item,
-      label: item.getDynamicLabel ? item.getDynamicLabel(estInfo) : item.label,
+      label: item.getDynamicLabel ? item.getDynamicLabel(estInfo, profile?.role) : item.label,
       badge: item.getDynamicBadge ? item.getDynamicBadge(estInfo) : item.badge,
     }));
 

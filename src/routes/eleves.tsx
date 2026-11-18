@@ -77,6 +77,7 @@ function ElevesPage() {
   const { classesQuery } = useClasses();
   const { parents, createParentMutation, linkParentMutation, unlinkParentMutation } = useParents();
   const { profile } = useAuth();
+  const canManageInscriptions = Boolean(profile?.role && ['admin', 'director', 'secretary', 'superadmin'].includes(profile.role));
   const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
   const { results: globalParents, isSearching: isGlobalSearching, search: searchGlobal, clear: clearGlobalSearch, inviteExistingParent, linkExistingParentDirectly } = useParentSearch();
   
@@ -366,7 +367,7 @@ function ElevesPage() {
       subtitle={`${studentsList.length} ${estInfo.studentsTerm} inscrit(s)${estInfo.showParentPortal ? ` • ${parents.length} comptes parents enregistrés` : ''}`}
       actions={
         <div className="flex items-center gap-2">
-          {estInfo.showParentPortal && (
+          {estInfo.showParentPortal && canManageInscriptions && (
             <Button 
               variant="outline" 
               onClick={() => setIsCreateParentOpen(true)}
@@ -376,12 +377,14 @@ function ElevesPage() {
             </Button>
           )}
 
-          <Button 
-            onClick={() => setIsCreateStudentOpen(true)}
-            className="gap-2 bg-primary font-semibold shadow-sm"
-          >
-            <Plus className="w-4 h-4" /> {estInfo.isUniversityOnly ? "Nouvelle Inscription Étudiant" : "Nouvelle Inscription Élève"}
-          </Button>
+          {canManageInscriptions && (
+            <Button 
+              onClick={() => setIsCreateStudentOpen(true)}
+              className="gap-2 bg-primary font-semibold shadow-sm"
+            >
+              <Plus className="w-4 h-4" /> {estInfo.isUniversityOnly ? "Nouvelle Inscription Étudiant" : "Nouvelle Inscription Élève"}
+            </Button>
+          )}
         </div>
       }
     >
@@ -609,29 +612,33 @@ function ElevesPage() {
                                 >
                                   <FolderOpen className="h-4 w-4 mr-2 text-indigo-600" /> Dossier complet
                                 </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => setLinkStudentTarget(s)} className="cursor-pointer">
-                                  <UserPlus className="h-4 w-4 mr-2 text-emerald-600" /> 
-                                  {hasParent ? "Modifier le parent" : "Associer un parent"}
-                                </DropdownMenuItem>
-                                {hasParent && (
-                                  <DropdownMenuItem 
-                                    onClick={() => unlinkParentMutation.mutate({ studentId: s.id })} 
-                                    className="cursor-pointer text-amber-700 focus:text-amber-800"
-                                  >
-                                    <Unlink className="h-4 w-4 mr-2" /> Dissocier le parent
-                                  </DropdownMenuItem>
+                                {canManageInscriptions && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => setLinkStudentTarget(s)} className="cursor-pointer">
+                                      <UserPlus className="h-4 w-4 mr-2 text-emerald-600" /> 
+                                      {hasParent ? "Modifier le parent" : "Associer un parent"}
+                                    </DropdownMenuItem>
+                                    {hasParent && (
+                                      <DropdownMenuItem 
+                                        onClick={() => unlinkParentMutation.mutate({ studentId: s.id })} 
+                                        className="cursor-pointer text-amber-700 focus:text-amber-800"
+                                      >
+                                        <Unlink className="h-4 w-4 mr-2" /> Dissocier le parent
+                                      </DropdownMenuItem>
+                                    )}
+                                    <DropdownMenuItem onClick={() => setEditingStudent(s)} className="cursor-pointer">
+                                      <Edit2 className="h-4 w-4 mr-2 text-blue-600" /> Modifier l'élève
+                                    </DropdownMenuItem>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem 
+                                      onClick={() => setDeletingStudent(s)} 
+                                      className="cursor-pointer text-destructive focus:text-destructive"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+                                    </DropdownMenuItem>
+                                  </>
                                 )}
-                                <DropdownMenuItem onClick={() => setEditingStudent(s)} className="cursor-pointer">
-                                  <Edit2 className="h-4 w-4 mr-2 text-blue-600" /> Modifier l'élève
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem 
-                                  onClick={() => setDeletingStudent(s)} 
-                                  className="cursor-pointer text-destructive focus:text-destructive"
-                                >
-                                  <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-                                </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </td>

@@ -1,0 +1,7 @@
+.git
+node_modules
+my-ereuka-parent/node_modules
+release
+.output
+.tanstack
+dist

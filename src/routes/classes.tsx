@@ -75,6 +75,7 @@ function ClassesPage() {
   const { classesQuery, createClassMutation, updateClassMutation, deleteClassMutation } =
     useClasses();
   const { profile } = useAuth();
+  const canManageClasses = Boolean(profile?.role && ['admin', 'director', 'accountant', 'dean', 'department_head', 'superadmin'].includes(profile.role));
 
   const [teachers, setTeachers] = useState<UserProfile[]>([]);
   const [tenant, setTenant] = useState<Tenant | null>(null);
@@ -206,7 +207,8 @@ function ClassesPage() {
       title={pageTitle}
       subtitle={`${classesList.length} ${estInfo.classesTerm} enregistrée${classesList.length > 1 ? "s" : ""} • ${estInfo.badgeLabel}`}
       actions={
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        canManageClasses ? (
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
             <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-95">
               <Plus className="h-4 w-4" /> {createButtonText}
@@ -295,6 +297,7 @@ function ClassesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        ) : null
       }
     >
       {classesList.length === 0 ? (
@@ -322,6 +325,7 @@ function ClassesPage() {
                   <ClassCard
                     key={c.id}
                     c={c}
+                    canManage={canManageClasses}
                     onEdit={openEdit}
                     onDelete={setDeletingClass}
                     onManageSubjects={setManagingClass}
@@ -466,12 +470,14 @@ function ClassesPage() {
 
 function ClassCard({
   c,
+  canManage = true,
   onEdit,
   onDelete,
   onManageSubjects,
   onManageTeachers,
 }: {
   c: ClassWithTeacher;
+  canManage?: boolean;
   onEdit: (c: ClassWithTeacher) => void;
   onDelete: (c: ClassWithTeacher) => void;
   onManageSubjects: (c: ClassWithTeacher) => void;
@@ -481,51 +487,53 @@ function ClassCard({
 
   return (
     <div className="group rounded-2xl border border-border bg-card p-5 transition-shadow hover:shadow-md relative">
-      <div className="absolute top-4 right-4">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-secondary">
-              <MoreHorizontal className="h-4 w-4" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem
-              onClick={() => onEdit(c)}
-              className="cursor-pointer"
-            >
-              <Edit2 className="h-4 w-4 mr-2" /> Modifier
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => onManageTeachers(c)}
-              className="cursor-pointer text-indigo-600 focus:text-indigo-700"
-            >
-              <Users className="h-4 w-4 mr-2" /> Gérer les enseignants
-            </DropdownMenuItem>
-            {c.level_type === "Secondaire" && (
+      {canManage && (
+        <div className="absolute top-4 right-4">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-secondary">
+                <MoreHorizontal className="h-4 w-4" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
               <DropdownMenuItem
-                onClick={() => onManageSubjects(c)}
-                className="cursor-pointer text-blue-600 focus:text-blue-700"
+                onClick={() => onEdit(c)}
+                className="cursor-pointer"
               >
-                <BookOpen className="h-4 w-4 mr-2" /> Gérer les matières
+                <Edit2 className="h-4 w-4 mr-2" /> Modifier
               </DropdownMenuItem>
-            )}
-            {c.level_type === "Supérieur" && (
               <DropdownMenuItem
-                onClick={() => navigate({ to: '/lmd' })}
-                className="cursor-pointer text-emerald-600 focus:text-emerald-700"
+                onClick={() => onManageTeachers(c)}
+                className="cursor-pointer text-indigo-600 focus:text-indigo-700"
               >
-                <Award className="h-4 w-4 mr-2" /> Maquette LMD & UEs
+                <Users className="h-4 w-4 mr-2" /> Gérer les enseignants
               </DropdownMenuItem>
-            )}
-            <DropdownMenuItem
-              onClick={() => onDelete(c)}
-              className="cursor-pointer text-destructive focus:text-destructive"
-            >
-              <Trash2 className="h-4 w-4 mr-2" /> Supprimer
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+              {c.level_type === "Secondaire" && (
+                <DropdownMenuItem
+                  onClick={() => onManageSubjects(c)}
+                  className="cursor-pointer text-blue-600 focus:text-blue-700"
+                >
+                  <BookOpen className="h-4 w-4 mr-2" /> Gérer les matières
+                </DropdownMenuItem>
+              )}
+              {c.level_type === "Supérieur" && (
+                <DropdownMenuItem
+                  onClick={() => navigate({ to: '/lmd' })}
+                  className="cursor-pointer text-emerald-600 focus:text-emerald-700"
+                >
+                  <Award className="h-4 w-4 mr-2" /> Maquette LMD & UEs
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                onClick={() => onDelete(c)}
+                className="cursor-pointer text-destructive focus:text-destructive"
+              >
+                <Trash2 className="h-4 w-4 mr-2" /> Supprimer
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      )}
 
       <div className="flex items-start justify-between">
         <div>

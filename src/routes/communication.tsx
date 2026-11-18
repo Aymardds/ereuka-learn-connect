@@ -3,9 +3,11 @@ import { useState } from 'react';
 import { AppShell } from '@/components/AppShell';
 import { useCommunication } from '@/hooks/useCommunication';
 import { useHR } from '@/hooks/useHR';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from 'sonner';
 import { 
   MessageSquare, Bell, Megaphone, Send, Mail, CheckCircle2, 
-  AlertCircle, Plus, Clock, User, Filter, Paperclip 
+  AlertCircle, Plus, Clock, User, Filter, Paperclip, ShieldAlert
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +22,8 @@ export const Route = createFileRoute('/communication')({
 });
 
 function CommunicationPage() {
+  const { profile } = useAuth();
+  const isTeacher = profile?.role === 'teacher';
   const { messages, announcements, notifications, sendMessage, createAnnouncement } = useCommunication();
   const { staff } = useHR();
   const [activeTab, setActiveTab] = useState<'messages' | 'annonces' | 'notifications'>('messages');
@@ -34,7 +38,7 @@ function CommunicationPage() {
   const [isAnnouncementOpen, setIsAnnouncementOpen] = useState(false);
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementContent, setAnnouncementContent] = useState('');
-  const [announcementTarget, setAnnouncementTarget] = useState<'all' | 'parent' | 'teacher' | 'student' | 'staff'>('all');
+  const [announcementTarget, setAnnouncementTarget] = useState<'all' | 'parent' | 'teacher' | 'student' | 'staff'>(isTeacher ? 'teacher' : 'all');
   const [announcementPriority, setAnnouncementPriority] = useState<'low' | 'normal' | 'high' | 'urgent'>('normal');
 
   const handleSendMessage = async () => {
@@ -50,6 +54,10 @@ function CommunicationPage() {
   };
 
   const handleCreateAnnouncement = async () => {
+    if (isTeacher && (announcementTarget === 'parent' || announcementTarget === 'all')) {
+      toast.error("L'envoi de messages et SMS aux parents est strictement réservé à la direction.");
+      return;
+    }
     if (!announcementTitle || !announcementContent) return;
     await createAnnouncement({
       title: announcementTitle,
@@ -86,6 +94,14 @@ function CommunicationPage() {
         </div>
       }
     >
+      {isTeacher && (
+        <div className="mb-4 flex items-center gap-2.5 rounded-xl border border-amber-500/20 bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">
+          <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+          <span>
+            <b>Règle de communication :</b> Les diffusions et SMS directs aux parents d'élèves sont exclusivement gérés par la direction et le secrétariat. Vos échanges ici sont réservés aux communications pédagogiques internes entre collègues.
+          </span>
+        </div>
+      )}
       <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
         <TabsList className="mb-6 bg-secondary/50">
           <TabsTrigger value="messages" className="text-xs gap-1.5">
@@ -271,8 +287,12 @@ function CommunicationPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tout l'établissement (Parents, Élèves, Profs)</SelectItem>
-                  <SelectItem value="parent">Parents d'élèves uniquement</SelectItem>
+                  {!isTeacher && (
+                    <>
+                      <SelectItem value="all">Tout l'établissement (Parents, Élèves, Profs)</SelectItem>
+                      <SelectItem value="parent">Parents d'élèves uniquement (SMS / Diffusion)</SelectItem>
+                    </>
+                  )}
                   <SelectItem value="teacher">Corps Enseignant</SelectItem>
                   <SelectItem value="student">Élèves / Étudiants</SelectItem>
                   <SelectItem value="staff">Personnel administratif</SelectItem>
