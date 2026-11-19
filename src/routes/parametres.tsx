@@ -58,27 +58,15 @@ function ParametresPage() {
   const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
 
   const handleToggleUserRole = async (member: UserProfile, roleId: UserRole, checked: boolean) => {
-    const currentRoles = member.assigned_roles && member.assigned_roles.length > 0 
-      ? [...member.assigned_roles] 
-      : [member.role];
-
-    let newRoles: string[];
-    if (checked) {
-      newRoles = Array.from(new Set([...currentRoles, roleId]));
-    } else {
-      newRoles = currentRoles.filter(r => r !== roleId);
-      if (newRoles.length === 0) {
-        toast.error("L'utilisateur doit conserver au moins un rôle actif.");
-        return;
-      }
+    if (!checked && member.role === roleId) {
+      toast.info("L'utilisateur doit conserver au moins un rôle actif.");
+      return;
     }
-
-    const newPrimaryRole = (newRoles[0] as UserRole) || 'teacher';
+    if (member.role === roleId) return;
 
     await updateUserRolesMutation.mutateAsync({
       userId: member.id,
-      role: newPrimaryRole,
-      assignedRoles: newRoles,
+      role: roleId,
     });
   };
 
@@ -89,8 +77,7 @@ function ParametresPage() {
       m.email.toLowerCase().includes(term);
     
     if (selectedRoleFilter === 'all') return matchesSearch;
-    const roles = m.assigned_roles && m.assigned_roles.length > 0 ? m.assigned_roles : [m.role];
-    return matchesSearch && roles.includes(selectedRoleFilter as any);
+    return matchesSearch && m.role === selectedRoleFilter;
   });
 
   useEffect(() => {
@@ -330,13 +317,11 @@ function ParametresPage() {
             ) : (
               <div className="space-y-6">
                 <p className="text-xs text-gray-500">
-                  Cochez ou décochez les rôles opérationnels pour chaque membre du personnel. Un utilisateur peut cumuler plusieurs attributions selon son profil (ex: Enseignant et Surveillant).
+                  Cochez le rôle opérationnel à attribuer à chaque collaborateur. L'attribution d'un rôle active immédiatement les accès et menus correspondants.
                 </p>
 
                 {filteredStaffUsers.map((member) => {
-                  const currentRoles = member.assigned_roles && member.assigned_roles.length > 0 
-                    ? member.assigned_roles 
-                    : [member.role];
+                  const activeRole = AVAILABLE_ROLES.find(ar => ar.id === member.role);
 
                   return (
                     <div 
@@ -362,33 +347,27 @@ function ParametresPage() {
                           </div>
                         </div>
 
-                        {/* Badges des rôles actuels */}
+                        {/* Badge du rôle actuel */}
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="text-[10px] uppercase font-bold text-gray-400 mr-1">Rôles actifs ({currentRoles.length}) :</span>
-                          {currentRoles.map((r) => {
-                            const found = AVAILABLE_ROLES.find(ar => ar.id === r);
-                            return (
-                              <span 
-                                key={r} 
-                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${found?.badgeColor || 'bg-gray-100 text-gray-700 border-gray-300'}`}
-                              >
-                                {found?.label || r}
-                              </span>
-                            );
-                          })}
+                          <span className="text-[10px] uppercase font-bold text-gray-400 mr-1">Rôle attribué :</span>
+                          <span 
+                            className={`text-[10px] font-bold px-2.5 py-0.5 rounded-md border ${activeRole?.badgeColor || 'bg-gray-100 text-gray-700 border-gray-300'}`}
+                          >
+                            {activeRole?.label || member.role}
+                          </span>
                         </div>
                       </div>
 
                       {/* Grille de sélection des rôles en mode Checkbox */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
                         {AVAILABLE_ROLES.map((roleOpt) => {
-                          const isChecked = currentRoles.includes(roleOpt.id);
+                          const isChecked = member.role === roleOpt.id;
                           return (
                             <label
                               key={roleOpt.id}
                               className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-all ${
                                 isChecked 
-                                  ? 'bg-primary/5 border-primary shadow-xs' 
+                                  ? 'bg-primary/5 border-primary shadow-xs ring-1 ring-primary/30 font-medium' 
                                   : 'bg-white border-gray-200 hover:bg-gray-100/60 text-gray-600'
                               }`}
                             >
@@ -398,8 +377,9 @@ function ParametresPage() {
                                 className="mt-0.5"
                               />
                               <div className="min-w-0">
-                                <div className={`font-semibold ${isChecked ? 'text-gray-900' : 'text-gray-700'}`}>
-                                  {roleOpt.label}
+                                <div className={`font-semibold flex items-center justify-between ${isChecked ? 'text-primary' : 'text-gray-700'}`}>
+                                  <span>{roleOpt.label}</span>
+                                  {isChecked && <Check className="w-3.5 h-3.5 text-primary ml-1 shrink-0" />}
                                 </div>
                                 <div className="text-[10px] text-gray-500 leading-snug line-clamp-2 mt-0.5">
                                   {roleOpt.description}

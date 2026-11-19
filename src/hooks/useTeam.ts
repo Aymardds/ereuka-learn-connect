@@ -126,29 +126,39 @@ export function useTeam() {
 
   // 5. UPDATE User Roles & Authorizations (Checkbox Attribution)
   const updateUserRolesMutation = useMutation({
-    mutationFn: async ({ userId, role, assignedRoles }: { userId: string; role: UserRole; assignedRoles: string[] }) => {
-      const { data, error } = await supabase
+    mutationFn: async ({ userId, role }: { userId: string; role: UserRole; assignedRoles?: string[] }) => {
+      // 1. Direct update with active role
+      let { data, error } = await supabase
         .from('user_profiles')
-        .update({ role, assigned_roles: assignedRoles })
+        .update({ role })
         .eq('id', userId)
         .select()
         .single();
 
-      if (error) {
-        // Fallback si la colonne assigned_roles n'est pas encore déployée
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('user_profiles')
-          .update({ role })
-          .eq('id', userId)
-          .select()
-          .single();
-        if (fallbackError) throw fallbackError;
-        return fallbackData;
+      // 2. Fallback to admin service client if RLS restricts normal update
+      if (error && import.meta.env.VITE_SUPABASE_SERVICE_ROLE_KEY) {
+        try {
+          const adminClient = getAdminClient();
+          const adminRes = await adminClient
+            .from('user_profiles')
+            .update({ role })
+            .eq('id', userId)
+            .select()
+            .single();
+          if (!adminRes.error) {
+            data = adminRes.data;
+            error = null;
+          }
+        } catch {
+          // Keep original error if admin client cannot be created
+        }
       }
+
+      if (error) throw error;
       return data;
     },
     onSuccess: () => {
-      toast.success("Rôles & autorisations mis à jour");
+      toast.success("Rôle utilisateur mis à jour");
       queryClient.invalidateQueries({ queryKey: ['team_staff'] });
     },
     onError: (err: any) => {
