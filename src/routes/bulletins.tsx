@@ -203,7 +203,7 @@ function BulletinsPage() {
 
   const { classes = [] } = useClasses();
   const { students = [] } = useStudents();
-  const { subjectsQuery } = useSubjects();
+  const { subjectsQuery, seedDefaultSubjectsMutation } = useSubjects();
   const dbSubjects = subjectsQuery.data || [];
 
   // Filters state
@@ -506,14 +506,26 @@ function BulletinsPage() {
     if (!profile?.tenant_id || !currentClassId) return;
     setIsGeneratingDemo(true);
     try {
-      const recordsToInsert: any[] = [];
-      const evTypes: ('devoir' | 'interro' | 'examen')[] = ['interro', 'devoir', 'examen'];
+      let effectiveSubjects = [...dbSubjects];
+      if (effectiveSubjects.length === 0) {
+        // Automatically create real subjects in DB first
+        const category = activeLevel === 'maternelle' ? 'maternelle' : activeLevel === 'primaire' ? 'primaire' : 'secondaire';
+        const createdSubjects = await seedDefaultSubjectsMutation.mutateAsync(category);
+        effectiveSubjects = createdSubjects || [];
+      }
 
-      activeSubjects.forEach((subj, sIdx) => {
+      if (effectiveSubjects.length === 0) {
+        toast.error("Impossible de créer les matières requises.");
+        return;
+      }
+
+      const recordsToInsert: any[] = [];
+
+      effectiveSubjects.forEach((subj, sIdx) => {
         // 2 evaluations per subject: Devoir (coef 1) and Examen/Composition (coef 2)
         [
-          { name: `Contrôle continu N°1 - ${subj.name}`, type: 'interro', coef: 1, date: '2025-10-15' },
-          { name: `Composition trimestrielle - ${subj.name}`, type: 'examen', coef: 2, date: '2025-11-20' },
+          { name: `Contrôle continu N°1 - ${subj.name}`, type: 'interro' as const, coef: 1, date: '2025-10-15' },
+          { name: `Composition trimestrielle - ${subj.name}`, type: 'examen' as const, coef: 2, date: '2025-11-20' },
         ].forEach((ev, evIdx) => {
           classStudents.forEach((st, stIdx) => {
             // Realistic grade distribution around 13-14 with natural variation
@@ -524,7 +536,7 @@ function BulletinsPage() {
               tenant_id: profile.tenant_id,
               class_id: currentClassId,
               student_id: st.id,
-              subject_id: subj.id.startsWith("def-") ? null : subj.id,
+              subject_id: subj.id,
               term: selectedTerm,
               evaluation_name: ev.name,
               evaluation_type: ev.type,
@@ -543,6 +555,7 @@ function BulletinsPage() {
         const { error } = await supabase.from('grade_entries').insert(recordsToInsert);
         if (error) throw error;
         await queryClient.invalidateQueries({ queryKey: ['grades', profile.tenant_id] });
+        await queryClient.invalidateQueries({ queryKey: ['subjects', profile.tenant_id] });
         toast.success(`🎉 ${recordsToInsert.length} notes réelles d'évaluation générées avec succès pour cette classe !`);
       }
     } catch (err: any) {
