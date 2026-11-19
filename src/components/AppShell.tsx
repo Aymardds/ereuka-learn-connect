@@ -232,7 +232,11 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
     ...group,
     items: group.items
       .filter(item => {
-        if (item.roles && profile?.role && !item.roles.includes(profile.role)) return false;
+        if (item.roles && profile?.role) {
+          const userRoles = [profile.role, ...(profile.assigned_roles || [])];
+          const hasAccess = item.roles.some(r => userRoles.includes(r as any));
+          if (!hasAccess) return false;
+        }
         if (item.requiresSuperieur && !estInfo.hasSuperieur) return false;
         if (item.requiresK12 && !estInfo.hasK12) return false;
         return true;

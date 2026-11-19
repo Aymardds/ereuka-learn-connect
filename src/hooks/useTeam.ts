@@ -124,11 +124,44 @@ export function useTeam() {
     }
   });
 
+  // 5. UPDATE User Roles & Authorizations (Checkbox Attribution)
+  const updateUserRolesMutation = useMutation({
+    mutationFn: async ({ userId, role, assignedRoles }: { userId: string; role: UserRole; assignedRoles: string[] }) => {
+      const { data, error } = await supabase
+        .from('user_profiles')
+        .update({ role, assigned_roles: assignedRoles })
+        .eq('id', userId)
+        .select()
+        .single();
+
+      if (error) {
+        // Fallback si la colonne assigned_roles n'est pas encore déployée
+        const { data: fallbackData, error: fallbackError } = await supabase
+          .from('user_profiles')
+          .update({ role })
+          .eq('id', userId)
+          .select()
+          .single();
+        if (fallbackError) throw fallbackError;
+        return fallbackData;
+      }
+      return data;
+    },
+    onSuccess: () => {
+      toast.success("Rôles & autorisations mis à jour");
+      queryClient.invalidateQueries({ queryKey: ['team_staff'] });
+    },
+    onError: (err: any) => {
+      toast.error(err.message || "Erreur lors de la mise à jour des rôles");
+    }
+  });
+
   return {
     staff: staffQuery.data || [],
     isLoading: staffQuery.isLoading,
     createStaffMutation,
     updateStaffMutation,
+    updateUserRolesMutation,
     deleteStaffMutation,
   };
 }

@@ -38,6 +38,7 @@ export interface UserProfile {
   email: string;
   full_name: string | null;
   role: UserRole;
+  assigned_roles?: string[];
   tenant_id: string; // references tenants
   phone?: string | null;
   campus_id?: string | null;

@@ -11,7 +11,8 @@ import { useParents, ParentWithChildren } from "@/hooks/useParents";
 import { useParentSearch } from "@/hooks/useParentSearch";
 import { InvitationSuccessDialog, InvitationSuccessData } from "@/components/InvitationSuccessDialog";
 import { StudentDossierDialog } from "@/components/StudentDossierDialog";
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useTeacherAssignments } from "@/hooks/useTeacherAssignments";
 import { Student } from "@/types/database";
 import { toast } from "sonner";
 
@@ -77,6 +78,8 @@ function ElevesPage() {
   const { classesQuery } = useClasses();
   const { parents, createParentMutation, linkParentMutation, unlinkParentMutation } = useParents();
   const { profile } = useAuth();
+  const { assignments = [] } = useTeacherAssignments();
+  const isTeacher = profile?.role === 'teacher';
   const canManageInscriptions = Boolean(profile?.role && ['admin', 'director', 'secretary', 'superadmin'].includes(profile.role));
   const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
   const { results: globalParents, isSearching: isGlobalSearching, search: searchGlobal, clear: clearGlobalSearch, inviteExistingParent, linkExistingParentDirectly } = useParentSearch();
@@ -336,8 +339,27 @@ function ElevesPage() {
     toast.success("Identifiants copiés dans le presse-papiers !");
   };
 
-  const studentsList = studentsQuery.data || [];
+  // Classes assignées par l'école à cet enseignant
+  const teacherAssignedClassIds = useMemo(() => {
+    if (!isTeacher || !profile?.id) return null;
+    return new Set(assignments.filter(a => a.teacher_id === profile.id).map(a => a.class_id));
+  }, [isTeacher, profile?.id, assignments]);
+
   const classesList = classesQuery.data || [];
+
+  // Classes visibles : toutes pour l'administration, uniquement celles assignées par l'école pour l'enseignant
+  const availableClasses = useMemo(() => {
+    if (!teacherAssignedClassIds) return classesList;
+    return classesList.filter(c => teacherAssignedClassIds.has(c.id));
+  }, [classesList, teacherAssignedClassIds]);
+
+  const rawStudentsList = studentsQuery.data || [];
+
+  // Élèves visibles : tous pour l'école, strictement restreints aux classes de l'enseignant
+  const studentsList = useMemo(() => {
+    if (!teacherAssignedClassIds) return rawStudentsList;
+    return rawStudentsList.filter(s => teacherAssignedClassIds.has(s.class_id));
+  }, [rawStudentsList, teacherAssignedClassIds]);
 
   // Filter students
   const filteredStudents = studentsList.filter(s => {
@@ -361,10 +383,16 @@ function ElevesPage() {
     return matchesSearch;
   });
 
+  const pageSubtitle = isTeacher
+    ? (teacherAssignedClassIds && teacherAssignedClassIds.size > 0 
+        ? `${studentsList.length} ${estInfo.studentsTerm} suivi(s) dans vos ${teacherAssignedClassIds.size} classe(s) assignée(s)`
+        : "Espace Enseignant — Consultation de vos élèves assignés")
+    : `${studentsList.length} ${estInfo.studentsTerm} inscrit(s)${estInfo.showParentPortal ? ` • ${parents.length} comptes parents enregistrés` : ''}`;
+
   return (
     <AppShell
-      title={estInfo.isUniversityOnly ? "Étudiants & Dossiers" : "Élèves & Parents"}
-      subtitle={`${studentsList.length} ${estInfo.studentsTerm} inscrit(s)${estInfo.showParentPortal ? ` • ${parents.length} comptes parents enregistrés` : ''}`}
+      title={estInfo.isUniversityOnly ? "Étudiants & Dossiers" : (isTeacher ? "Mes Élèves Assignés" : "Élèves & Inscriptions")}
+      subtitle={pageSubtitle}
       actions={
         <div className="flex items-center gap-2">
           {estInfo.showParentPortal && canManageInscriptions && (
@@ -428,7 +456,20 @@ function ElevesPage() {
 
         {/* TAB 1: ÉLÈVES */}
         {activeTab === 'students' && (
-          <div className="rounded-2xl border border-border bg-card shadow-sm">
+          <div className="space-y-4">
+            {isTeacher && teacherAssignedClassIds && teacherAssignedClassIds.size === 0 && (
+              <div className="rounded-xl border border-blue-200 bg-blue-50/80 p-4 text-xs text-blue-900 flex items-start gap-3 shadow-xs">
+                <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                <div>
+                  <div className="font-bold text-sm">Aucune classe affectée à votre compte</div>
+                  <p className="mt-0.5 text-blue-800 leading-relaxed">
+                    Un élève appartient obligatoirement à une classe, et l'affectation des enseignants aux classes est effectuée par l'administration de l'école. Dès que la direction vous aura assigné une ou plusieurs classes, les élèves correspondants s'afficheront automatiquement ici.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="rounded-2xl border border-border bg-card shadow-sm">
             {/* Search & Filters */}
             <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border p-4 bg-gray-50/50">
               <div className="flex flex-1 items-center gap-2 rounded-lg border border-border bg-background px-3 py-2 text-sm max-w-sm">
@@ -445,11 +486,11 @@ function ElevesPage() {
                 {/* Filter Class */}
                 <Select value={classFilter} onValueChange={setClassFilter}>
                   <SelectTrigger className="w-44 h-8 text-xs bg-white">
-                    <SelectValue placeholder="Toutes les classes" />
+                    <SelectValue placeholder={isTeacher ? "Mes classes" : "Toutes les classes"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">Toutes les classes</SelectItem>
-                    {classesList.map(c => (
+                    <SelectItem value="all">{isTeacher ? "Toutes mes classes" : "Toutes les classes"}</SelectItem>
+                    {availableClasses.map(c => (
                       <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -649,6 +690,7 @@ function ElevesPage() {
                 </tbody>
               </table>
             </div>
+          </div>
           </div>
         )}
 

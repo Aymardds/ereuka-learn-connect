@@ -3,17 +3,35 @@ import { AppShell } from '@/components/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { useSettings } from '@/hooks/useSettings';
 import { useState, useEffect, useRef } from 'react';
-import { Building2, Save, Upload, MapPin, Phone, GraduationCap, Loader2, Lock, KeyRound } from 'lucide-react';
+import { 
+  Building2, Save, Upload, MapPin, Phone, GraduationCap, 
+  Loader2, Lock, KeyRound, Shield, Users, Search, CheckCircle2, UserCheck, Check
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
+import { useTeam } from '@/hooks/useTeam';
+import { UserRole, UserProfile } from '@/types/database';
 
 export const Route = createFileRoute('/parametres')({
   component: ParametresPage,
 });
+
+const AVAILABLE_ROLES: { id: UserRole; label: string; description: string; badgeColor: string }[] = [
+  { id: 'teacher', label: 'Enseignant', description: 'Accès notes, devoirs, appel et cahier de texte de ses classes', badgeColor: 'bg-indigo-100 text-indigo-800 border-indigo-200' },
+  { id: 'director', label: 'Directeur', description: 'Supervision générale, délibérations et clôtures des bulletins', badgeColor: 'bg-blue-100 text-blue-800 border-blue-200' },
+  { id: 'admin', label: 'Administrateur', description: 'Gestion technique, comptes utilisateurs et paramètres globaux', badgeColor: 'bg-purple-100 text-purple-800 border-purple-200' },
+  { id: 'accountant', label: 'Comptable / Économe', description: 'Gestion financière, encaissements, caisse et CinetPay', badgeColor: 'bg-emerald-100 text-emerald-800 border-emerald-200' },
+  { id: 'cashier', label: 'Caissier', description: 'Enregistrement des paiements directs en caisse et terminaux QR', badgeColor: 'bg-amber-100 text-amber-800 border-amber-200' },
+  { id: 'secretary', label: 'Secrétariat Scolaire', description: 'Inscriptions des élèves et gestion des dossiers scolaires', badgeColor: 'bg-pink-100 text-pink-800 border-pink-200' },
+  { id: 'surveillance', label: 'Surveillant Général', description: 'Gestion des absences, retards et discipline quotidienne', badgeColor: 'bg-orange-100 text-orange-800 border-orange-200' },
+  { id: 'dean', label: 'Doyen de Faculté', description: 'Supervision académique des promotions et jurys LMD (Supérieur)', badgeColor: 'bg-teal-100 text-teal-800 border-teal-200' },
+  { id: 'department_head', label: 'Chef de Département', description: 'Gestion des maquettes et affectations de département', badgeColor: 'bg-cyan-100 text-cyan-800 border-cyan-200' },
+  { id: 'doctor', label: 'Santé / Infirmerie', description: 'Dossiers médicaux et infirmerie scolaire', badgeColor: 'bg-rose-100 text-rose-800 border-rose-200' },
+];
 
 function ParametresPage() {
   const { profile } = useAuth();
@@ -33,6 +51,47 @@ function ParametresPage() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isChangingPassword, setIsChangingPassword] = useState(false);
+
+  // Staff Roles management states (Checkbox attribution)
+  const { staff = [], isLoading: isLoadingStaff, updateUserRolesMutation } = useTeam();
+  const [userSearchTerm, setUserSearchTerm] = useState('');
+  const [selectedRoleFilter, setSelectedRoleFilter] = useState<string>('all');
+
+  const handleToggleUserRole = async (member: UserProfile, roleId: UserRole, checked: boolean) => {
+    const currentRoles = member.assigned_roles && member.assigned_roles.length > 0 
+      ? [...member.assigned_roles] 
+      : [member.role];
+
+    let newRoles: string[];
+    if (checked) {
+      newRoles = Array.from(new Set([...currentRoles, roleId]));
+    } else {
+      newRoles = currentRoles.filter(r => r !== roleId);
+      if (newRoles.length === 0) {
+        toast.error("L'utilisateur doit conserver au moins un rôle actif.");
+        return;
+      }
+    }
+
+    const newPrimaryRole = (newRoles[0] as UserRole) || 'teacher';
+
+    await updateUserRolesMutation.mutateAsync({
+      userId: member.id,
+      role: newPrimaryRole,
+      assignedRoles: newRoles,
+    });
+  };
+
+  const filteredStaffUsers = staff.filter(m => {
+    const term = userSearchTerm.toLowerCase().trim();
+    const matchesSearch = !term || 
+      (m.full_name && m.full_name.toLowerCase().includes(term)) ||
+      m.email.toLowerCase().includes(term);
+    
+    if (selectedRoleFilter === 'all') return matchesSearch;
+    const roles = m.assigned_roles && m.assigned_roles.length > 0 ? m.assigned_roles : [m.role];
+    return matchesSearch && roles.includes(selectedRoleFilter as any);
+  });
 
   useEffect(() => {
     if (tenantQuery.data) {
@@ -229,6 +288,130 @@ function ParametresPage() {
             {!schoolTypes.includes('Supérieur') && schoolTypes.length > 0 && (
               <div className="mt-4 rounded-lg bg-emerald-50 border border-emerald-200 p-3 text-xs text-emerald-900 flex items-center gap-2">
                 <span className="font-bold">Mode Groupe Scolaire (K12) :</span> Modules scolaires complets (Classes, Élèves, Bulletins trimestriels, Cahier de texte). Le module universitaire LMD est masqué pour garder votre espace épuré.
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* SECTION ATTRIBUTION DES RÔLES PAR UTILISATEUR EN MODE CHECKBOX */}
+        <section className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="border-b bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Shield className="w-5 h-5 text-gray-500" />
+              <div>
+                <h2 className="text-lg font-semibold">Attribution des Rôles & Autorisations</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Configurez les habilitations de chaque utilisateur de l'établissement à l'aide des cases à cocher.
+                </p>
+              </div>
+            </div>
+
+            {/* Recherche rapide */}
+            <div className="flex items-center gap-2">
+              <div className="relative w-64">
+                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <Input
+                  placeholder="Rechercher un collaborateur..."
+                  value={userSearchTerm}
+                  onChange={(e) => setUserSearchTerm(e.target.value)}
+                  className="h-8 pl-9 text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="p-6">
+            {isLoadingStaff ? (
+              <div className="py-8 text-center text-xs text-gray-500">Chargement des collaborateurs...</div>
+            ) : filteredStaffUsers.length === 0 ? (
+              <div className="py-8 text-center text-xs text-gray-500">
+                Aucun collaborateur ne correspond à votre recherche.
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <p className="text-xs text-gray-500">
+                  Cochez ou décochez les rôles opérationnels pour chaque membre du personnel. Un utilisateur peut cumuler plusieurs attributions selon son profil (ex: Enseignant et Surveillant).
+                </p>
+
+                {filteredStaffUsers.map((member) => {
+                  const currentRoles = member.assigned_roles && member.assigned_roles.length > 0 
+                    ? member.assigned_roles 
+                    : [member.role];
+
+                  return (
+                    <div 
+                      key={member.id} 
+                      className="rounded-xl border border-gray-200 p-4 bg-gray-50/40 hover:bg-gray-50/80 transition-colors space-y-3"
+                    >
+                      {/* En-tête collaborateur */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b border-gray-200">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase shrink-0">
+                            {member.full_name ? member.full_name.substring(0, 2) : member.email.substring(0, 2)}
+                          </div>
+                          <div>
+                            <div className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                              <span>{member.full_name || "Sans nom"}</span>
+                              {member.id === profile?.id && (
+                                <span className="text-[10px] bg-primary text-primary-foreground font-semibold px-2 py-0.5 rounded-full">
+                                  Votre compte
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-xs text-gray-500">{member.email}</div>
+                          </div>
+                        </div>
+
+                        {/* Badges des rôles actuels */}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] uppercase font-bold text-gray-400 mr-1">Rôles actifs ({currentRoles.length}) :</span>
+                          {currentRoles.map((r) => {
+                            const found = AVAILABLE_ROLES.find(ar => ar.id === r);
+                            return (
+                              <span 
+                                key={r} 
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-md border ${found?.badgeColor || 'bg-gray-100 text-gray-700 border-gray-300'}`}
+                              >
+                                {found?.label || r}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Grille de sélection des rôles en mode Checkbox */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 pt-1">
+                        {AVAILABLE_ROLES.map((roleOpt) => {
+                          const isChecked = currentRoles.includes(roleOpt.id);
+                          return (
+                            <label
+                              key={roleOpt.id}
+                              className={`flex items-start gap-2.5 p-2.5 rounded-lg border text-xs cursor-pointer select-none transition-all ${
+                                isChecked 
+                                  ? 'bg-primary/5 border-primary shadow-xs' 
+                                  : 'bg-white border-gray-200 hover:bg-gray-100/60 text-gray-600'
+                              }`}
+                            >
+                              <Checkbox
+                                checked={isChecked}
+                                onCheckedChange={(checked) => handleToggleUserRole(member, roleOpt.id, checked as boolean)}
+                                className="mt-0.5"
+                              />
+                              <div className="min-w-0">
+                                <div className={`font-semibold ${isChecked ? 'text-gray-900' : 'text-gray-700'}`}>
+                                  {roleOpt.label}
+                                </div>
+                                <div className="text-[10px] text-gray-500 leading-snug line-clamp-2 mt-0.5">
+                                  {roleOpt.description}
+                                </div>
+                              </div>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
