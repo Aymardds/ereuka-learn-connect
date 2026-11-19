@@ -195,6 +195,7 @@ export function useTeacherAssignments() {
   });
 
   return {
+    assignments: assignmentsQuery.data || [],
     assignmentsQuery,
     useTeacherAssignmentsForTeacher,
     useClassAssignments,

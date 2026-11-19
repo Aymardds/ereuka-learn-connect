@@ -97,13 +97,83 @@ export function useSubjects() {
     }
   });
 
+  // SEED DEFAULT SUBJECTS
+  const seedDefaultSubjectsMutation = useMutation({
+    mutationFn: async (category?: 'maternelle' | 'primaire' | 'secondaire' | 'superieur') => {
+      if (!tenantId) throw new Error("No tenant ID");
+
+      const defaultList = category === 'maternelle'
+        ? [
+            { name: "Mobiliser le langage dans toutes ses dimensions", code: "LANG", coefficient: 1, color: "#3b82f6" },
+            { name: "Agir, s'exprimer à travers l'activité physique", code: "MOTR", coefficient: 1, color: "#10b981" },
+            { name: "Activités artistiques et créativité", code: "ARTS", coefficient: 1, color: "#f59e0b" },
+            { name: "Premiers outils pour structurer sa pensée", code: "LOGI", coefficient: 1, color: "#8b5cf6" },
+            { name: "Explorer le monde du vivant et des objets", code: "MOND", coefficient: 1, color: "#06b6d4" },
+            { name: "Vivre ensemble et socialisation", code: "SOC", coefficient: 1, color: "#ec4899" },
+          ]
+        : category === 'primaire'
+        ? [
+            { name: "Français (Lecture, Écriture, Grammaire)", code: "FR", coefficient: 3, color: "#ef4444" },
+            { name: "Mathématiques (Calcul, Géométrie)", code: "MATH", coefficient: 3, color: "#3b82f6" },
+            { name: "Sciences d'Éveil & Technologies", code: "EVEIL", coefficient: 2, color: "#10b981" },
+            { name: "Histoire & Géographie", code: "HG", coefficient: 1, color: "#f59e0b" },
+            { name: "Éducation Physique et Sportive (EPS)", code: "EPS", coefficient: 1, color: "#06b6d4" },
+            { name: "Éducation Civique et Morale", code: "CIV", coefficient: 1, color: "#84cc16" },
+            { name: "Arts Plastiques & Musique", code: "ARTS", coefficient: 1, color: "#ec4899" },
+          ]
+        : category === 'superieur'
+        ? [
+            { name: "UE Fondamentale 1 (Majeure)", code: "UEF1", coefficient: 4, color: "#3b82f6" },
+            { name: "UE Fondamentale 2", code: "UEF2", coefficient: 4, color: "#8b5cf6" },
+            { name: "UE Méthodologie & Recherche", code: "UEM", coefficient: 2, color: "#10b981" },
+            { name: "UE Découverte / Option", code: "UED", coefficient: 2, color: "#f59e0b" },
+            { name: "Anglais Professionnel", code: "ANG", coefficient: 2, color: "#06b6d4" },
+            { name: "Informatique & Outils Numériques", code: "INFO", coefficient: 2, color: "#ec4899" },
+          ]
+        : [
+            { name: "Mathématiques", code: "MATH", coefficient: 4, color: "#3b82f6" },
+            { name: "Français & Littérature", code: "FR", coefficient: 4, color: "#ef4444" },
+            { name: "Anglais LV1", code: "ANG", coefficient: 3, color: "#10b981" },
+            { name: "Histoire - Géographie", code: "HG", coefficient: 2, color: "#f59e0b" },
+            { name: "Physique - Chimie", code: "PC", coefficient: 3, color: "#8b5cf6" },
+            { name: "Sciences de la Vie et de la Terre (SVT)", code: "SVT", coefficient: 3, color: "#14b8a6" },
+            { name: "Philosophie / Éthique", code: "PHILO", coefficient: 2, color: "#6366f1" },
+            { name: "Éducation Physique et Sportive (EPS)", code: "EPS", coefficient: 1, color: "#06b6d4" },
+            { name: "Informatique & Numérique", code: "INFO", coefficient: 2, color: "#ec4899" },
+            { name: "Éducation aux Droits et à la Citoyenneté (EDHC)", code: "EDHC", coefficient: 1, color: "#84cc16" },
+          ];
+
+      const rows = defaultList.map(s => ({
+        ...s,
+        tenant_id: tenantId,
+      }));
+
+      const { data, error } = await supabase
+        .from('subjects')
+        .insert(rows)
+        .select();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['subjects', tenantId] });
+      toast.success(`${data.length} matières standard initialisées avec succès !`);
+    },
+    onError: (error: any) => {
+      toast.error("Erreur lors de l'initialisation des matières : " + (error.message || ''));
+      console.error(error);
+    }
+  });
+
   return {
     subjects: subjectsQuery.data || [],
     isLoading: subjectsQuery.isLoading,
     subjectsQuery,
     createSubjectMutation,
     updateSubjectMutation,
-    deleteSubjectMutation
+    deleteSubjectMutation,
+    seedDefaultSubjectsMutation,
   };
 }
 

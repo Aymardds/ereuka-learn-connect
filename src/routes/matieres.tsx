@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { BookOpen, Plus, Edit2, Trash2, MoreHorizontal } from "lucide-react";
+import { BookOpen, Plus, Edit2, Trash2, MoreHorizontal, Sparkles } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useSubjects } from "@/hooks/useSubjects";
 import { useState } from "react";
@@ -44,7 +44,7 @@ export const Route = createFileRoute("/matieres")({
 });
 
 function MatieresPage() {
-  const { subjectsQuery, createSubjectMutation, updateSubjectMutation, deleteSubjectMutation } = useSubjects();
+  const { subjectsQuery, createSubjectMutation, updateSubjectMutation, deleteSubjectMutation, seedDefaultSubjectsMutation } = useSubjects();
 
   // Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -173,8 +173,32 @@ function MatieresPage() {
       }
     >
       {subjectsList.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          Aucune matière n'a été créée pour le moment.
+        <div className="text-center py-16 border-2 border-dashed border-border rounded-2xl p-8 max-w-xl mx-auto space-y-4">
+          <div className="w-12 h-12 rounded-full bg-primary/10 text-primary mx-auto flex items-center justify-center">
+            <BookOpen className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-base text-foreground">Aucune matière n'a été créée pour le moment</h3>
+            <p className="text-xs text-muted-foreground mt-1">
+              Vous pouvez configurer les matières manuellement ou générer en un clic la grille standard des matières officielles (Maths, Français, SVT, Anglais, etc.).
+            </p>
+          </div>
+          <div className="flex items-center justify-center gap-3 pt-2">
+            <Button
+              onClick={() => seedDefaultSubjectsMutation.mutate('secondaire')}
+              disabled={seedDefaultSubjectsMutation.isPending}
+              className="gap-2 bg-primary font-bold text-xs"
+            >
+              <Sparkles className="w-4 h-4" /> {seedDefaultSubjectsMutation.isPending ? "Initialisation..." : "Initialiser les matières standard"}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setIsCreateOpen(true)}
+              className="text-xs"
+            >
+              <Plus className="w-4 h-4 mr-1" /> Créer manuellement
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">

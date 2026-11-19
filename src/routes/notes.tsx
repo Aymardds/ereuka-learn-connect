@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState, useMemo, useEffect } from "react";
 import {
   Save, Check, Award, Calculator, BookOpen, Users, AlertCircle,
@@ -58,9 +58,9 @@ export function NotesPage() {
 
   // Hooks de données réelles
   const { classes = [], isLoading: isLoadingClasses } = useClasses();
-  const { subjectsQuery } = useSubjects();
+  const { subjectsQuery, seedDefaultSubjectsMutation } = useSubjects();
   const { students = [], isLoading: isLoadingStudents } = useStudents();
-  const { assignments } = useTeacherAssignments();
+  const { assignments = [] } = useTeacherAssignments();
 
   const subjects = subjectsQuery.data || [];
 
@@ -125,17 +125,16 @@ export function NotesPage() {
   const [scores, setScores] = useState<Record<string, string>>({});
   const [appreciations, setAppreciations] = useState<Record<string, string>>({});
 
-  // Réinitialiser les scores locaux lors du changement d'évaluation ou de classe
-  useEffect(() => {
+  // Fonction pour charger les notes d'une évaluation existante
+  const loadEvaluationGrades = (targetEvalName: string, targetEvalType: string) => {
     const initialScores: Record<string, string> = {};
     const initialAppreciations: Record<string, string> = {};
 
     classStudents.forEach(st => {
-      // Rechercher si une note existe déjà pour cette évaluation exacte
       const existing = grades.find(
         g => g.student_id === st.id &&
              g.term === selectedTerm &&
-             (g.evaluation_name === evaluationName || (!evaluationName && g.evaluation_type === evaluationType))
+             (g.evaluation_name === targetEvalName || (!targetEvalName && g.evaluation_type === targetEvalType))
       );
       if (existing) {
         if (existing.teacher_comment?.startsWith("[ABS]")) {
@@ -151,7 +150,12 @@ export function NotesPage() {
 
     setScores(initialScores);
     setAppreciations(initialAppreciations);
-  }, [currentClassId, currentSubjectId, selectedTerm, evaluationName, evaluationType, grades]);
+  };
+
+  // Recharger lors du changement de classe, matière, période ou quand la base change
+  useEffect(() => {
+    loadEvaluationGrades(evaluationName, evaluationType);
+  }, [currentClassId, currentSubjectId, selectedTerm, grades]);
 
   // Élèves filtrés par la recherche
   const filteredStudents = useMemo(() => {
@@ -382,14 +386,27 @@ export function NotesPage() {
         });
         toast.success(`Mode Hors-ligne : ${recordsToInsert.length} notes sauvegardées localement !`);
       } else {
+        // Supprimer d'abord les entrées existantes pour cette évaluation précise
+        // (évite les doublons : pas de contrainte UNIQUE dans le schéma actuel)
+        const evalNameFinal = evaluationName.trim() || `${evaluationType.toUpperCase()} du ${evaluationDate}`;
+        await supabase
+          .from("grade_entries")
+          .delete()
+          .eq("tenant_id", tenantId!)
+          .eq("class_id", currentClassId)
+          .eq("subject_id", currentSubjectId)
+          .eq("term", selectedTerm)
+          .eq("evaluation_name", evalNameFinal);
+
+        // Insérer les nouvelles notes proprement
         const { error } = await supabase
           .from("grade_entries")
-          .upsert(recordsToInsert, { onConflict: "id" });
+          .insert(recordsToInsert);
 
         if (error) throw error;
 
         queryClient.invalidateQueries({ queryKey: ["grades", tenantId] });
-        toast.success(`✅ ${recordsToInsert.length} notes de l'épreuve « ${evaluationName} » enregistrées avec succès !`);
+        toast.success(`✅ ${recordsToInsert.length} notes de l'épreuve « ${evalNameFinal} » enregistrées avec succès !`);
       }
     } catch (err: any) {
       console.error(err);
@@ -494,11 +511,15 @@ export function NotesPage() {
                 onChange={(e) => setSelectedClassId(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
               >
-                {teacherClasses.map(c => (
-                  <option key={c.id} value={c.id}>
-                    {c.name} {c.level_type ? `(${c.level_type})` : ''}
-                  </option>
-                ))}
+                {teacherClasses.length === 0 ? (
+                  <option value="">Aucune classe disponible</option>
+                ) : (
+                  teacherClasses.map(c => (
+                    <option key={c.id} value={c.id}>
+                      {c.name} {c.level_type ? `(${c.level_type})` : ''}
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -512,11 +533,15 @@ export function NotesPage() {
                 onChange={(e) => setSelectedSubjectId(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
               >
-                {subjects.map(s => (
-                  <option key={s.id} value={s.id}>
-                    {s.name} (Coef {s.coefficient || 1})
-                  </option>
-                ))}
+                {subjects.length === 0 ? (
+                  <option value="">Aucune matière créée</option>
+                ) : (
+                  subjects.map(s => (
+                    <option key={s.id} value={s.id}>
+                      {s.name} (Coef {s.coefficient || 1})
+                    </option>
+                  ))
+                )}
               </select>
             </div>
 
@@ -558,6 +583,54 @@ export function NotesPage() {
             </div>
           </div>
         </div>
+
+        {/* ── ALERTE MATIÈRES MANQUANTES AVEC INITIALISATION EN 1 CLIC ── */}
+        {subjects.length === 0 && (
+          <div className="rounded-2xl border border-amber-300 bg-amber-50 p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 text-amber-900 shadow-xs">
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="h-5 w-5 text-amber-600 shrink-0" />
+              <div>
+                <div className="font-bold text-sm">Catalogue de matières vide</div>
+                <div className="text-xs text-amber-800">
+                  Votre établissement n'a pas encore de matières configurées. Cliquez sur le bouton ci-contre pour générer automatiquement le programme officiel ou créez vos matières manuellement.
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                size="sm"
+                disabled={seedDefaultSubjectsMutation.isPending}
+                onClick={() => {
+                  const category = estInfo.isUniversityOnly 
+                    ? 'superieur' 
+                    : (currentClassObj?.level_type?.toLowerCase().includes('maternelle') 
+                      ? 'maternelle' 
+                      : (currentClassObj?.level_type?.toLowerCase().includes('primaire') ? 'primaire' : 'secondaire'));
+                  seedDefaultSubjectsMutation.mutate(category);
+                }}
+                className="bg-amber-700 hover:bg-amber-800 text-white font-bold text-xs gap-1.5"
+              >
+                <Sparkles className="w-3.5 h-3.5" /> {seedDefaultSubjectsMutation.isPending ? "Initialisation..." : "Initialiser les matières standard"}
+              </Button>
+              <Link to="/matieres" className="text-xs text-amber-900 underline font-semibold px-2">
+                Gérer
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* ── ALERTE CLASSE INTROUVABLE ── */}
+        {teacherClasses.length === 0 && (
+          <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 flex items-center gap-3 text-blue-900 shadow-xs">
+            <AlertCircle className="h-5 w-5 text-blue-600 shrink-0" />
+            <div className="text-xs">
+              <strong className="block text-sm font-bold">Aucune classe disponible</strong>
+              {isTeacher
+                ? "Vous n'avez pas encore été assigné à une classe par la direction. Veuillez contacter l'administrateur de votre établissement."
+                : "Aucune classe n'a été créée dans l'établissement. Rendez-vous dans le menu « Classes & Niveaux » pour configurer votre première classe."}
+            </div>
+          </div>
+        )}
 
         {/* ── ONGLETS DE NAVIGATION ── */}
         <Tabs value={activeTab} onValueChange={setActiveTab}>
@@ -608,6 +681,7 @@ export function NotesPage() {
                           setCoefficient(target.coefficient);
                           setMaxScore(target.maxScore);
                           if (target.date) setEvaluationDate(target.date);
+                          loadEvaluationGrades(target.name, target.type);
                         }
                       }}
                       className="rounded-lg border border-border bg-background px-2.5 py-1 text-xs font-semibold"
@@ -814,16 +888,21 @@ export function NotesPage() {
 
                             <td className="py-3 px-3 text-center">
                               <input
-                                type={isAbsent || isDisp ? "text" : "number"}
-                                step="0.25"
-                                min="0"
-                                max={maxScore}
+                                type="text"
+                                inputMode="decimal"
                                 value={currentScore}
                                 disabled={isAbsent || isDisp}
                                 placeholder="—"
                                 onChange={(e) => {
-                                  const val = e.target.value;
-                                  setScores(prev => ({ ...prev, [st.id]: val }));
+                                  const rawVal = e.target.value.replace(',', '.').trim();
+                                  if (rawVal === "" || /^\d*\.?\d*$/.test(rawVal)) {
+                                    const num = parseFloat(rawVal);
+                                    if (!isNaN(num) && num > maxScore) {
+                                      toast.error(`La note ne peut pas dépasser le barème de ${maxScore}`);
+                                      return;
+                                    }
+                                    setScores(prev => ({ ...prev, [st.id]: rawVal }));
+                                  }
                                 }}
                                 className={`w-24 mx-auto block rounded-lg border px-2 py-1.5 text-center font-mono font-bold text-sm tabular-nums outline-none transition-colors ${
                                   isAbsent ? "bg-rose-50 border-rose-300 text-rose-700" :
