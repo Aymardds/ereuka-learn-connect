@@ -47,6 +47,7 @@ interface EstablishmentStat {
   users_count: number;
   classes_count: number;
   total_collected: number;
+  commission_generated: number;
   pending_disbursements: number;
   total_disbursed: number;
   available_balance: number;
@@ -110,7 +111,7 @@ function SuperAdminDashboard() {
 
   // ── 1. Fetch Global Real Stats & Disbursements ─────────────────────────────
   const dashboardQuery = useQuery({
-    queryKey: ['superadmin_full_dashboard'],
+    queryKey: ['superadmin_full_dashboard', commissionRate],
     refetchInterval: 30000,
     queryFn: async () => {
       const adminClient = getAdminClient();
@@ -154,6 +155,7 @@ function SuperAdminDashboard() {
         const tKyc = kycs.find((k) => k.tenant_id === t.id || k.school_name?.toLowerCase() === t.name?.toLowerCase());
 
         const totalCollected = tPayments.reduce((acc, p) => acc + (Number(p.amount_paid) || 0), 0);
+        const commissionGenerated = Math.round(totalCollected * (commissionRate / 100));
         const pendingDisb = tDisb
           .filter((d) => ['pending', 'processing'].includes(d.status))
           .reduce((acc, d) => acc + (Number(d.amount_requested) || 0), 0);
@@ -170,6 +172,7 @@ function SuperAdminDashboard() {
           users_count: tUsers.length,
           classes_count: tClasses.length,
           total_collected: totalCollected,
+          commission_generated: commissionGenerated,
           pending_disbursements: pendingDisb,
           total_disbursed: totalDisbursed,
           available_balance: Math.max(0, totalCollected - pendingDisb - totalDisbursed),
@@ -189,9 +192,16 @@ function SuperAdminDashboard() {
         .filter((d) => ['pending', 'processing'].includes(d.status))
         .reduce((acc, d) => acc + (Number(d.amount_requested) || 0), 0);
       const pendingCount = disbursements.filter((d) => d.status === 'pending').length;
-      const totalCommissionsEarned = disbursements
+
+      // Calculs détaillés des commissions INEXIUMUS
+      const totalVolumeCommissions = Math.round(totalPaymentsSum * (commissionRate / 100));
+      const completedCommissions = disbursements
         .filter((d) => d.status === 'completed')
         .reduce((acc, d) => acc + (Number(d.platform_fee) || 0), 0);
+      const pendingCommissions = disbursements
+        .filter((d) => ['pending', 'processing'].includes(d.status))
+        .reduce((acc, d) => acc + (Number(d.platform_fee) || 0), 0);
+      const remainingCommissions = Math.max(0, totalVolumeCommissions - completedCommissions - pendingCommissions);
 
       // KYC stats
       const pendingKyc = kycs.filter((k) => k.status === 'pending').length;
@@ -208,7 +218,10 @@ function SuperAdminDashboard() {
         totalDisbursedSum,
         pendingDisbursementsSum,
         pendingCount,
-        totalCommissionsEarned,
+        totalVolumeCommissions,
+        completedCommissions,
+        pendingCommissions,
+        remainingCommissions,
         establishments,
         disbursements,
         kycStats: {
@@ -409,8 +422,8 @@ function SuperAdminDashboard() {
         </div>
       )}
 
-      {/* ── KPIS GLOBAUX RÉELS DU SYSTÈME ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* ── KPIS GLOBAUX RÉELS DU SYSTÈME AVEC CUMUL COMMISSIONS ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
         
         {/* Total Établissements */}
         <div className="bg-white p-5 rounded-2xl border shadow-sm space-y-2">
@@ -460,7 +473,7 @@ function SuperAdminDashboard() {
               Comptes actifs
             </span>
           </div>
-          <p className="text-xs text-gray-400">Admins, comptables, enseignants, directeurs</p>
+          <p className="text-xs text-gray-400">Admins, comptables, enseignants</p>
         </div>
 
         {/* Total Encaissé sur le compte INEXIUMUS */}
@@ -472,7 +485,7 @@ function SuperAdminDashboard() {
             </div>
           </div>
           <div className="flex items-baseline gap-1.5">
-            <span className="text-2xl sm:text-3xl font-black text-emerald-400">
+            <span className="text-2xl font-black text-emerald-400">
               {(data?.totalPaymentsSum || 0).toLocaleString('fr-FR')}
             </span>
             <span className="text-xs font-bold text-emerald-200">FCFA</span>
@@ -482,6 +495,101 @@ function SuperAdminDashboard() {
           </p>
         </div>
 
+        {/* Cumul des Commissions INEXIUMUS */}
+        <div className="bg-gradient-to-br from-amber-950 via-stone-900 to-amber-900 text-white p-5 rounded-2xl shadow-sm space-y-2 relative overflow-hidden border border-amber-500/30">
+          <div className="absolute -right-4 -bottom-4 w-20 h-20 bg-amber-500/10 rounded-full blur-xl pointer-events-none" />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] font-bold text-amber-300 uppercase tracking-wider">Cumul Commissions</span>
+            <div className="w-10 h-10 bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-xl flex items-center justify-center">
+              <ShieldCheck className="w-5 h-5" />
+            </div>
+          </div>
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-2xl font-black text-amber-400">
+              {(data?.totalVolumeCommissions || 0).toLocaleString('fr-FR')}
+            </span>
+            <span className="text-xs font-bold text-amber-200">FCFA</span>
+          </div>
+          <div className="text-[11px] text-amber-200/80 space-y-0.5 pt-0.5">
+            <div className="flex justify-between">
+              <span>Taux appliqué :</span>
+              <span className="font-bold text-white">{commissionRate}%</span>
+            </div>
+            <div className="flex justify-between">
+              <span>En attente :</span>
+              <span className="font-semibold text-amber-300">
+                {(data?.pendingCommissions || 0).toLocaleString('fr-FR')} FCFA
+              </span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      {/* ── BANDEAU SYNTHÈSE DES COMMISSIONS INEXIUMUS & CHIFFRE D'AFFAIRES ── */}
+      <div className="bg-white rounded-2xl border shadow-sm p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+              <Percent className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="font-bold text-base text-gray-900 flex items-center gap-2">
+                Bilan & Cumul des Commissions de la Plateforme
+                <span className="text-xs bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
+                  Taux actif : {commissionRate}%
+                </span>
+              </h3>
+              <p className="text-xs text-gray-500">
+                Vue consolidée des commissions prélevées et à percevoir par INEXIUMUS sur l'ensemble des encaissements.
+              </p>
+            </div>
+          </div>
+          <div className="text-xs text-right">
+            <span className="text-gray-400">Volume Total Encaissé Brut : </span>
+            <strong className="text-gray-900 font-extrabold text-sm">
+              {(data?.totalPaymentsSum || 0).toLocaleString('fr-FR')} FCFA
+            </strong>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-1">
+          {/* Cumul Total */}
+          <div className="p-3.5 rounded-xl bg-amber-50/70 border border-amber-200/80 space-y-1">
+            <div className="text-[10px] font-bold text-amber-800 uppercase tracking-wider">Cumul Global Commissions</div>
+            <div className="text-xl font-black text-amber-900">
+              {(data?.totalVolumeCommissions || 0).toLocaleString('fr-FR')} FCFA
+            </div>
+            <p className="text-[11px] text-amber-700/80">Calculé à {commissionRate}% sur {(data?.totalPaymentsSum || 0).toLocaleString('fr-FR')} FCFA</p>
+          </div>
+
+          {/* Déjà Perçues (sur décaissements validés) */}
+          <div className="p-3.5 rounded-xl bg-emerald-50/70 border border-emerald-200/80 space-y-1">
+            <div className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider">Commissions Déjà Encaissées</div>
+            <div className="text-xl font-black text-emerald-900">
+              {(data?.completedCommissions || 0).toLocaleString('fr-FR')} FCFA
+            </div>
+            <p className="text-[11px] text-emerald-700/80">Retenues effectives sur décaissements payés</p>
+          </div>
+
+          {/* En attente sur demandes */}
+          <div className="p-3.5 rounded-xl bg-blue-50/70 border border-blue-200/80 space-y-1">
+            <div className="text-[10px] font-bold text-blue-800 uppercase tracking-wider">Commissions en Attente</div>
+            <div className="text-xl font-black text-blue-900">
+              {(data?.pendingCommissions || 0).toLocaleString('fr-FR')} FCFA
+            </div>
+            <p className="text-[11px] text-blue-700/80">À retenir sur les demandes en cours</p>
+          </div>
+
+          {/* Prévisionnelles sur solde restant */}
+          <div className="p-3.5 rounded-xl bg-purple-50/70 border border-purple-200/80 space-y-1">
+            <div className="text-[10px] font-bold text-purple-800 uppercase tracking-wider">Commissions Résiduelles</div>
+            <div className="text-xl font-black text-purple-900">
+              {(data?.remainingCommissions || 0).toLocaleString('fr-FR')} FCFA
+            </div>
+            <p className="text-[11px] text-purple-700/80">Sur le solde restant non encore réclamé</p>
+          </div>
+        </div>
       </div>
 
       {/* ── SECTION DÉDIÉE : DEMANDES DE DÉCAISSEMENT DES ÉCOLES ── */}
@@ -787,6 +895,7 @@ function SuperAdminDashboard() {
                 <th className="px-4 py-3 font-bold text-center">Classes</th>
                 <th className="px-4 py-3 font-bold text-center">Comptes Staff</th>
                 <th className="px-4 py-3 font-bold">Total Encaissé</th>
+                <th className="px-4 py-3 font-bold text-amber-700">Commission ({commissionRate}%)</th>
                 <th className="px-4 py-3 font-bold">Décaissements En Cours</th>
                 <th className="px-4 py-3 font-bold">Solde Disponible École</th>
                 <th className="px-4 py-3 font-bold text-right">Statut KYC</th>
@@ -795,13 +904,13 @@ function SuperAdminDashboard() {
             <tbody className="divide-y divide-gray-100 text-gray-700">
               {dashboardQuery.isLoading ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
                     Chargement des statistiques établissements…
                   </td>
                 </tr>
               ) : (data?.establishments || []).length === 0 ? (
                 <tr>
-                  <td colSpan={9} className="px-4 py-6 text-center text-gray-400">
+                  <td colSpan={10} className="px-4 py-6 text-center text-gray-400">
                     Aucun établissement configuré.
                   </td>
                 </tr>
@@ -860,6 +969,11 @@ function SuperAdminDashboard() {
                       {est.total_collected.toLocaleString('fr-FR')} FCFA
                     </td>
 
+                    {/* Commission générée */}
+                    <td className="px-4 py-3.5 font-extrabold text-amber-800">
+                      {est.commission_generated.toLocaleString('fr-FR')} FCFA
+                    </td>
+
                     {/* En attente */}
                     <td className="px-4 py-3.5 text-xs text-amber-700 font-semibold">
                       {est.pending_disbursements > 0 ? (
@@ -890,6 +1004,24 @@ function SuperAdminDashboard() {
                 ))
               )}
             </tbody>
+            {data && data.establishments.length > 0 && (
+              <tfoot className="bg-gray-100/90 font-bold border-t-2 border-gray-300 text-xs">
+                <tr>
+                  <td className="px-4 py-3 text-gray-900">TOTAL CONSOLIDÉ ({data.tenantsCount} écoles)</td>
+                  <td className="px-4 py-3 text-gray-400">—</td>
+                  <td className="px-4 py-3 text-center text-emerald-800 font-extrabold">{data.totalStudents}</td>
+                  <td className="px-4 py-3 text-center text-gray-800">{data.totalClasses}</td>
+                  <td className="px-4 py-3 text-center text-purple-800">{data.totalUsers}</td>
+                  <td className="px-4 py-3 text-gray-900 font-black">{data.totalPaymentsSum.toLocaleString('fr-FR')} FCFA</td>
+                  <td className="px-4 py-3 text-amber-900 font-black">{data.totalVolumeCommissions.toLocaleString('fr-FR')} FCFA</td>
+                  <td className="px-4 py-3 text-amber-700">{data.pendingDisbursementsSum.toLocaleString('fr-FR')} FCFA</td>
+                  <td className="px-4 py-3 text-emerald-800 font-black">
+                    {(data.totalPaymentsSum - data.pendingDisbursementsSum - data.totalDisbursedSum).toLocaleString('fr-FR')} FCFA
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-400">—</td>
+                </tr>
+              </tfoot>
+            )}
           </table>
         </div>
       </div>
