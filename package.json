@@ -112,8 +112,12 @@
     },
     "files": [
       "electron/**/*",
-      "public/**/*"
+      "public/**/*",
+      "!node_modules/**/*"
     ],
+    "extraMetadata": {
+      "dependencies": {}
+    },
     "mac": {
       "target": [
         "dmg",
