@@ -1,18 +1,20 @@
 import { createFileRoute, Outlet, useNavigate } from '@tanstack/react-router'
-import { LayoutDashboard, Building2, Settings, LogOut, FileCheck } from "lucide-react";
+import { LayoutDashboard, Building2, Settings, LogOut, FileCheck, ArrowDownToLine } from "lucide-react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useAuth } from '@/hooks/useAuth';
 import { cn } from "@/lib/utils";
 import { useIsDesktop } from '@/hooks/useIsDesktop';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabase';
 
 export const Route = createFileRoute('/superadmin')({
   component: SuperAdminLayout,
 })
 
 const superAdminNav = [
-  { to: "/superadmin", label: "Tableau de bord global", icon: LayoutDashboard },
+  { to: "/superadmin", label: "Tableau de bord global", icon: LayoutDashboard, badgeKey: 'disbursements' },
   { to: "/superadmin/etablissements", label: "Établissements (Tenants)", icon: Building2 },
-  { to: "/superadmin/kyc", label: "Vérifications KYC", icon: FileCheck },
+  { to: "/superadmin/kyc", label: "Vérifications KYC", icon: FileCheck, badgeKey: 'kyc' },
 ] as const;
 
 function SuperAdminLayout() {
@@ -20,6 +22,30 @@ function SuperAdminLayout() {
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isDesktop = useIsDesktop();
+
+  const pendingDisbursementsQuery = useQuery({
+    queryKey: ['pending_disbursements_badge'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('disbursement_requests')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      return error ? 0 : (count || 0);
+    },
+    refetchInterval: 30000,
+  });
+
+  const pendingKycQuery = useQuery({
+    queryKey: ['pending_kyc_badge'],
+    queryFn: async () => {
+      const { count, error } = await supabase
+        .from('kyc_applications')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'pending');
+      return error ? 0 : (count || 0);
+    },
+    refetchInterval: 30000,
+  });
 
   if (!isLoading && profile?.role !== 'superadmin') {
     return (
@@ -42,13 +68,16 @@ function SuperAdminLayout() {
     navigate({ to: "/login" });
   };
 
+  const pendingDisbCount = pendingDisbursementsQuery.data || 0;
+  const pendingKycCount = pendingKycQuery.data || 0;
+
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 flex">
       {/* Sidebar SuperAdmin */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col hidden lg:flex">
+      <aside className="w-64 bg-gray-900 text-white flex flex-col hidden lg:flex shrink-0">
         <div className="p-6">
           <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span className="bg-red-600 text-white p-1 rounded-md text-sm">S</span>
+            <span className="bg-red-600 text-white p-1 rounded-md text-sm font-black">S</span>
             Ereuka SuperAdmin
           </div>
         </div>
@@ -57,17 +86,28 @@ function SuperAdminLayout() {
           {superAdminNav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
+            const badgeCount = item.badgeKey === 'disbursements' ? pendingDisbCount : item.badgeKey === 'kyc' ? pendingKycCount : 0;
+
             return (
               <Link
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                  "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
                   active ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
                 )}
               >
-                <Icon className="w-5 h-5" />
-                {item.label}
+                <div className="flex items-center gap-3">
+                  <Icon className="w-5 h-5" />
+                  {item.label}
+                </div>
+                {badgeCount > 0 && (
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    item.badgeKey === 'disbursements' ? 'bg-amber-500 text-white animate-pulse' : 'bg-blue-600 text-white'
+                  }`}>
+                    {badgeCount}
+                  </span>
+                )}
               </Link>
             )
           })}
