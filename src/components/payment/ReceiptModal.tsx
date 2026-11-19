@@ -1,5 +1,5 @@
-import { CheckCircle2, Printer, X } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { CheckCircle2, Printer, X, Building2 } from 'lucide-react';
+import { Dialog, DialogContent, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { PaymentBadge } from './PaymentLogos';
 
@@ -9,6 +9,9 @@ export interface ReceiptData {
   studentName: string;
   className?: string;
   schoolName: string;
+  schoolAddress?: string;
+  schoolPhone?: string;
+  schoolLogo?: string;
   title: string;
   amount: number;
   totalDue?: number;
@@ -27,17 +30,33 @@ interface ReceiptModalProps {
 export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
   return (
     <Dialog open={!!receipt} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-sm p-0 overflow-hidden bg-white">
+      <DialogContent className="max-w-sm p-0 overflow-hidden bg-white print:shadow-none">
         {receipt && (
           <>
-            {/* Header */}
+            {/* Header établissement */}
             <div className="bg-gradient-to-br from-emerald-600 to-teal-700 p-6 text-center text-white">
-              <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
-                <CheckCircle2 className="w-8 h-8 text-white" />
-              </div>
-              <h2 className="text-lg font-bold">{receipt.schoolName}</h2>
-              <p className="text-xs text-emerald-100 mt-0.5">REÇU OFFICIEL DE PAIEMENT</p>
-              <p className="text-sm font-mono font-bold mt-2 bg-white/20 rounded-lg px-3 py-1 inline-block">
+              {receipt.schoolLogo ? (
+                <img
+                  src={receipt.schoolLogo}
+                  alt={receipt.schoolName}
+                  className="w-14 h-14 rounded-full object-contain bg-white/20 p-1 mx-auto mb-3"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-full bg-white/20 flex items-center justify-center mx-auto mb-3">
+                  <Building2 className="w-8 h-8 text-white" />
+                </div>
+              )}
+              <h2 className="text-lg font-bold leading-tight">{receipt.schoolName}</h2>
+              {receipt.schoolAddress && (
+                <p className="text-xs text-emerald-100/80 mt-0.5">{receipt.schoolAddress}</p>
+              )}
+              {receipt.schoolPhone && (
+                <p className="text-xs text-emerald-100/80">{receipt.schoolPhone}</p>
+              )}
+              <p className="text-[10px] font-bold tracking-widest uppercase text-emerald-200 mt-2">
+                Reçu officiel de paiement
+              </p>
+              <p className="text-sm font-mono font-bold mt-1.5 bg-white/20 rounded-lg px-3 py-1 inline-block">
                 {receipt.receiptNumber}
               </p>
             </div>
@@ -53,7 +72,12 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
                 </p>
                 {receipt.remaining != null && receipt.remaining > 0 && (
                   <p className="text-xs text-amber-700 font-semibold mt-1.5 bg-amber-50 border border-amber-200 rounded-lg px-2 py-1">
-                    Reste à payer : {Number(receipt.remaining).toLocaleString('fr-FR')} FCFA
+                    ⚠️ Reste à payer : {Number(receipt.remaining).toLocaleString('fr-FR')} FCFA
+                  </p>
+                )}
+                {receipt.remaining === 0 && (
+                  <p className="text-xs text-emerald-700 font-bold mt-1.5 bg-emerald-100 border border-emerald-300 rounded-lg px-2 py-1">
+                    ✅ Solde intégralement réglé
                   </p>
                 )}
               </div>
@@ -84,7 +108,7 @@ export function ReceiptModal({ receipt, onClose }: ReceiptModalProps) {
               </div>
 
               <p className="text-center text-[10px] text-muted-foreground">
-                Ce reçu numérique certifie l'encaissement régulier dans le système Eurêka.
+                Ce reçu numérique est émis par <strong>{receipt.schoolName}</strong> via la plateforme Eurêka.
               </p>
             </div>
 

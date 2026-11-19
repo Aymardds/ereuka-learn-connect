@@ -1348,7 +1348,7 @@ export function NotesPage() {
               <div className="flex justify-between items-start pb-4 border-b border-border">
                 <div>
                   <h3 className="font-bold text-base text-foreground uppercase tracking-wide">
-                    {(profile?.tenants as any)?.name || "Eurêka Établissement Scolaire"}
+                    {(profile?.tenant as any)?.name || "Eurêka Établissement Scolaire"}
                   </h3>
                   <p className="text-[11px] text-muted-foreground">Année Académique 2025-2026 · {selectedTerm}</p>
                 </div>

@@ -237,7 +237,10 @@ function PaymentAndAccountingPage() {
         transactionRef: res.txRef,
         studentName: `${studentForCashPayment.first_name} ${studentForCashPayment.last_name}`,
         className: studentForCashPayment.class_name,
-        schoolName: (profile?.tenants as any)?.name || 'Eurêka Établissement',
+        schoolName: (profile?.tenant as any)?.name || 'Eurêka Établissement',
+        schoolAddress: (profile?.tenant as any)?.address || (profile?.tenant as any)?.city || undefined,
+        schoolPhone: (profile?.tenant as any)?.phone || undefined,
+        schoolLogo: (profile?.tenant as any)?.logo_url || undefined,
         title: receiptTitle,
         amount,
         totalDue,
@@ -260,7 +263,7 @@ function PaymentAndAccountingPage() {
 
   // ── Actions de Relance par Élève ──
   const triggerWhatsAppReminder = (rem: OverdueScheduleReminder) => {
-    const schoolName = (profile?.tenants as any)?.name || 'notre établissement scolaire'
+    const schoolName = (profile?.tenant as any)?.name || 'notre établissement scolaire'
     const formattedDate = new Date(rem.due_date).toLocaleDateString('fr-FR')
     const parentGreeting = rem.parent_name ? `Bonjour M./Mme ${rem.parent_name}` : 'Bonjour'
 
@@ -283,7 +286,7 @@ function PaymentAndAccountingPage() {
       toast.error("Aucune adresse email enregistrée pour ce parent.")
       return
     }
-    const schoolName = (profile?.tenants as any)?.name || 'notre établissement scolaire'
+    const schoolName = (profile?.tenant as any)?.name || 'notre établissement scolaire'
     const formattedDate = new Date(rem.due_date).toLocaleDateString('fr-FR')
     const parentGreeting = rem.parent_name ? `Bonjour M./Mme ${rem.parent_name}` : 'Bonjour'
 
@@ -927,7 +930,10 @@ function PaymentAndAccountingPage() {
                                 transactionRef: t.transaction_reference,
                                 studentName: t.student_name,
                                 className: t.class_name,
-                                schoolName: (profile?.tenants as any)?.name || 'Eurêka Établissement',
+                                schoolName: (profile?.tenant as any)?.name || 'Eurêka Établissement',
+                                schoolAddress: (profile?.tenant as any)?.address || (profile?.tenant as any)?.city || undefined,
+                                schoolPhone: (profile?.tenant as any)?.phone || undefined,
+                                schoolLogo: (profile?.tenant as any)?.logo_url || undefined,
                                 title: t.schedule_title || 'Scolarité',
                                 amount: t.amount_paid,
                                 totalDue: t.amount_paid,

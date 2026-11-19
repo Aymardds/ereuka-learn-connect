@@ -5,6 +5,7 @@ import {
   CalendarDays, BookCheck, Briefcase, MessageSquare, BarChart3,
   Building, UserCheck, RefreshCw, Award, QrCode,
   UtensilsCrossed, Bus, HeartPulse, Menu, X, ChevronDown,
+  ArrowDownToLine,
 } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { school } from "@/lib/mock-data";
@@ -108,7 +109,8 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
         roles: ['admin', 'director', 'accountant'],
         getDynamicLabel: (info) => info.isUniversityOnly ? "Frais Universitaires" : "Modalités Scolarité",
       },
-      { to: "/paiement", label: "Caisse & CinetPay", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'] },
+      { to: "/paiement", label: "Caisse & Paiements", icon: CreditCard, roles: ['admin', 'director', 'accountant', 'cashier', 'responsible', 'parent'] },
+      { to: "/decaissement", label: "Décaissements", icon: ArrowDownToLine, roles: ['admin', 'director', 'accountant'] },
       { to: "/terminaux-paiement", label: "Terminaux QR", icon: QrCode, roles: ['admin', 'director', 'accountant', 'cashier'] },
       {
         to: "/cantine",
@@ -299,8 +301,8 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
                 estInfo.isUniversityOnly
                   ? "border-purple-400/40 bg-purple-900/40 text-purple-200"
                   : estInfo.isMixed
-                  ? "border-amber-400/40 bg-amber-900/40 text-amber-200"
-                  : "border-emerald-400/40 bg-emerald-800/40 text-emerald-200"
+                    ? "border-amber-400/40 bg-amber-900/40 text-amber-200"
+                    : "border-emerald-400/40 bg-emerald-800/40 text-emerald-200"
               )}>
                 {estInfo.badgeLabel}
               </span>
@@ -360,10 +362,10 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
                 {isSyncing
                   ? `Sync. (${pendingCount})…`
                   : !isOnline
-                  ? `Hors-ligne · ${pendingCount} en attente`
-                  : pendingCount > 0
-                  ? `${pendingCount} en attente`
-                  : "Synchronisé"}
+                    ? `Hors-ligne · ${pendingCount} en attente`
+                    : pendingCount > 0
+                      ? `${pendingCount} en attente`
+                      : "Synchronisé"}
               </span>
             )}
           </button>
