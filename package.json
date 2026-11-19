@@ -120,8 +120,20 @@
     },
     "mac": {
       "target": [
-        "dmg",
-        "zip"
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
       ],
       "icon": "public/android-chrome-512x512.png",
       "category": "public.app-category.education",
@@ -129,10 +141,20 @@
     },
     "win": {
       "target": [
-        "nsis",
-        "portable"
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
-      "icon": "public/favicon.ico"
+      "icon": "public/android-chrome-512x512.png"
     },
     "nsis": {
       "oneClick": false,
