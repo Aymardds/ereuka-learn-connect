@@ -259,6 +259,68 @@ export function useServices() {
           });
           setMealAttendance(attMap);
         }
+
+        // Charger les circuits de transport depuis Supabase si disponibles
+        const { data: dbRoutes, error: routesErr } = await supabase
+          .from('transport_routes')
+          .select('*')
+          .eq('tenant_id', tenantId)
+          .eq('is_active', true);
+
+        if (!routesErr && dbRoutes && dbRoutes.length > 0) {
+          setTransportRoutes(dbRoutes.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            code: r.code,
+            driver_name: r.driver_name || '',
+            driver_phone: r.driver_phone || '',
+            vehicle_plate: r.vehicle_plate || '',
+            vehicle_capacity: r.vehicle_capacity || 30,
+            stops_count: r.stops_count || (Array.isArray(r.stops) ? r.stops.length : 0),
+            stops: Array.isArray(r.stops) ? r.stops : [],
+            monthly_rate_cfa: Number(r.monthly_rate_cfa) || 25000,
+          })));
+        }
+
+        // Charger les abonnés au transport depuis Supabase
+        const { data: dbTrans, error: transErr } = await supabase
+          .from('transport_subscriptions')
+          .select(`
+            *,
+            students (
+              id,
+              first_name,
+              last_name,
+              student_code,
+              guardian_name,
+              guardian_phone,
+              classes (name)
+            )
+          `)
+          .eq('tenant_id', tenantId);
+
+        if (!transErr && dbTrans && dbTrans.length > 0) {
+          const formattedTrans: TransportSubscriber[] = dbTrans.map((item: any) => ({
+            id: item.id,
+            student_id: item.student_id,
+            student_name: item.students ? `${item.students.first_name} ${item.students.last_name}` : 'Élève',
+            student_code: item.students?.student_code || 'ERK-MAT',
+            class_name: item.students?.classes?.name || 'Sans classe',
+            parent_name: item.students?.guardian_name || 'Parent d\'élève',
+            parent_phone: item.students?.guardian_phone || '',
+            route_id: item.route_id || '',
+            route_name: item.route_name || 'Circuit de ramassage',
+            pickup_stop: item.pickup_stop || 'Arrêt principal',
+            trip_type: item.trip_type || 'round_trip',
+            amount_due: Number(item.amount_due) || 0,
+            amount_paid: Number(item.amount_paid) || 0,
+            remaining: Number(item.remaining) || 0,
+            status: item.status || 'pending',
+            is_active: item.is_active ?? true,
+            registered_at: item.registered_at || new Date().toISOString().split('T')[0],
+          }));
+          setTransportSubscribers(formattedTrans);
+        }
       } catch (err) {
         console.warn("Could not fetch canteen data from Supabase, using local fallback", err);
       }
@@ -319,7 +381,7 @@ export function useServices() {
       is_active: true,
       registered_at: new Date().toISOString().split('T')[0],
     };
-    setCantineSubscribers(prev => [sub, ...prev]);
+    setCantineSubscribers(prev => [sub, ...prev.filter(s => s.student_id !== newSub.student_id)]);
 
     // Sauvegarde Supabase
     if (tenantId && tenantId !== 'default_tenant') {
@@ -334,13 +396,21 @@ export function useServices() {
         dietary_notes: newSub.dietary_notes || null,
         is_active: true,
         registered_at: new Date().toISOString().split('T')[0],
-      }]).then(({ error }) => {
+      }], { onConflict: 'tenant_id,student_id' }).then(({ error }) => {
         if (error) console.warn("Could not save subscriber to Supabase", error);
       });
     }
 
     toast.success(`Élève ${sub.student_name} inscrit à la cantine (${plan.name})`);
     return sub;
+  };
+
+  const cancelCantineSubscriber = (studentId: string) => {
+    setCantineSubscribers(prev => prev.filter(s => s.student_id !== studentId));
+    if (tenantId && tenantId !== 'default_tenant') {
+      supabase.from('canteen_subscriptions').delete().eq('tenant_id', tenantId).eq('student_id', studentId).then();
+    }
+    toast.success("Désinscription de la cantine effectuée");
   };
 
   const recordCantinePayment = async (subscriberId: string, amount: number, method: string, notes?: string) => {
@@ -459,22 +529,57 @@ export function useServices() {
   };
 
   // ── 4. ACTIONS TRANSPORT ───────────────────────────────────────────────────
-  const registerTransportSubscriber = (newSub: Omit<TransportSubscriber, 'id' | 'amount_due' | 'amount_paid' | 'remaining' | 'status' | 'is_active' | 'registered_at'>) => {
+  const registerTransportSubscriber = (newSub: Omit<TransportSubscriber, 'id' | 'amount_due' | 'amount_paid' | 'remaining' | 'status' | 'is_active' | 'registered_at'> & { custom_amount?: number }) => {
     const route = transportRoutes.find(r => r.id === newSub.route_id) || transportRoutes[0];
+    const baseRate = route.monthly_rate_cfa;
+    // Si aller-retour: 100%, si matin seul ou soir seul: 60%
+    const calculatedRate = newSub.custom_amount !== undefined 
+      ? newSub.custom_amount 
+      : (newSub.trip_type === 'round_trip' ? baseRate : Math.round(baseRate * 0.6));
+
     const sub: TransportSubscriber = {
       ...newSub,
       id: `ts_${Date.now()}`,
       route_name: route.name,
-      amount_due: route.monthly_rate_cfa,
+      amount_due: calculatedRate,
       amount_paid: 0,
-      remaining: route.monthly_rate_cfa,
+      remaining: calculatedRate,
       status: 'pending',
       is_active: true,
       registered_at: new Date().toISOString().split('T')[0],
     };
-    setTransportSubscribers(prev => [sub, ...prev]);
+    setTransportSubscribers(prev => [sub, ...prev.filter(s => s.student_id !== newSub.student_id)]);
+
+    // Sauvegarde Supabase
+    if (tenantId && tenantId !== 'default_tenant') {
+      supabase.from('transport_subscriptions').upsert([{
+        tenant_id: tenantId,
+        student_id: newSub.student_id,
+        route_id: newSub.route_id || null,
+        route_name: route.name,
+        pickup_stop: newSub.pickup_stop,
+        trip_type: newSub.trip_type || 'round_trip',
+        amount_due: calculatedRate,
+        amount_paid: 0,
+        remaining: calculatedRate,
+        status: 'pending',
+        is_active: true,
+        registered_at: new Date().toISOString().split('T')[0],
+      }], { onConflict: 'tenant_id,student_id' }).then(({ error }) => {
+        if (error) console.warn("Could not save transport subscriber to Supabase", error);
+      });
+    }
+
     toast.success(`Élève ${sub.student_name} inscrit au circuit ${route.name}`);
     return sub;
+  };
+
+  const cancelTransportSubscriber = (studentId: string) => {
+    setTransportSubscribers(prev => prev.filter(s => s.student_id !== studentId));
+    if (tenantId && tenantId !== 'default_tenant') {
+      supabase.from('transport_subscriptions').delete().eq('tenant_id', tenantId).eq('student_id', studentId).then();
+    }
+    toast.success("Désinscription du transport effectuée");
   };
 
   const recordTransportPayment = async (subscriberId: string, amount: number, method: string, notes?: string) => {
@@ -613,6 +718,7 @@ export function useServices() {
     mealAttendance,
     cantineStats,
     registerCantineSubscriber,
+    cancelCantineSubscriber,
     recordCantinePayment,
     toggleMealAttendance,
     updateMenu,
@@ -626,6 +732,7 @@ export function useServices() {
     vehicles,
     transportStats,
     registerTransportSubscriber,
+    cancelTransportSubscriber,
     recordTransportPayment,
     addVehicle,
     addTransportRoute,

@@ -15,7 +15,7 @@ import {
   CheckCircle2, AlertCircle, FileText, Download, Phone, ArrowRight,
   UserPlus, HeartPulse, Sparkles, ShieldCheck, Building2, RefreshCw,
   Globe2, School, ChevronRight, ExternalLink, Mail, Loader2,
-  UtensilsCrossed, Bus
+  UtensilsCrossed, Bus, Pencil, Trash2, MapPin, Info, Check, Shield
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
@@ -120,11 +120,47 @@ function ParentPortalPage() {
 
   // Services Périscolaires (Cantine & Transport)
   const {
+    cantinePlans,
     cantineSubscribers,
+    transportRoutes,
     transportSubscribers,
+    registerCantineSubscriber,
+    cancelCantineSubscriber,
     recordCantinePayment,
+    registerTransportSubscriber,
+    cancelTransportSubscriber,
     recordTransportPayment,
   } = useServices();
+
+  // Modals de souscription périscolaire
+  const [isCantineModalOpen, setIsCantineModalOpen] = useState(false);
+  const [isTransportModalOpen, setIsTransportModalOpen] = useState(false);
+
+  // Formulaire Souscription Cantine
+  const [cantinePlanId, setCantinePlanId] = useState<string>('');
+  const [cantineDietaryNotes, setCantineDietaryNotes] = useState<string>('');
+  const [cantinePayMode, setCantinePayMode] = useState<'now' | 'later'>('now');
+
+  // Formulaire Souscription Transport
+  const [transportRouteId, setTransportRouteId] = useState<string>('');
+  const [transportStop, setTransportStop] = useState<string>('');
+  const [transportTripType, setTransportTripType] = useState<'round_trip' | 'morning_only' | 'evening_only'>('round_trip');
+  const [transportPayMode, setTransportPayMode] = useState<'now' | 'later'>('now');
+
+  // Sélections actives pour calculs
+  const currentSelectedCantinePlan = useMemo(() => {
+    return cantinePlans.find(p => p.id === cantinePlanId) || cantinePlans[0] || null;
+  }, [cantinePlans, cantinePlanId]);
+
+  const currentSelectedRoute = useMemo(() => {
+    return transportRoutes.find(r => r.id === transportRouteId) || transportRoutes[0] || null;
+  }, [transportRoutes, transportRouteId]);
+
+  const calculatedTransportRate = useMemo(() => {
+    if (!currentSelectedRoute) return 25000;
+    const base = currentSelectedRoute.monthly_rate_cfa;
+    return transportTripType === 'round_trip' ? base : Math.round(base * 0.6);
+  }, [currentSelectedRoute, transportTripType]);
 
   // Merge allChildren from RPC + local students (fallback)
   const displayChildren = useMemo(() => {
@@ -248,6 +284,117 @@ function ParentPortalPage() {
       setIsPayModalOpen(false);
     } catch (e) {
       // handled in hook
+    }
+  };
+
+  // ── Actions Cantine ──────────────────────────────────────────
+  const handleOpenCantineModal = () => {
+    if (!currentChild) return;
+    if (childCantineSub) {
+      setCantinePlanId(childCantineSub.plan_id || cantinePlans[0]?.id || '');
+      setCantineDietaryNotes(childCantineSub.dietary_notes || '');
+    } else {
+      setCantinePlanId(cantinePlans[0]?.id || '');
+      setCantineDietaryNotes('');
+    }
+    setCantinePayMode('now');
+    setIsCantineModalOpen(true);
+  };
+
+  const handleSubmitCantineSub = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentChild) return;
+    const plan = currentSelectedCantinePlan || cantinePlans[0];
+    if (!plan) {
+      toast.error("Veuillez sélectionner une formule");
+      return;
+    }
+
+    registerCantineSubscriber({
+      student_id: currentChild.student_id,
+      student_name: `${currentChild.first_name} ${currentChild.last_name}`,
+      student_code: (currentStudentLocal as any)?.student_code || 'ERK-MAT',
+      class_name: currentChild.class_name || (currentStudentLocal as any)?.classes?.name || 'Sans classe',
+      parent_name: profile?.full_name || `${parentName} ${parentSurname}`.trim(),
+      parent_phone: profile?.phone || parentPhone || '',
+      plan_id: plan.id,
+      dietary_notes: cantineDietaryNotes.trim() || undefined,
+    });
+
+    setIsCantineModalOpen(false);
+
+    if (cantinePayMode === 'now') {
+      setAmount(String(plan.price_cfa));
+      setPaymentDescription(`Cantine Scolaire (${plan.name})`);
+      setIsPayModalOpen(true);
+    } else {
+      toast.success(`Souscription à la cantine enregistrée pour ${currentChild.first_name}. Vous pourrez régler en ligne ou à la caisse.`);
+    }
+  };
+
+  const handleCancelCantine = () => {
+    if (!currentChild) return;
+    if (window.confirm(`Confirmez-vous la désinscription de la cantine pour ${currentChild.first_name} ?`)) {
+      cancelCantineSubscriber(currentChild.student_id);
+    }
+  };
+
+  // ── Actions Transport ────────────────────────────────────────
+  const handleOpenTransportModal = () => {
+    if (!currentChild) return;
+    if (childTransportSub) {
+      const activeRoute = transportRoutes.find(r => r.id === childTransportSub.route_id || r.name === childTransportSub.route_name) || transportRoutes[0];
+      setTransportRouteId(activeRoute?.id || transportRoutes[0]?.id || '');
+      setTransportStop(childTransportSub.pickup_stop || activeRoute?.stops[0]?.name || '');
+      setTransportTripType(childTransportSub.trip_type || 'round_trip');
+    } else {
+      const defaultRoute = transportRoutes[0];
+      setTransportRouteId(defaultRoute?.id || '');
+      setTransportStop(defaultRoute?.stops[0]?.name || 'Arrêt principal');
+      setTransportTripType('round_trip');
+    }
+    setTransportPayMode('now');
+    setIsTransportModalOpen(true);
+  };
+
+  const handleSubmitTransportSub = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!currentChild) return;
+    const route = currentSelectedRoute || transportRoutes[0];
+    if (!route) {
+      toast.error("Veuillez sélectionner un circuit");
+      return;
+    }
+
+    registerTransportSubscriber({
+      student_id: currentChild.student_id,
+      student_name: `${currentChild.first_name} ${currentChild.last_name}`,
+      student_code: (currentStudentLocal as any)?.student_code || 'ERK-MAT',
+      class_name: currentChild.class_name || (currentStudentLocal as any)?.classes?.name || 'Sans classe',
+      parent_name: profile?.full_name || `${parentName} ${parentSurname}`.trim(),
+      parent_phone: profile?.phone || parentPhone || '',
+      route_id: route.id,
+      pickup_stop: transportStop || route.stops[0]?.name || 'Arrêt principal',
+      trip_type: transportTripType,
+      custom_amount: calculatedTransportRate,
+    });
+
+    setIsTransportModalOpen(false);
+
+    if (transportPayMode === 'now') {
+      const tripLabel = transportTripType === 'round_trip' ? 'Aller-Retour' : transportTripType === 'morning_only' ? 'Matin seul' : 'Soir seul';
+      setAmount(String(calculatedTransportRate));
+      setPaymentDescription(`Transport Scolaire (${route.name} — ${tripLabel})`);
+      setIsPayModalOpen(true);
+    } else {
+      toast.success(`Abonnement au transport enregistré pour ${currentChild.first_name}. Vous pourrez régler en ligne ou à la caisse.`);
+    }
+  };
+
+  const handleCancelTransport = () => {
+    if (!currentChild) return;
+    if (window.confirm(`Confirmez-vous la désinscription du transport scolaire pour ${currentChild.first_name} ?`)) {
+      cancelTransportSubscriber(currentChild.student_id);
     }
   };
 
@@ -701,23 +848,25 @@ function ParentPortalPage() {
 
                   {childCantineSub ? (
                     <div className="space-y-2 mt-3 text-xs">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Formule active :</span>
-                        <span className="font-bold text-foreground">{childCantineSub.plan_name}</span>
+                        <span className="font-bold text-foreground bg-white/80 px-2 py-0.5 rounded border border-amber-200">
+                          {childCantineSub.plan_name}
+                        </span>
                       </div>
-                      {childCantineSub.dietary_notes && (
-                        <div className="flex justify-between">
-                          <span className="text-muted-foreground">Régime alimentaire :</span>
-                          <span className="font-medium text-amber-800">{childCantineSub.dietary_notes}</span>
-                        </div>
-                      )}
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Régime / Allergies :</span>
+                        <span className="font-medium text-amber-900">
+                          {childCantineSub.dietary_notes || 'Standard sans restriction'}
+                        </span>
+                      </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Montant formule :</span>
                         <span className="font-mono font-bold text-foreground">{childCantineSub.amount_due.toLocaleString('fr-FR')} FCFA</span>
                       </div>
                       <div className="flex justify-between pt-1 border-t border-amber-200/60">
                         <span className="text-muted-foreground">Déjà versé :</span>
-                        <span className="font-bold text-emerald-600 font-mono">{childCantineSub.amount_paid.toLocaleString('fr-FR')} F</span>
+                        <span className="font-bold text-emerald-600 font-mono">{childCantineSub.amount_paid.toLocaleString('fr-FR')} FCFA</span>
                       </div>
                       <div className="flex justify-between text-xs font-bold">
                         <span className="text-rose-700">Reste à payer :</span>
@@ -726,16 +875,43 @@ function ParentPortalPage() {
                     </div>
                   ) : (
                     <div className="py-4 text-center text-xs text-muted-foreground">
-                      <p>Cet enfant n'a pas encore de forfait cantine enregistré pour ce mois.</p>
-                      <p className="text-[11px] mt-1 text-slate-500">Forfait mensuel complet (25 000 FCFA/mois) avec repas chaud du midi et goûter.</p>
+                      <p className="font-medium text-stone-800">Cet enfant n'a pas encore de formule de cantine enregistrée.</p>
+                      <p className="text-[11px] mt-1 text-slate-500">
+                        {cantinePlans.length} formule(s) disponible(s) : Mensuel complet, Trimestriel, Demi-forfait ou Carnet tickets.
+                      </p>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-amber-200/60 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    {childCantineSub && childCantineSub.remaining === 0 ? "Compte réfectoire soldé ✓" : "Payable par Mobile Money ou Caisse"}
-                  </span>
+                <div className="mt-4 pt-3 border-t border-amber-200/60 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {childCantineSub ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleOpenCantineModal}
+                          className="h-8 text-xs font-medium border-amber-300 text-amber-900 bg-white hover:bg-amber-100 gap-1"
+                        >
+                          <Pencil className="w-3 h-3 text-amber-700" /> Modifier
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelCantine}
+                          title="Désinscrire l'élève"
+                          className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        Payable par Mobile Money ou Caisse
+                      </span>
+                    )}
+                  </div>
+
                   {childCantineSub && childCantineSub.remaining > 0 ? (
                     <Button
                       size="sm"
@@ -744,23 +920,23 @@ function ParentPortalPage() {
                         setPaymentDescription(`Cantine Scolaire (${childCantineSub.plan_name})`);
                         setIsPayModalOpen(true);
                       }}
-                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1.5"
                     >
-                      Régler la Cantine ({childCantineSub.remaining.toLocaleString('fr-FR')} F)
+                      <CreditCard className="w-3.5 h-3.5" /> Régler le solde ({childCantineSub.remaining.toLocaleString('fr-FR')} F)
                     </Button>
                   ) : !childCantineSub ? (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        setAmount('25000');
-                        setPaymentDescription(`Cantine Scolaire (Forfait Mensuel)`);
-                        setIsPayModalOpen(true);
-                      }}
-                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white"
+                      onClick={handleOpenCantineModal}
+                      className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1.5 shadow-sm"
                     >
-                      Souscrire & Payer (25 000 F)
+                      <UtensilsCrossed className="w-3.5 h-3.5" /> Choisir une formule & Souscrire
                     </Button>
-                  ) : null}
+                  ) : (
+                    <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Compte réfectoire soldé
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -785,9 +961,9 @@ function ParentPortalPage() {
 
                   {childTransportSub ? (
                     <div className="space-y-2 mt-3 text-xs">
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Circuit / Ligne :</span>
-                        <span className="font-bold text-foreground truncate max-w-[200px]" title={childTransportSub.route_name}>
+                        <span className="font-bold text-foreground bg-white/80 px-2 py-0.5 rounded border border-blue-200 truncate max-w-[200px]" title={childTransportSub.route_name}>
                           {childTransportSub.route_name}
                         </span>
                       </div>
@@ -804,7 +980,7 @@ function ParentPortalPage() {
                       </div>
                       <div className="flex justify-between pt-1 border-t border-blue-200/60">
                         <span className="text-muted-foreground">Déjà versé :</span>
-                        <span className="font-bold text-emerald-600 font-mono">{childTransportSub.amount_paid.toLocaleString('fr-FR')} F</span>
+                        <span className="font-bold text-emerald-600 font-mono">{childTransportSub.amount_paid.toLocaleString('fr-FR')} FCFA</span>
                       </div>
                       <div className="flex justify-between text-xs font-bold">
                         <span className="text-rose-700">Reste à payer :</span>
@@ -813,16 +989,43 @@ function ParentPortalPage() {
                     </div>
                   ) : (
                     <div className="py-4 text-center text-xs text-muted-foreground">
-                      <p>Cet enfant n'a pas encore de circuit de transport enregistré.</p>
-                      <p className="text-[11px] mt-1 text-slate-500">Circuits sécurisés climatisés avec chauffeur attitré (25 000 à 28 000 FCFA/mois).</p>
+                      <p className="font-medium text-stone-800">Cet enfant n'a pas encore de circuit de transport enregistré.</p>
+                      <p className="text-[11px] mt-1 text-slate-500">
+                        Circuits sécurisés et climatisés avec chauffeur attitré, ramassage personnalisé matin et soir.
+                      </p>
                     </div>
                   )}
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-blue-200/60 flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">
-                    {childTransportSub && childTransportSub.remaining === 0 ? "Abonnement bus soldé ✓" : "Payable par Mobile Money ou Caisse"}
-                  </span>
+                <div className="mt-4 pt-3 border-t border-blue-200/60 flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {childTransportSub ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleOpenTransportModal}
+                          className="h-8 text-xs font-medium border-blue-300 text-blue-900 bg-white hover:bg-blue-100 gap-1"
+                        >
+                          <Pencil className="w-3 h-3 text-blue-700" /> Modifier
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={handleCancelTransport}
+                          title="Désinscrire l'élève"
+                          className="h-8 text-xs text-rose-600 hover:text-rose-700 hover:bg-rose-50 px-2"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                        </Button>
+                      </>
+                    ) : (
+                      <span className="text-[11px] text-muted-foreground">
+                        Payable par Mobile Money ou Caisse
+                      </span>
+                    )}
+                  </div>
+
                   {childTransportSub && childTransportSub.remaining > 0 ? (
                     <Button
                       size="sm"
@@ -831,23 +1034,23 @@ function ParentPortalPage() {
                         setPaymentDescription(`Transport Scolaire (${childTransportSub.route_name})`);
                         setIsPayModalOpen(true);
                       }}
-                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
                     >
-                      Régler le Transport ({childTransportSub.remaining.toLocaleString('fr-FR')} F)
+                      <CreditCard className="w-3.5 h-3.5" /> Régler le solde ({childTransportSub.remaining.toLocaleString('fr-FR')} F)
                     </Button>
                   ) : !childTransportSub ? (
                     <Button
                       size="sm"
-                      onClick={() => {
-                        setAmount('25000');
-                        setPaymentDescription(`Transport Scolaire (Circuit 1 Riviera)`);
-                        setIsPayModalOpen(true);
-                      }}
-                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
+                      onClick={handleOpenTransportModal}
+                      className="h-8 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5 shadow-sm"
                     >
-                      Souscrire & Payer (25 000 F)
+                      <Bus className="w-3.5 h-3.5" /> Choisir un circuit & Souscrire
                     </Button>
-                  ) : null}
+                  ) : (
+                    <span className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1">
+                      <Check className="w-3.5 h-3.5" /> Abonnement transport soldé
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -990,6 +1193,364 @@ function ParentPortalPage() {
                 className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold"
               >
                 {isSubmittingEnrollment ? "Envoi du dossier..." : "Transmettre l'Inscription"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MODAL SOUSCRIPTION CANTINE SCOLAIRE ── */}
+      <Dialog open={isCantineModalOpen} onOpenChange={setIsCantineModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={handleSubmitCantineSub}>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-100 text-amber-800 flex items-center justify-center font-bold">
+                  <UtensilsCrossed className="w-5 h-5 text-amber-700" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold text-stone-900">
+                    Souscription Cantine Scolaire
+                  </DialogTitle>
+                  {currentChild && (
+                    <DialogDescription className="text-xs text-stone-500">
+                      Pour l'élève : <strong className="text-stone-800">{currentChild.first_name} {currentChild.last_name}</strong>
+                      {currentChild.class_name && <span> ({currentChild.class_name})</span>}
+                    </DialogDescription>
+                  )}
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3 text-xs">
+              {/* Choix de la formule */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  1. Sélection de la formule de restauration
+                </Label>
+                <div className="grid grid-cols-1 gap-2 max-h-52 overflow-y-auto pr-1">
+                  {cantinePlans.map((plan) => {
+                    const isSelected = (cantinePlanId || cantinePlans[0]?.id) === plan.id;
+                    return (
+                      <div
+                        key={plan.id}
+                        onClick={() => setCantinePlanId(plan.id)}
+                        className={`cursor-pointer rounded-xl border p-3 transition-all flex items-start justify-between gap-3 ${
+                          isSelected
+                            ? 'border-amber-500 bg-amber-50/80 shadow-xs'
+                            : 'border-stone-200 bg-white hover:border-amber-300'
+                        }`}
+                      >
+                        <div className="space-y-0.5 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-bold text-stone-900 text-xs">{plan.name}</span>
+                            {isSelected && (
+                              <span className="text-[10px] bg-amber-600 text-white font-bold px-1.5 py-0.2 rounded-full">
+                                Sélectionné
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-stone-500">{plan.description}</p>
+                          <div className="text-[10px] text-stone-400">
+                            {plan.meals_per_week > 0 ? `${plan.meals_per_week} repas / semaine` : 'Tickets rechargeables'}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <span className="font-mono font-bold text-amber-900 text-xs block">
+                            {plan.price_cfa.toLocaleString('fr-FR')} FCFA
+                          </span>
+                          <span className="text-[10px] text-stone-400">
+                            {plan.period === 'monthly' ? '/mois' : plan.period === 'trimester' ? '/trimestre' : ''}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Régime alimentaire & Allergies */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 flex items-center justify-between">
+                  <span>2. Régime alimentaire & Allergies</span>
+                  <span className="text-[10px] text-stone-400 font-normal">Facultatif</span>
+                </Label>
+                <Input
+                  value={cantineDietaryNotes}
+                  onChange={(e) => setCantineDietaryNotes(e.target.value)}
+                  placeholder="Ex: Sans porc, allergie aux arachides, intolérance au lactose..."
+                  className="h-9 text-xs"
+                />
+                {/* Suggestions rapides */}
+                <div className="flex flex-wrap gap-1.5 mt-1.5">
+                  {['Sans porc', 'Sans arachides', 'Végétarien', 'Sans poisson', 'Aucune restriction'].map((tag) => (
+                    <button
+                      type="button"
+                      key={tag}
+                      onClick={() => {
+                        if (tag === 'Aucune restriction') {
+                          setCantineDietaryNotes('Aucune restriction');
+                        } else {
+                          const current = cantineDietaryNotes.replace('Aucune restriction', '').trim();
+                          setCantineDietaryNotes(current ? `${current}, ${tag}` : tag);
+                        }
+                      }}
+                      className="text-[10px] bg-stone-100 hover:bg-amber-100 hover:text-amber-900 text-stone-600 px-2 py-0.5 rounded-md transition-colors"
+                    >
+                      + {tag}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mode de règlement */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  3. Mode de règlement
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div
+                    onClick={() => setCantinePayMode('now')}
+                    className={`cursor-pointer rounded-xl border p-2.5 text-xs transition-all ${
+                      cantinePayMode === 'now'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-medium'
+                        : 'border-stone-200 bg-white text-stone-600'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                      <CreditCard className="w-3.5 h-3.5" /> Payer maintenant en ligne
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">
+                      Wave, Orange, MTN, Moov, Carte bancaire
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setCantinePayMode('later')}
+                    className={`cursor-pointer rounded-xl border p-2.5 text-xs transition-all ${
+                      cantinePayMode === 'later'
+                        ? 'border-amber-500 bg-amber-50 text-amber-950 font-medium'
+                        : 'border-stone-200 bg-white text-stone-600'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-amber-800">
+                      <Clock className="w-3.5 h-3.5" /> Régler plus tard / Caisse
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">
+                      Souscrire immédiatement, régler ultérieurement
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsCantineModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-amber-600 hover:bg-amber-700 text-white font-bold gap-1.5"
+              >
+                {cantinePayMode === 'now' ? (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Payer {(currentSelectedCantinePlan?.price_cfa || 25000).toLocaleString('fr-FR')} FCFA
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Valider la souscription
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── MODAL SOUSCRIPTION TRANSPORT SCOLAIRE ── */}
+      <Dialog open={isTransportModalOpen} onOpenChange={setIsTransportModalOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <form onSubmit={handleSubmitTransportSub}>
+            <DialogHeader>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-100 text-blue-800 flex items-center justify-center font-bold">
+                  <Bus className="w-5 h-5 text-blue-700" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold text-stone-900">
+                    Souscription au Transport Scolaire
+                  </DialogTitle>
+                  {currentChild && (
+                    <DialogDescription className="text-xs text-stone-500">
+                      Pour l'élève : <strong className="text-stone-800">{currentChild.first_name} {currentChild.last_name}</strong>
+                      {currentChild.class_name && <span> ({currentChild.class_name})</span>}
+                    </DialogDescription>
+                  )}
+                </div>
+              </div>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3 text-xs">
+              {/* Choix du circuit */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  1. Sélection du circuit de ramassage
+                </Label>
+                <Select
+                  value={transportRouteId || transportRoutes[0]?.id}
+                  onValueChange={(val) => {
+                    setTransportRouteId(val);
+                    const route = transportRoutes.find(r => r.id === val);
+                    if (route && route.stops?.length > 0) {
+                      setTransportStop(route.stops[0].name);
+                    }
+                  }}
+                >
+                  <SelectTrigger className="h-10 text-xs">
+                    <SelectValue placeholder="Choisir un circuit..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {transportRoutes.map((route) => (
+                      <SelectItem key={route.id} value={route.id} className="text-xs">
+                        {route.name} ({route.monthly_rate_cfa.toLocaleString('fr-FR')} F/mois) — Chauffeur: {route.driver_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Choix de l'arrêt */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  2. Arrêt de ramassage de l'enfant
+                </Label>
+                <Select
+                  value={transportStop || currentSelectedRoute?.stops[0]?.name || ''}
+                  onValueChange={(val) => setTransportStop(val)}
+                >
+                  <SelectTrigger className="h-10 text-xs">
+                    <SelectValue placeholder="Choisir un arrêt..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(currentSelectedRoute?.stops || []).map((stop, idx) => (
+                      <SelectItem key={idx} value={stop.name} className="text-xs">
+                        📍 {stop.name} {stop.morning_time ? `(Matin: ${stop.morning_time} · Soir: ${stop.evening_time})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Type de trajet */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  3. Fréquence du trajet
+                </Label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'round_trip', label: 'Aller & Retour', desc: '100% tarif' },
+                    { id: 'morning_only', label: 'Matin seul', desc: '60% tarif' },
+                    { id: 'evening_only', label: 'Soir seul', desc: '60% tarif' },
+                  ].map((t) => {
+                    const isSelected = transportTripType === t.id;
+                    return (
+                      <div
+                        key={t.id}
+                        onClick={() => setTransportTripType(t.id as any)}
+                        className={`cursor-pointer rounded-xl border p-2 text-center transition-all ${
+                          isSelected
+                            ? 'border-blue-600 bg-blue-50/80 font-bold text-blue-900'
+                            : 'border-stone-200 bg-white hover:border-blue-300 text-stone-600'
+                        }`}
+                      >
+                        <div className="text-xs">{t.label}</div>
+                        <div className="text-[10px] text-stone-400 mt-0.5">{t.desc}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Récapitulatif tarif */}
+              <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-3 flex items-center justify-between">
+                <div>
+                  <span className="text-[11px] text-stone-600 block">Tarif mensuel calculé</span>
+                  <span className="text-[10px] text-blue-700">
+                    Véhicule climatisé avec chauffeur attitré
+                  </span>
+                </div>
+                <div className="text-right">
+                  <span className="font-mono font-black text-blue-900 text-sm">
+                    {calculatedTransportRate.toLocaleString('fr-FR')} FCFA
+                  </span>
+                  <span className="text-[10px] text-stone-500 block">/mois</span>
+                </div>
+              </div>
+
+              {/* Mode de règlement */}
+              <div>
+                <Label className="text-xs font-semibold text-stone-800 mb-1.5 block">
+                  4. Mode de règlement
+                </Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div
+                    onClick={() => setTransportPayMode('now')}
+                    className={`cursor-pointer rounded-xl border p-2.5 text-xs transition-all ${
+                      transportPayMode === 'now'
+                        ? 'border-emerald-500 bg-emerald-50 text-emerald-950 font-medium'
+                        : 'border-stone-200 bg-white text-stone-600'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-emerald-800">
+                      <CreditCard className="w-3.5 h-3.5" /> Payer maintenant en ligne
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">
+                      Wave, Orange, MTN, Moov, Carte
+                    </div>
+                  </div>
+
+                  <div
+                    onClick={() => setTransportPayMode('later')}
+                    className={`cursor-pointer rounded-xl border p-2.5 text-xs transition-all ${
+                      transportPayMode === 'later'
+                        ? 'border-blue-500 bg-blue-50 text-blue-950 font-medium'
+                        : 'border-stone-200 bg-white text-stone-600'
+                    }`}
+                  >
+                    <div className="font-bold flex items-center gap-1.5 text-blue-800">
+                      <Clock className="w-3.5 h-3.5" /> Régler plus tard / Caisse
+                    </div>
+                    <div className="text-[11px] text-stone-500 mt-0.5">
+                      Réserver la place immédiatement
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsTransportModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-bold gap-1.5"
+              >
+                {transportPayMode === 'now' ? (
+                  <>
+                    <CreditCard className="w-4 h-4" />
+                    Payer {calculatedTransportRate.toLocaleString('fr-FR')} FCFA
+                  </>
+                ) : (
+                  <>
+                    <Check className="w-4 h-4" />
+                    Valider la souscription
+                  </>
+                )}
               </Button>
             </DialogFooter>
           </form>
