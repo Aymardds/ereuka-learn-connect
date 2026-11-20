@@ -171,9 +171,10 @@ export function useDisbursement() {
       if (!tenantId || !profile?.id) throw new Error('Session invalide');
       if (amountRequested <= 0) throw new Error('Le montant doit être supérieur à 0');
 
-      const feePercent = gatewayQuery.data?.platform_fee_percent ?? 2.5;
-      const platformFee = Math.round((amountRequested * feePercent) / 100);
-      const amountNet = amountRequested - platformFee;
+      // Modèle économique INEXIUMUS : Gestion 100% gratuite pour les écoles
+      // Les frais de service de 500 FCFA sont pris en charge par le parent lors de son paiement (non inclus dans la scolarité)
+      const platformFee = 0;
+      const amountNet = amountRequested;
 
       const year = new Date().getFullYear();
       const ref = `DCM-${year}-${Math.floor(10000 + Math.random() * 90000)}`;

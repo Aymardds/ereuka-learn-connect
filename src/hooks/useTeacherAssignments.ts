@@ -194,6 +194,67 @@ export function useTeacherAssignments() {
     },
   });
 
+  // BATCH ASSIGN teacher to multiple classes
+  const batchAssignMutation = useMutation({
+    mutationFn: async ({
+      teacherId,
+      classIds,
+      subjectId,
+      roleInClass = 'intervenant',
+      setAsTitulaire = false,
+    }: {
+      teacherId: string;
+      classIds: string[];
+      subjectId?: string | null;
+      roleInClass?: TeacherClassAssignment['role_in_class'];
+      setAsTitulaire?: boolean;
+    }) => {
+      if (!tenantId) throw new Error('No tenant ID');
+      if (classIds.length === 0) return [];
+
+      const records = classIds.map((cid) => ({
+        tenant_id: tenantId,
+        teacher_id: teacherId,
+        class_id: cid,
+        subject_id: subjectId || null,
+        role_in_class: roleInClass,
+      }));
+
+      // Insert assignments (ignore duplicate keys)
+      for (const rec of records) {
+        await supabase
+          .from('teacher_class_assignments')
+          .insert([rec])
+          .then(({ error }) => {
+            if (error && error.code !== '23505') console.warn('Assignment insert warning', error);
+          });
+      }
+
+      // If requested or if role is titulaire, also update classes.teacher_id
+      if (setAsTitulaire || roleInClass === 'titulaire') {
+        for (const cid of classIds) {
+          await supabase
+            .from('classes')
+            .update({ teacher_id: teacherId })
+            .eq('id', cid)
+            .eq('tenant_id', tenantId);
+        }
+        queryClient.invalidateQueries({ queryKey: ['classes', tenantId] });
+      }
+
+      return records;
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['teacher_class_assignments'] });
+      queryClient.invalidateQueries({ queryKey: ['classes'] });
+      toast.success(`Enseignant affecté à ${variables.classIds.length} classe(s) avec succès`);
+    },
+    onError: (error: any) => {
+      toast.error("Erreur lors de l'affectation groupée");
+      console.error(error);
+    },
+  });
+
   return {
     assignments: assignmentsQuery.data || [],
     assignmentsQuery,
@@ -202,5 +263,6 @@ export function useTeacherAssignments() {
     createAssignmentMutation,
     deleteAssignmentMutation,
     updateAssignmentMutation,
+    batchAssignMutation,
   };
 }

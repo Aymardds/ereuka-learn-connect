@@ -25,6 +25,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { useAuth } from "@/hooks/useAuth"
+import { getEstablishmentTypeInfo } from "@/lib/school-types"
 
 export const Route = createFileRoute('/modalites')({
   head: () => ({
@@ -63,6 +64,8 @@ function getTrancheKey(title: string): string {
 function ModalitesPage() {
   const queryClient = useQueryClient()
   const { profile } = useAuth()
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types)
+  const [activeLevelFilter, setActiveLevelFilter] = useState<string>('all')
   const [activeTab, setActiveTab] = useState<'matrix' | 'cards'>('matrix')
 
   // Modals state
@@ -148,17 +151,22 @@ function ModalitesPage() {
   const schedules = schedulesQuery.data || []
   const hasSchedules = schedules.length > 0
 
-  // Detect Level Groups from Classes (e.g. "6 eme", "5 eme", "4 eme", "3 eme")
+  // Regrouper par level_type (depuis la base de données) au lieu du regex fragile sur le nom
   const levelGroups = useMemo(() => {
     const groups: { [key: string]: typeof classes } = {}
     classes.forEach(c => {
-      const match = c.name.match(/^(\d+\s*(?:eme|ème|e|er|ère)|cp1|cp2|ce1|ce2|cm1|cm2|tle|term|seconde|première|1ère|2nde)/i)
-      const groupKey = match ? match[1].toLowerCase().replace(/\s+/g, ' ') : 'Autres'
-      if (!groups[groupKey]) groups[groupKey] = []
-      groups[groupKey].push(c)
+      const key = c.level_type || 'Autres'
+      if (!groups[key]) groups[key] = []
+      groups[key].push(c)
     })
     return groups
   }, [classes])
+
+  // Classes filtrées selon le niveau actif
+  const filteredClasses = useMemo(() => {
+    if (activeLevelFilter === 'all') return classes
+    return classes.filter(c => (c.level_type || 'Autres') === activeLevelFilter)
+  }, [classes, activeLevelFilter])
 
   // Map schedules into a matrix by Class ID and Tranche Key
   const scheduleMatrix = useMemo(() => {
@@ -613,29 +621,68 @@ function ModalitesPage() {
         </div>
 
         {/* Quick Level Filter / Action Pills */}
-        <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-2xl border text-xs">
-          <span className="font-bold text-slate-700 uppercase tracking-wide text-[11px]">Configuration Rapide :</span>
-          {Object.entries(levelGroups).map(([lvl, grpClasses]) => (
+        <div className="space-y-3">
+          {/* Pills de niveau pour filtre de vue */}
+          {estInfo.schoolTypes.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-muted-foreground">Filtrer :</span>
+              <button
+                onClick={() => setActiveLevelFilter('all')}
+                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                  activeLevelFilter === 'all'
+                    ? 'bg-primary text-primary-foreground border-primary'
+                    : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                }`}
+              >
+                Tous ({classes.length})
+              </button>
+              {estInfo.schoolTypes.map(type => {
+                const count = classes.filter(c => (c.level_type || 'Autres') === type).length;
+                if (count === 0) return null;
+                return (
+                  <button
+                    key={type}
+                    onClick={() => setActiveLevelFilter(type)}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border transition-all ${
+                      activeLevelFilter === type
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {type} ({count})
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {/* Boutons de configuration rapide */}
+          <div className="flex flex-wrap items-center gap-2 bg-slate-50 p-3 rounded-2xl border text-xs">
+            <span className="font-bold text-slate-700 uppercase tracking-wide text-[11px]">Configuration Rapide :</span>
+            {Object.entries(levelGroups).map(([lvl, grpClasses]) => (
+              <Button
+                key={lvl}
+                variant="outline"
+                size="sm"
+                onClick={() => openBatchForLevel(grpClasses)}
+                className="h-7 text-xs gap-1.5 bg-white hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 font-semibold"
+              >
+                <Sparkles className="w-3 h-3 text-emerald-600" />
+                {lvl} ({grpClasses.length} classes)
+              </Button>
+            ))}
             <Button
-              key={lvl}
               variant="outline"
               size="sm"
-              onClick={() => openBatchForLevel(grpClasses)}
-              className="h-7 text-xs gap-1.5 bg-white hover:bg-emerald-50 hover:text-emerald-800 hover:border-emerald-300 font-semibold"
+              onClick={() => openBatchForLevel(filteredClasses)}
+              className="h-7 text-xs gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 font-bold ml-auto"
             >
-              <Sparkles className="w-3 h-3 text-emerald-600" />
-              Configurer niveau {lvl.toUpperCase()} ({grpClasses.length} classes)
+              <Layers className="w-3 h-3 text-emerald-700" />
+              {activeLevelFilter === 'all'
+                ? (estInfo.isUniversityOnly ? 'Tout l\'Établissement Supérieur' : 'Tout l\'Établissement')
+                : `Tout le niveau ${activeLevelFilter}`}
             </Button>
-          ))}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => openBatchForLevel(classes)}
-            className="h-7 text-xs gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100 font-bold ml-auto"
-          >
-            <Layers className="w-3 h-3 text-emerald-700" />
-            Tout le Collège / Établissement
-          </Button>
+          </div>
         </div>
 
         {/* TAB 1: Normalisée & Consolidée Matrix Table */}
@@ -676,14 +723,14 @@ function ModalitesPage() {
                   </thead>
 
                   <tbody className="divide-y font-semibold text-gray-900">
-                    {classes.length === 0 ? (
+                    {filteredClasses.length === 0 ? (
                       <tr>
                         <td colSpan={matrixColumns.length + 3} className="py-12 text-center text-gray-400">
-                          Aucune classe configurée dans l'établissement.
+                          Aucune classe trouvée pour ce filtre.
                         </td>
                       </tr>
                     ) : (
-                      classes.map((c, idx) => {
+                      filteredClasses.map((c, idx) => {
                         const rowSchedules = scheduleMatrix[c.id] || {}
                         
                         // Calculate total for this class

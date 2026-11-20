@@ -30,7 +30,7 @@ export const Route = createFileRoute('/cantine')({
   component: CantinePage,
 });
 
-export function CantinePage() {
+function CantinePage() {
   const { profile } = useAuth();
   const {
     cantinePlans,

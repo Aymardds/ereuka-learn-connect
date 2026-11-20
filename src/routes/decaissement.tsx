@@ -147,10 +147,11 @@ function DecaissementPage() {
     setIsConfigOpen(false);
   };
 
-  const feePercent = gateway?.platform_fee_percent ?? 2.5;
   const previewAmount = parseFloat(form.amount) || 0;
-  const previewFee = Math.round((previewAmount * feePercent) / 100);
-  const previewNet = previewAmount - previewFee;
+  // Modèle économique INEXIUMUS : Gestion 100% gratuite pour les écoles
+  // Les frais de service de 500 FCFA sont réglés directement par les parents en sus de la scolarité
+  const previewFee = 0;
+  const previewNet = previewAmount;
 
   return (
     <AppShell
@@ -160,15 +161,18 @@ function DecaissementPage() {
       <div className="max-w-5xl space-y-6 pb-12">
 
         {/* ── Bandeau informatif ───────────────────────────────────────────── */}
-        <div className="flex items-start gap-3 bg-cyan-50 border border-cyan-200 rounded-xl p-4 text-sm text-cyan-900">
-          <Info className="w-5 h-5 text-cyan-500 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 bg-emerald-50 border border-emerald-200 rounded-xl p-4 text-sm text-emerald-950">
+          <Info className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
           <div>
-            <p className="font-semibold">Comment fonctionne le circuit de paiement Eurêka ?</p>
-            <p className="text-xs text-cyan-800 mt-1 leading-relaxed">
-              Tous les paiements effectués par les parents (Wave, Orange Money, MTN, Moov, Carte) sont collectés
-              sur le compte Business <strong>INEXIUMUS</strong>. Votre établissement peut à tout moment soumettre
-              une demande de décaissement pour recevoir les fonds collectés en déduction de la commission de
-              service de <strong>{feePercent}%</strong>. Les demandes sont traitées sous <strong>24 à 48 heures ouvrables</strong>.
+            <p className="font-bold flex items-center gap-1.5">
+              <span>Comment fonctionne le circuit de paiement Eurêka ?</span>
+              <span className="bg-emerald-600 text-white text-[10px] uppercase font-black px-2 py-0.5 rounded-full">
+                Gestion 100% Gratuite
+              </span>
+            </p>
+            <p className="text-xs text-emerald-900 mt-1 leading-relaxed">
+              Tous les paiements de scolarité effectués par les parents (Wave, Orange Money, MTN, Moov, Carte) sont collectés
+              sur le compte Business <strong>INEXIUMUS</strong>. <strong>La gestion est 100% gratuite pour votre établissement :</strong> aucun frais ni commission n'est déduit de vos reversements de scolarité (la participation aux services numériques de 5 000 FCFA/an par élève est réglée directement par les parents et répartie sur leurs échéances de paiement). Vous recevez <strong>l'intégralité (100%)</strong> de vos fonds sous 24 à 48 heures ouvrables.
             </p>
           </div>
         </div>
@@ -410,19 +414,22 @@ function DecaissementPage() {
                 required
               />
               {previewAmount > 0 && (
-                <div className="bg-slate-50 border border-border rounded-lg p-2.5 text-xs space-y-1">
+                <div className="bg-emerald-50/70 border border-emerald-200 rounded-lg p-3 text-xs space-y-1.5">
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Montant brut</span>
-                    <span className="font-bold">{previewAmount.toLocaleString('fr-FR')} FCFA</span>
+                    <span className="text-gray-600">Montant de scolarité demandé</span>
+                    <span className="font-bold text-gray-900">{previewAmount.toLocaleString('fr-FR')} FCFA</span>
                   </div>
-                  <div className="flex justify-between text-amber-700">
-                    <span>Commission Eurêka ({feePercent}%)</span>
-                    <span>- {previewFee.toLocaleString('fr-FR')} FCFA</span>
+                  <div className="flex justify-between text-emerald-800 font-semibold">
+                    <span>Frais pour votre établissement</span>
+                    <span className="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px]">0 FCFA · 100% Gratuit 🎉</span>
                   </div>
-                  <div className="flex justify-between font-bold text-emerald-700 border-t border-border pt-1">
-                    <span>Montant net reçu</span>
+                  <div className="flex justify-between font-black text-emerald-700 border-t border-emerald-200 pt-1.5 text-sm">
+                    <span>Montant net versé à votre école</span>
                     <span>{previewNet.toLocaleString('fr-FR')} FCFA</span>
                   </div>
+                  <p className="text-[10px] text-gray-500 pt-0.5">
+                    * La participation aux services de 5 000 FCFA/an par élève est prise en charge directement par les parents et dispatchée sur leurs échéances de scolarité.
+                  </p>
                 </div>
               )}
             </div>

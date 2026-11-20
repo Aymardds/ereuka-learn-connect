@@ -5,15 +5,23 @@ import { useSettings } from '@/hooks/useSettings';
 import { useState, useEffect, useRef } from 'react';
 import { 
   Building2, Save, Upload, MapPin, Phone, GraduationCap, 
-  Loader2, Lock, KeyRound, Shield, Users, Search, CheckCircle2, UserCheck, Check
+  Loader2, Lock, KeyRound, Shield, Users, Search, CheckCircle2, UserCheck, Check, Plus
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabase';
 import { useTeam } from '@/hooks/useTeam';
+import { useCampuses } from '@/hooks/useCampuses';
 import { UserRole, UserProfile } from '@/types/database';
 
 export const Route = createFileRoute('/parametres')({
@@ -46,6 +54,39 @@ function ParametresPage() {
   const [phone, setPhone] = useState('');
   const [schoolTypes, setSchoolTypes] = useState<string[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Sub-establishments / Campuses management
+  const { campuses = [], createCampus } = useCampuses();
+  const [isCampusModalOpen, setIsCampusModalOpen] = useState(false);
+  const [cName, setCName] = useState('');
+  const [cCity, setCCity] = useState('');
+  const [cCode, setCCode] = useState('');
+  const [cSchoolTypes, setCSchoolTypes] = useState<string[]>([]);
+  const [isSavingCampus, setIsSavingCampus] = useState(false);
+
+  const handleAddCampus = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!cName.trim()) return;
+    setIsSavingCampus(true);
+    try {
+      await createCampus({
+        name: cName.trim(),
+        city: cCity.trim() || null,
+        code: cCode.trim().toUpperCase() || null,
+        school_types: cSchoolTypes.length > 0 ? cSchoolTypes : schoolTypes,
+      });
+      setCName('');
+      setCCity('');
+      setCCode('');
+      setCSchoolTypes([]);
+      setIsCampusModalOpen(false);
+      toast.success('Sous-établissement créé avec succès');
+    } catch (err: any) {
+      toast.error(err.message || 'Erreur lors de la création');
+    } finally {
+      setIsSavingCampus(false);
+    }
+  };
 
   // Password change states
   const [newPassword, setNewPassword] = useState('');
@@ -280,6 +321,86 @@ function ParametresPage() {
           </div>
         </section>
 
+        {/* SECTION SOUS-ÉTABLISSEMENTS & CAMPUS */}
+        <section className="bg-white rounded-xl border shadow-sm overflow-hidden">
+          <div className="border-b bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Building2 className="w-5 h-5 text-gray-500" />
+              <div>
+                <h2 className="text-lg font-semibold">Sous-établissements & Campus</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  Si votre établissement dispense plusieurs niveaux (Maternelle, Primaire, Secondaire, Supérieur), vous pouvez créer des sous-établissements dédiés à chaque cycle avec la même logique.
+                </p>
+              </div>
+            </div>
+
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => {
+                setCSchoolTypes(schoolTypes);
+                setIsCampusModalOpen(true);
+              }}
+              className="gap-1.5 text-xs font-semibold bg-emerald-600 hover:bg-emerald-700 text-white"
+            >
+              <Plus className="w-4 h-4" /> Nouveau sous-établissement
+            </Button>
+          </div>
+
+          <div className="p-6">
+            {campuses.length === 0 ? (
+              <div className="text-center py-8 rounded-xl border border-dashed border-gray-200 bg-gray-50/50">
+                <Building2 className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                <p className="text-sm font-semibold text-gray-700">Aucun sous-établissement configuré</p>
+                <p className="text-xs text-gray-500 mt-1 max-w-md mx-auto">
+                  Votre établissement fonctionne actuellement avec un siège unique. Cliquez sur "Nouveau sous-établissement" pour scinder vos campus par niveau d'enseignement.
+                </p>
+              </div>
+            ) : (
+              <div className="grid gap-3 sm:grid-cols-2">
+                {campuses.map(campus => (
+                  <div key={campus.id} className="p-4 rounded-xl border bg-gray-50/50 hover:bg-white hover:shadow-xs transition-all space-y-2">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-gray-900 text-sm">{campus.name}</span>
+                          {campus.is_main && (
+                            <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                              Siège
+                            </span>
+                          )}
+                        </div>
+                        {campus.city && (
+                          <div className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
+                            <MapPin className="w-3 h-3" /> {campus.city}
+                          </div>
+                        )}
+                      </div>
+                      {campus.code && (
+                        <span className="font-mono text-xs font-bold text-gray-600 bg-white px-2 py-0.5 rounded border">
+                          {campus.code}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Niveaux attribués */}
+                    <div className="pt-2 border-t border-gray-200/60">
+                      <div className="text-[10px] uppercase font-bold text-gray-400 mb-1">Niveaux dispensés :</div>
+                      <div className="flex flex-wrap gap-1">
+                        {(campus.school_types && campus.school_types.length > 0 ? campus.school_types : schoolTypes).map(st => (
+                          <span key={st} className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white border text-gray-700">
+                            {st}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </section>
+
         {/* SECTION ATTRIBUTION DES RÔLES PAR UTILISATEUR EN MODE CHECKBOX */}
         <section className="bg-white rounded-xl border shadow-sm overflow-hidden">
           <div className="border-b bg-gray-50/50 px-6 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -479,6 +600,95 @@ function ParametresPage() {
         </div>
 
       </div>
+
+      {/* DIALOG NOUVEAU SOUS-ÉTABLISSEMENT */}
+      <Dialog open={isCampusModalOpen} onOpenChange={setIsCampusModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleAddCampus}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-600" /> Nouveau Sous-Établissement (Campus)
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-3 text-xs">
+              <div className="grid gap-1.5">
+                <Label htmlFor="param_c_name">Nom du sous-établissement *</Label>
+                <Input
+                  id="param_c_name"
+                  required
+                  placeholder="Ex: Campus Primaire & Collège Plateau, Site Supérieur"
+                  value={cName}
+                  onChange={(e) => setCName(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="param_c_city">Ville / Commune</Label>
+                  <Input
+                    id="param_c_city"
+                    placeholder="Ex: Abidjan - Plateau"
+                    value={cCity}
+                    onChange={(e) => setCCity(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="param_c_code">Code abrégé</Label>
+                  <Input
+                    id="param_c_code"
+                    placeholder="Ex: CAMP-02"
+                    value={cCode}
+                    onChange={(e) => setCCode(e.target.value)}
+                    className="h-9 text-xs font-mono uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2 pt-1">
+                <Label className="font-bold text-gray-900">
+                  Niveaux d'enseignement dispensés :
+                </Label>
+                <div className="grid grid-cols-2 gap-2">
+                  {schoolTypes.map((type) => {
+                    const isSelected = cSchoolTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setCSchoolTypes((prev) =>
+                            isSelected ? prev.filter((t) => t !== type) : [...prev, type]
+                          );
+                        }}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                          isSelected
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-bold"
+                            : "bg-white border-gray-200 text-gray-600 hover:bg-gray-50"
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] text-white font-bold ${isSelected ? 'bg-emerald-600' : 'border border-gray-300'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        <span className="truncate">{type}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsCampusModalOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" size="sm" disabled={isSavingCampus} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                {isSavingCampus ? "Création..." : "Enregistrer"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }

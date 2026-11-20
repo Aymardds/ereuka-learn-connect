@@ -202,6 +202,14 @@ function BulletinsPage() {
   const tenantLogo = profile?.tenant?.logo_url;
 
   const { classes = [] } = useClasses();
+  const [levelFilter, setLevelFilter] = useState<string>('all');
+
+  // Classes filtrées selon le niveau sélectionné
+  const filteredClassesByLevel = useMemo(() => {
+    if (levelFilter === 'all') return classes;
+    return classes.filter(c => c.level_type === levelFilter);
+  }, [classes, levelFilter]);
+
   const { students = [] } = useStudents();
   const { subjectsQuery, seedDefaultSubjectsMutation } = useSubjects();
   const dbSubjects = subjectsQuery.data || [];
@@ -605,6 +613,31 @@ function BulletinsPage() {
       <div className="mb-6 rounded-2xl border border-border bg-card p-4 shadow-sm print:hidden">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-4">
+            {/* Pills de niveau */}
+            {estInfo.schoolTypes.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Niveau :</span>
+                <button
+                  onClick={() => { setLevelFilter('all'); setSelectedClassId(''); setSelectedStudentId(''); }}
+                  className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                    levelFilter === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground hover:border-primary/50'
+                  }`}
+                >Tous</button>
+                {estInfo.schoolTypes.map(type => {
+                  const cnt = classes.filter(c => c.level_type === type).length;
+                  if (cnt === 0) return null;
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => { setLevelFilter(type); setSelectedClassId(''); setSelectedStudentId(''); }}
+                      className={`px-2.5 py-1 rounded-full text-[11px] font-bold border transition-all ${
+                        levelFilter === type ? 'bg-primary text-primary-foreground border-primary' : 'bg-background border-border text-muted-foreground hover:border-primary/50'
+                      }`}
+                    >{type}</button>
+                  );
+                })}
+              </div>
+            )}
             {/* Classe */}
             <div>
               <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
@@ -618,7 +651,7 @@ function BulletinsPage() {
                 }}
                 className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary focus:outline-none min-w-40"
               >
-                {classes.map(c => (
+                {filteredClassesByLevel.map(c => (
                   <option key={c.id} value={c.id}>
                     {c.name} {c.level_type ? `(${c.level_type})` : ''}
                   </option>
@@ -636,11 +669,24 @@ function BulletinsPage() {
                 onChange={(e) => setSelectedTerm(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-1.5 text-xs font-semibold text-foreground focus:ring-1 focus:ring-primary focus:outline-none"
               >
-                <option value="T1">Trimestre 1 (T1)</option>
-                <option value="T2">Trimestre 2 (T2)</option>
-                <option value="T3">Trimestre 3 (T3)</option>
-                <option value="S1">Semestre 1 (S1)</option>
-                <option value="S2">Semestre 2 (S2)</option>
+                {activeLevel === 'superieur' ? (
+                  <>
+                    <option value="S1">Semestre 1 (S1)</option>
+                    <option value="S2">Semestre 2 (S2)</option>
+                  </>
+                ) : (
+                  <>
+                    <option value="T1">Trimestre 1 (T1)</option>
+                    <option value="T2">Trimestre 2 (T2)</option>
+                    <option value="T3">Trimestre 3 (T3)</option>
+                    {estInfo.hasSuperieur && (
+                      <>
+                        <option value="S1">Semestre 1 (S1)</option>
+                        <option value="S2">Semestre 2 (S2)</option>
+                      </>
+                    )}
+                  </>
+                )}
               </select>
             </div>
 
@@ -648,7 +694,7 @@ function BulletinsPage() {
             {!isBatchMode && (
               <div>
                 <label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground block mb-1">
-                  Élève ({classStudents.length} inscrits)
+                  {activeLevel === 'superieur' ? 'Étudiant' : 'Élève'} ({classStudents.length} inscrits)
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Button

@@ -73,16 +73,23 @@ function SuperAdminLayout() {
 
   return (
     <div className="min-h-screen bg-gray-100 text-gray-900 flex">
-      {/* Sidebar SuperAdmin */}
-      <aside className="w-64 bg-gray-900 text-white flex flex-col hidden lg:flex shrink-0">
-        <div className="p-6">
-          <div className="text-2xl font-bold tracking-tight text-white flex items-center gap-2">
-            <span className="bg-red-600 text-white p-1 rounded-md text-sm font-black">S</span>
-            Ereuka SuperAdmin
+      {/* Sidebar SuperAdmin avec effet Liquide Glass Obsidian */}
+      <aside className="w-64 bg-gradient-to-b from-slate-900/92 via-slate-950/96 to-[#050811]/98 backdrop-blur-2xl border-r border-white/10 text-white flex flex-col hidden lg:flex shrink-0 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12),6px_0_30px_rgba(0,0,0,0.35)] relative overflow-hidden">
+        {/* Lueur liquide discrète */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-red-600/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-0 -ml-16 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+
+        <div className="relative z-10 p-5 flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/10 backdrop-blur-xl border border-white/20 shadow-[0_4px_14px_rgba(0,0,0,0.3),inset_0_1px_1px_rgba(255,255,255,0.3)] p-1.5">
+            <img src="/favicon.svg" alt="Eurêka" className="h-full w-full object-contain" />
+          </div>
+          <div>
+            <div className="font-display text-base font-bold text-white tracking-tight leading-tight">Eurêka</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-red-400">SuperAdmin</div>
           </div>
         </div>
 
-        <nav className="flex-1 px-4 space-y-2 mt-4">
+        <nav className="relative z-10 flex-1 px-3 space-y-1.5 mt-2">
           {superAdminNav.map((item) => {
             const active = pathname === item.to;
             const Icon = item.icon;
@@ -93,12 +100,14 @@ function SuperAdminLayout() {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  active ? "bg-white/10 text-white" : "text-gray-400 hover:text-white hover:bg-white/5"
+                  "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all duration-200 border",
+                  active
+                    ? "bg-gradient-to-r from-white/16 via-white/10 to-white/5 backdrop-blur-xl text-white font-bold border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.25),0_4px_14px_rgba(0,0,0,0.2)]"
+                    : "border-transparent text-slate-400 hover:text-white hover:bg-white/8 hover:border-white/10"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className="w-5 h-5" />
+                  <Icon className={cn("w-5 h-5 transition-transform duration-200", active ? "text-amber-300 drop-shadow-sm scale-110" : "text-slate-400")} />
                   {item.label}
                 </div>
                 {badgeCount > 0 && (
@@ -113,21 +122,21 @@ function SuperAdminLayout() {
           })}
         </nav>
 
-        <div className="p-4 border-t border-white/10">
+        <div className="relative z-10 p-4 border-t border-white/10 space-y-3">
            <button 
               onClick={handleSignOut}
-              className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm text-red-400 hover:bg-white/5"
+              className="flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-red-300 hover:bg-red-500/20 hover:text-red-200 transition-colors"
             >
               <LogOut className="h-4 w-4" />
               Se déconnecter
             </button>
-          <div className="mt-4 flex items-center gap-3">
-             <div className="w-10 h-10 rounded-full bg-red-600 flex items-center justify-center font-bold">
+          <div className="flex items-center gap-3 rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.12)]">
+             <div className="w-9 h-9 rounded-xl bg-red-600/90 text-white flex items-center justify-center font-bold text-xs shadow-sm">
                {profile?.full_name?.substring(0,2) || 'SA'}
              </div>
-             <div>
-               <p className="text-sm font-medium">{profile?.full_name}</p>
-               <p className="text-xs text-gray-400">Super Administrateur</p>
+             <div className="min-w-0 flex-1">
+               <p className="text-sm font-semibold text-white truncate">{profile?.full_name}</p>
+               <p className="text-[11px] text-slate-400 truncate">Super Administrateur</p>
              </div>
           </div>
         </div>

@@ -61,6 +61,8 @@ export interface Campus {
   email?: string | null;
   is_main: boolean;
   created_at: string;
+  /** Niveaux d'enseignement dispensés dans ce campus (Maternelle, Primaire, Secondaire, Supérieur). Tableau vide = hérite du tenant. */
+  school_types?: string[] | null;
 }
 
 export interface Cycle {
