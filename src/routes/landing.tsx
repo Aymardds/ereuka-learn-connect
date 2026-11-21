@@ -1013,6 +1013,7 @@ function LandingPage() {
               <ul className="space-y-2 text-sm text-stone-700 font-medium">
                 <li><Link to="/login" className="hover:text-amber-900 font-bold text-amber-900">Se connecter</Link></li>
                 <li><Link to="/register" className="hover:text-amber-900 font-bold text-amber-900">Enregistrer un établissement</Link></li>
+                <li><Link to="/confidentialite" className="hover:text-amber-900">Politique de Confidentialité</Link></li>
                 <li><a href="https://eureka.inexiumus.com" target="_blank" rel="noopener noreferrer" className="hover:text-amber-900">Domaine officiel eureka.inexiumus.com</a></li>
               </ul>
             </div>
@@ -1021,9 +1022,15 @@ function LandingPage() {
 
           <div className="mt-12 border-t border-[#DFBE73] pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-stone-600 font-medium">
             <p>© {new Date().getFullYear()} Eurêka ERP · Inexiumus · Tous droits réservés.</p>
-            <p className="flex items-center gap-1">
-              Conçu pour l'essor de l'éducation en Afrique.
-            </p>
+            <div className="flex items-center gap-4">
+              <Link to="/confidentialite" className="hover:underline text-stone-700 font-semibold">
+                Politique de Confidentialité
+              </Link>
+              <span>·</span>
+              <p className="flex items-center gap-1">
+                Conçu pour l'essor de l'éducation en Afrique.
+              </p>
+            </div>
           </div>
         </div>
       </footer>

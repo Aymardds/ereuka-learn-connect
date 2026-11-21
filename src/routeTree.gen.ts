@@ -15,6 +15,7 @@ import { Route as CahierDeTexteRouteImport } from './routes/cahier-de-texte'
 import { Route as CantineRouteImport } from './routes/cantine'
 import { Route as ClassesRouteImport } from './routes/classes'
 import { Route as CommunicationRouteImport } from './routes/communication'
+import { Route as ConfidentialiteRouteImport } from './routes/confidentialite'
 import { Route as DecaissementRouteImport } from './routes/decaissement'
 import { Route as ElevesRouteImport } from './routes/eleves'
 import { Route as EmploiDuTempsRouteImport } from './routes/emploi-du-temps'
@@ -74,6 +75,11 @@ const ClassesRoute = ClassesRouteImport.update({
 const CommunicationRoute = CommunicationRouteImport.update({
   id: '/communication',
   path: '/communication',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfidentialiteRoute = ConfidentialiteRouteImport.update({
+  id: '/confidentialite',
+  path: '/confidentialite',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DecaissementRoute = DecaissementRouteImport.update({
@@ -235,6 +241,7 @@ export interface FileRoutesByFullPath {
   '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/decaissement': typeof DecaissementRoute
   '/eleves': typeof ElevesRoute
   '/emploi-du-temps': typeof EmploiDuTempsRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/decaissement': typeof DecaissementRoute
   '/eleves': typeof ElevesRoute
   '/emploi-du-temps': typeof EmploiDuTempsRoute
@@ -311,6 +319,7 @@ export interface FileRoutesById {
   '/cantine': typeof CantineRoute
   '/classes': typeof ClassesRoute
   '/communication': typeof CommunicationRoute
+  '/confidentialite': typeof ConfidentialiteRoute
   '/decaissement': typeof DecaissementRoute
   '/eleves': typeof ElevesRoute
   '/emploi-du-temps': typeof EmploiDuTempsRoute
@@ -351,6 +360,7 @@ export interface FileRouteTypes {
     | '/cantine'
     | '/classes'
     | '/communication'
+    | '/confidentialite'
     | '/decaissement'
     | '/eleves'
     | '/emploi-du-temps'
@@ -389,6 +399,7 @@ export interface FileRouteTypes {
     | '/cantine'
     | '/classes'
     | '/communication'
+    | '/confidentialite'
     | '/decaissement'
     | '/eleves'
     | '/emploi-du-temps'
@@ -426,6 +437,7 @@ export interface FileRouteTypes {
     | '/cantine'
     | '/classes'
     | '/communication'
+    | '/confidentialite'
     | '/decaissement'
     | '/eleves'
     | '/emploi-du-temps'
@@ -465,6 +477,7 @@ export interface RootRouteChildren {
   CantineRoute: typeof CantineRoute
   ClassesRoute: typeof ClassesRoute
   CommunicationRoute: typeof CommunicationRoute
+  ConfidentialiteRoute: typeof ConfidentialiteRoute
   DecaissementRoute: typeof DecaissementRoute
   ElevesRoute: typeof ElevesRoute
   EmploiDuTempsRoute: typeof EmploiDuTempsRoute
@@ -534,6 +547,13 @@ declare module '@tanstack/react-router' {
       path: '/communication'
       fullPath: '/communication'
       preLoaderRoute: typeof CommunicationRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/confidentialite': {
+      id: '/confidentialite'
+      path: '/confidentialite'
+      fullPath: '/confidentialite'
+      preLoaderRoute: typeof ConfidentialiteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/decaissement': {
@@ -776,6 +796,7 @@ const rootRouteChildren: RootRouteChildren = {
   CantineRoute: CantineRoute,
   ClassesRoute: ClassesRoute,
   CommunicationRoute: CommunicationRoute,
+  ConfidentialiteRoute: ConfidentialiteRoute,
   DecaissementRoute: DecaissementRoute,
   ElevesRoute: ElevesRoute,
   EmploiDuTempsRoute: EmploiDuTempsRoute,

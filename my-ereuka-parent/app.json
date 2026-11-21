@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Ereuka",
+    "name": "Eurêka",
     "slug": "my-ereuka-parent",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,15 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.ereuka.mobile"
+      "bundleIdentifier": "com.ereuka.mobile",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "CFBundleDevelopmentRegion": "fr",
+        "CFBundleDisplayName": "Eurêka",
+        "UIRequiresFullScreen": true
+      }
     },
     "android": {
       "adaptiveIcon": {
