@@ -265,27 +265,25 @@ function Dashboard() {
           >
             <div className="flex flex-col sm:flex-row items-center gap-6">
               {/* Donut */}
-              <div className="relative shrink-0">
-                <ResponsiveContainer width={180} height={180}>
-                  <PieChart>
-                    <Pie
-                      data={donutData}
-                      cx="50%"
-                      cy="50%"
-                      innerRadius={58}
-                      outerRadius={82}
-                      paddingAngle={3}
-                      dataKey="value"
-                      startAngle={90}
-                      endAngle={-270}
-                    >
-                      {donutData.map((_, i) => (
-                        <Cell key={i} fill={DONUT_COLORS[i]} strokeWidth={0} />
-                      ))}
-                    </Pie>
-                    <Tooltip formatter={(v: number) => [v, ""]} />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="relative shrink-0 w-[180px] h-[180px]">
+                <PieChart width={180} height={180}>
+                  <Pie
+                    data={donutData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={58}
+                    outerRadius={82}
+                    paddingAngle={3}
+                    dataKey="value"
+                    startAngle={90}
+                    endAngle={-270}
+                  >
+                    {donutData.map((_, i) => (
+                      <Cell key={i} fill={DONUT_COLORS[i]} strokeWidth={0} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(v: number) => [v, ""]} />
+                </PieChart>
                 {/* Center label */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                   <span className="font-display text-2xl font-bold">{totalStudents}</span>

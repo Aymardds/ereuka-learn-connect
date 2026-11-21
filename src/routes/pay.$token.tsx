@@ -1,7 +1,9 @@
 import { createFileRoute, useParams } from '@tanstack/react-router';
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { useTerminalSessionByToken } from '@/hooks/usePaymentTerminals';
 import { supabase } from '@/lib/supabase';
+import { calculatePlatformFee } from '@/lib/platformFee';
 import { toast } from 'sonner';
 import {
   CreditCard, Loader2, CheckCircle2, AlertCircle, Clock, School,
@@ -40,6 +42,28 @@ function PublicPaymentPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentDone, setPaymentDone] = useState(false);
   const [receiptNumber, setReceiptNumber] = useState('');
+
+  // Récupérer le nombre d'échéances de paiement de l'établissement pour dispatcher les 5 000 FCFA/an
+  const scheduleCountQuery = useQuery({
+    queryKey: ['session_schedules_count', session?.tenant_id],
+    queryFn: async () => {
+      if (!session?.tenant_id) return 3;
+      const { count } = await supabase
+        .from('payment_schedules')
+        .select('id', { count: 'exact', head: true })
+        .eq('tenant_id', session.tenant_id);
+      return count && count > 0 ? count : 3;
+    },
+    enabled: !!session?.tenant_id,
+  });
+
+  const totalSchedules = scheduleCountQuery.data || 3;
+  const feeCalc = calculatePlatformFee({
+    currency: 'XOF',
+    totalSchedules,
+  });
+  const serviceFee = feeCalc.feePerSchedule;
+  const totalAmountToPay = (session?.amount || 0) + serviceFee;
 
   const handlePay = async () => {
     if (!session) return;
@@ -207,9 +231,26 @@ function PublicPaymentPage() {
               <span className="font-semibold">{session.students?.classes?.name || '—'}</span>
             </div>
             <div className="flex justify-between">
-              <span className="text-gray-500">Montant réglé</span>
-              <span className="font-bold text-emerald-700 text-base font-mono">
+              <span className="text-gray-500">Montant scolarité</span>
+              <span className="font-bold text-gray-900 text-sm font-mono">
                 {session.amount.toLocaleString('fr-FR')} FCFA
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <div>
+                <span className="text-gray-500">Frais de service Eurêka</span>
+                <span className="block text-[10px] text-gray-400">
+                  5 000 FCFA/an sur {feeCalc.totalSchedules} échéance{feeCalc.totalSchedules > 1 ? 's' : ''}
+                </span>
+              </div>
+              <span className="font-semibold text-emerald-700 text-sm font-mono">
+                +{serviceFee.toLocaleString('fr-FR')} FCFA
+              </span>
+            </div>
+            <div className="flex justify-between border-t pt-1.5 font-bold">
+              <span className="text-gray-900">Total payé</span>
+              <span className="text-emerald-700 text-base font-mono">
+                {totalAmountToPay.toLocaleString('fr-FR')} FCFA
               </span>
             </div>
             <div className="flex justify-between">
@@ -260,17 +301,30 @@ function PublicPaymentPage() {
                 <p className="text-xs text-muted-foreground">{session.students?.classes?.name || 'Classe non renseignée'}</p>
               </div>
               <div className="text-right">
-                <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Montant</p>
+                <p className="text-xs text-muted-foreground uppercase tracking-wide font-semibold">Total à payer</p>
                 <p className="text-2xl font-extrabold text-primary mt-0.5 font-mono">
-                  {session.amount.toLocaleString('fr-FR')}
+                  {totalAmountToPay.toLocaleString('fr-FR')}
                 </p>
-                <p className="text-xs text-muted-foreground">FCFA</p>
+                <p className="text-[11px] text-muted-foreground">FCFA</p>
               </div>
             </div>
 
-            <div className="mt-3 pt-3 border-t border-border/40">
-              <p className="text-xs text-muted-foreground">{session.description}</p>
-              <div className="flex items-center gap-1 mt-1.5">
+            <div className="mt-3 pt-3 border-t border-border/40 space-y-1.5">
+              <div className="flex justify-between text-xs text-gray-700">
+                <span>Frais de scolarité :</span>
+                <span className="font-semibold">{session.amount.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+              <div className="flex justify-between text-xs text-emerald-700">
+                <div>
+                  <span className="font-medium">Frais de service Eurêka :</span>
+                  <span className="block text-[10px] text-emerald-800">
+                    5 000 FCFA/an répartis sur {feeCalc.totalSchedules} échéance{feeCalc.totalSchedules > 1 ? 's' : ''}
+                  </span>
+                </div>
+                <span className="font-bold font-mono">+{serviceFee.toLocaleString('fr-FR')} FCFA</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground pt-1">{session.description}</p>
+              <div className="flex items-center gap-1 mt-1">
                 <Clock className="w-3 h-3 text-amber-500" />
                 <span className="text-xs text-amber-700 font-medium">Expire dans {expiresIn} min</span>
               </div>
@@ -353,7 +407,7 @@ function PublicPaymentPage() {
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  Payer {session.amount.toLocaleString('fr-FR')} FCFA via {PAYMENT_METHODS.find(m => m.id === selectedMethod)?.name}
+                  Payer {totalAmountToPay.toLocaleString('fr-FR')} FCFA via {PAYMENT_METHODS.find(m => m.id === selectedMethod)?.name}
                   <ArrowRight className="w-4 h-4 ml-auto" />
                 </>
               )}

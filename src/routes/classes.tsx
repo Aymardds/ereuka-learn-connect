@@ -12,9 +12,13 @@ import {
   X,
   Award,
   School,
+  Building2,
+  CheckSquare,
+  Square,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useClasses, ClassWithTeacher } from "@/hooks/useClasses";
+import { useCampuses } from "@/hooks/useCampuses";
 import { useSubjects, useClassSubjects } from "@/hooks/useSubjects";
 import { useTeacherAssignments, TeacherClassAssignmentWithDetails } from "@/hooks/useTeacherAssignments";
 import { useState, useEffect } from "react";
@@ -105,11 +109,24 @@ function ClassesPage() {
   const estInfo = getEstablishmentTypeInfo(tenant?.school_types || profile?.tenant?.school_types);
   const schoolTypes = estInfo.schoolTypes;
 
+  const { campuses = [], createCampus } = useCampuses();
+  const [activeLevelTab, setActiveLevelTab] = useState<string>('all');
+  const [activeCampusFilter, setActiveCampusFilter] = useState<string>('all');
+
+  // Sub-establishment (Campus) modal state
+  const [isCreateCampusOpen, setIsCreateCampusOpen] = useState(false);
+  const [campusName, setCampusName] = useState('');
+  const [campusCity, setCampusCity] = useState('');
+  const [campusCode, setCampusCode] = useState('');
+  const [campusSchoolTypes, setCampusSchoolTypes] = useState<string[]>([]);
+  const [isSubmittingCampus, setIsSubmittingCampus] = useState(false);
+
   // State for Create Modal
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [newClassName, setNewClassName] = useState("");
   const [newLevelType, setNewLevelType] = useState<string>("");
   const [newTeacherId, setNewTeacherId] = useState<string | undefined>();
+  const [newCampusId, setNewCampusId] = useState<string | undefined>();
 
   useEffect(() => {
     if (isCreateOpen && !newLevelType && schoolTypes.length > 0) {
@@ -122,6 +139,7 @@ function ClassesPage() {
   const [editClassName, setEditClassName] = useState("");
   const [editLevelType, setEditLevelType] = useState<string>("");
   const [editTeacherId, setEditTeacherId] = useState<string | undefined>();
+  const [editCampusId, setEditCampusId] = useState<string | undefined>();
 
   // State for Manage Subjects (secondaire)
   const [managingClass, setManagingClass] = useState<ClassWithTeacher | null>(null);
@@ -129,8 +147,66 @@ function ClassesPage() {
   // State for Manage Teachers (all levels)
   const [managingTeachersClass, setManagingTeachersClass] = useState<ClassWithTeacher | null>(null);
 
+  // State for Batch Assign Teacher to Classes Modal
+  const { batchAssignMutation } = useTeacherAssignments();
+  const { subjectsQuery } = useSubjects();
+  const allSubjects = subjectsQuery.data || [];
+  const [isBatchAssignTeacherOpen, setIsBatchAssignTeacherOpen] = useState(false);
+  const [batchTeacherId, setBatchTeacherId] = useState('');
+  const [batchRole, setBatchRole] = useState<'titulaire' | 'intervenant' | 'surveillant'>('intervenant');
+  const [batchSubjectId, setBatchSubjectId] = useState<string>('none');
+  const [batchSelectedClassIds, setBatchSelectedClassIds] = useState<string[]>([]);
+  const [batchSetAsTitulaire, setBatchSetAsTitulaire] = useState(false);
+  const [batchLevelFilter, setBatchLevelFilter] = useState<string>('all');
+
+  const handleBatchAssignSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!batchTeacherId) {
+      return;
+    }
+    if (batchSelectedClassIds.length === 0) {
+      return;
+    }
+
+    await batchAssignMutation.mutateAsync({
+      teacherId: batchTeacherId,
+      classIds: batchSelectedClassIds,
+      subjectId: batchSubjectId === 'none' ? null : batchSubjectId,
+      roleInClass: batchRole,
+      setAsTitulaire: batchSetAsTitulaire || batchRole === 'titulaire',
+    });
+
+    setIsBatchAssignTeacherOpen(false);
+    setBatchTeacherId('');
+    setBatchSelectedClassIds([]);
+    setBatchSubjectId('none');
+    setBatchRole('intervenant');
+    setBatchSetAsTitulaire(false);
+  };
+
   // State for Delete Alert
   const [deletingClass, setDeletingClass] = useState<Class | null>(null);
+
+  const handleCreateCampusSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!campusName.trim()) return;
+    setIsSubmittingCampus(true);
+    try {
+      await createCampus({
+        name: campusName.trim(),
+        city: campusCity.trim() || null,
+        code: campusCode.trim().toUpperCase() || null,
+        school_types: campusSchoolTypes.length > 0 ? campusSchoolTypes : schoolTypes,
+      });
+      setCampusName('');
+      setCampusCity('');
+      setCampusCode('');
+      setCampusSchoolTypes([]);
+      setIsCreateCampusOpen(false);
+    } finally {
+      setIsSubmittingCampus(false);
+    }
+  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -139,9 +215,11 @@ function ClassesPage() {
       name: newClassName,
       level_type: newLevelType,
       teacher_id: newTeacherId || null,
+      campus_id: newCampusId || null,
     });
     setNewClassName("");
     setNewTeacherId(undefined);
+    setNewCampusId(undefined);
     setIsCreateOpen(false);
   };
 
@@ -153,6 +231,7 @@ function ClassesPage() {
       name: editClassName,
       level_type: editLevelType,
       teacher_id: editTeacherId || null,
+      campus_id: editCampusId || null,
     });
     setEditingClass(null);
   };
@@ -168,6 +247,7 @@ function ClassesPage() {
     setEditClassName(c.name);
     setEditLevelType(c.level_type || schoolTypes[0] || "");
     setEditTeacherId(c.teacher_id || undefined);
+    setEditCampusId(c.campus_id || undefined);
   };
 
   if (classesQuery.isLoading) {
@@ -182,11 +262,15 @@ function ClassesPage() {
 
   // Filtrer strictement selon le type d'établissement :
   // Les classes universitaires (Supérieur) ne doivent JAMAIS apparaître dans un Groupe Scolaire
-  const classesList = rawClassesList.filter(c => {
+  const allFilteredClasses = rawClassesList.filter(c => {
     if (!estInfo.hasSuperieur && c.level_type === 'Supérieur') return false;
     if (estInfo.isUniversityOnly && c.level_type && ['Maternelle', 'Primaire', 'Secondaire'].includes(c.level_type)) return false;
     return true;
   });
+
+  const classesList = allFilteredClasses
+    .filter(c => activeLevelTab === 'all' || c.level_type === activeLevelTab)
+    .filter(c => activeCampusFilter === 'all' || c.campus_id === activeCampusFilter);
 
   // Group by level_type
   const grouped = classesList.reduce<Record<string, ClassWithTeacher[]>>(
@@ -208,32 +292,79 @@ function ClassesPage() {
       subtitle={`${classesList.length} ${estInfo.classesTerm} enregistrée${classesList.length > 1 ? "s" : ""} • ${estInfo.badgeLabel}`}
       actions={
         canManageClasses ? (
-          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-95">
-              <Plus className="h-4 w-4" /> {createButtonText}
-            </button>
-          </DialogTrigger>
-          <DialogContent>
-            <form onSubmit={handleCreate}>
-              <DialogHeader>
-                <DialogTitle>
-                  {estInfo.isUniversityOnly ? "Nouvelle filière ou promotion" : "Nouvelle classe"}
-                </DialogTitle>
-              </DialogHeader>
-              <div className="grid gap-4 py-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="name">
-                    {estInfo.isUniversityOnly ? "Intitulé de la filière / promotion" : "Nom de la classe"}
-                  </Label>
-                  <Input
-                    id="name"
-                    placeholder={estInfo.isUniversityOnly ? "Ex: Licence 1 Informatique (L1-INFO)" : "Ex: 6ème A, CM2 B"}
-                    value={newClassName}
-                    onChange={(e) => setNewClassName(e.target.value)}
-                    required
-                  />
-                </div>
+          <div className="flex items-center gap-2">
+            {teachers.length > 0 && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setBatchSelectedClassIds([]);
+                  setIsBatchAssignTeacherOpen(true);
+                }}
+                className="gap-1.5 text-xs font-semibold bg-white hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-300"
+              >
+                <UserCheck className="w-3.5 h-3.5 text-indigo-600" /> Affecter un Enseignant
+              </Button>
+            )}
+
+            {(schoolTypes.length >= 2 || campuses.length > 0) && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setCampusSchoolTypes(schoolTypes);
+                  setIsCreateCampusOpen(true);
+                }}
+                className="gap-1.5 text-xs font-semibold"
+              >
+                <Building2 className="w-3.5 h-3.5 text-emerald-600" /> Sous-Établissement (Campus)
+              </Button>
+            )}
+
+            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:opacity-95">
+                <Plus className="h-4 w-4" /> {createButtonText}
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <form onSubmit={handleCreate}>
+                <DialogHeader>
+                  <DialogTitle>
+                    {estInfo.isUniversityOnly ? "Nouvelle filière ou promotion" : "Nouvelle classe"}
+                  </DialogTitle>
+                </DialogHeader>
+                <div className="grid gap-4 py-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="name">
+                      {estInfo.isUniversityOnly ? "Intitulé de la filière / promotion" : "Nom de la classe"}
+                    </Label>
+                    <Input
+                      id="name"
+                      placeholder={estInfo.isUniversityOnly ? "Ex: Licence 1 Informatique (L1-INFO)" : "Ex: 6ème A, CM2 B"}
+                      value={newClassName}
+                      onChange={(e) => setNewClassName(e.target.value)}
+                      required
+                    />
+                  </div>
+                  {campuses.length > 0 && (
+                    <div className="grid gap-2">
+                      <Label htmlFor="new-campus">Sous-établissement / Campus (optionnel)</Label>
+                      <Select value={newCampusId || "none"} onValueChange={(val) => setNewCampusId(val === "none" ? undefined : val)}>
+                        <SelectTrigger id="new-campus">
+                          <SelectValue placeholder="Siège principal (aucun)" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Siège principal (aucun)</SelectItem>
+                          {campuses.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name}{c.city ? ` — ${c.city}` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 {schoolTypes.length > 0 && (
                   <div className="grid gap-2">
                     <Label htmlFor="level_type">Niveau d'enseignement</Label>
@@ -270,24 +401,24 @@ function ClassesPage() {
                     </div>
                   </div>
                 )}
-                {newLevelType !== "Secondaire" && (
-                  <div className="grid gap-2">
-                    <Label htmlFor="teacher">Enseignant titulaire (optionnel)</Label>
-                    <Select value={newTeacherId} onValueChange={setNewTeacherId}>
-                      <SelectTrigger id="teacher">
-                        <SelectValue placeholder="Sélectionner un enseignant" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="none">Aucun titulaire</SelectItem>
-                        {teachers.map((t) => (
-                          <SelectItem key={t.id} value={t.id}>
-                            {t.full_name || t.email}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                <div className="grid gap-2">
+                  <Label htmlFor="teacher">
+                    {newLevelType === "Secondaire" ? "Professeur Principal (optionnel)" : "Enseignant titulaire (optionnel)"}
+                  </Label>
+                  <Select value={newTeacherId || "none"} onValueChange={(val) => setNewTeacherId(val === "none" ? undefined : val)}>
+                    <SelectTrigger id="teacher">
+                      <SelectValue placeholder="Sélectionner un enseignant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Aucun titulaire</SelectItem>
+                      {teachers.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.full_name || t.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
                 <Button type="submit" disabled={createClassMutation.isPending}>
@@ -297,9 +428,83 @@ function ClassesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        </div>
         ) : null
       }
     >
+      {/* ── PILLS DE NIVEAU ── */}
+      {schoolTypes.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            onClick={() => setActiveLevelTab('all')}
+            className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+              activeLevelTab === 'all'
+                ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-primary'
+            }`}
+          >
+            Tous les niveaux
+            <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeLevelTab === 'all' ? 'bg-white/20' : 'bg-muted'}`}>
+              {allFilteredClasses.length}
+            </span>
+          </button>
+          {schoolTypes.map(type => {
+            const count = allFilteredClasses.filter(c => c.level_type === type).length;
+            if (count === 0) return null;
+            const icons: Record<string, string> = {
+              'Maternelle': '🌸', 'Primaire': '📚', 'Secondaire': '🏫', 'Supérieur': '🎓'
+            };
+            return (
+              <button
+                key={type}
+                onClick={() => setActiveLevelTab(type)}
+                className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full text-xs font-bold border transition-all ${
+                  activeLevelTab === type
+                    ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                    : 'bg-background text-muted-foreground border-border hover:border-primary/50 hover:text-primary'
+                }`}
+              >
+                <span>{icons[type] || '📋'}</span>
+                {type}
+                <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-black ${activeLevelTab === type ? 'bg-white/20' : 'bg-muted'}`}>
+                  {count}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── PILLS CAMPUS / SOUS-ÉTABLISSEMENTS ── */}
+      {campuses.length > 1 && (
+        <div className="flex flex-wrap items-center gap-2 mb-6">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">Campus :</span>
+          <button
+            onClick={() => setActiveCampusFilter('all')}
+            className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+              activeCampusFilter === 'all'
+                ? 'bg-secondary text-secondary-foreground border-primary/40 font-bold'
+                : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+            }`}
+          >
+            Tous les campus ({campuses.length})
+          </button>
+          {campuses.map(camp => (
+            <button
+              key={camp.id}
+              onClick={() => setActiveCampusFilter(camp.id)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-all ${
+                activeCampusFilter === camp.id
+                  ? 'bg-secondary text-secondary-foreground border-primary/40 font-bold'
+                  : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+              }`}
+            >
+              <Building2 className="w-3 h-3 text-emerald-600" />
+              {camp.name} {camp.city ? `(${camp.city})` : ''}
+            </button>
+          ))}
+        </div>
+      )}
       {classesList.length === 0 ? (
         <div className="text-center py-12 text-muted-foreground">
           Aucune classe trouvée. Créez votre première classe !
@@ -321,17 +526,21 @@ function ClassesPage() {
               </div>
 
               <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {classes.map((c) => (
-                  <ClassCard
-                    key={c.id}
-                    c={c}
-                    canManage={canManageClasses}
-                    onEdit={openEdit}
-                    onDelete={setDeletingClass}
-                    onManageSubjects={setManagingClass}
-                    onManageTeachers={setManagingTeachersClass}
-                  />
-                ))}
+                {classes.map((c) => {
+                  const campusName = campuses.find((cp) => cp.id === c.campus_id)?.name;
+                  return (
+                    <ClassCard
+                      key={c.id}
+                      c={c}
+                      campusName={campusName}
+                      canManage={canManageClasses}
+                      onEdit={openEdit}
+                      onDelete={setDeletingClass}
+                      onManageSubjects={setManagingClass}
+                      onManageTeachers={setManagingTeachersClass}
+                    />
+                  );
+                })}
               </div>
             </div>
           ))}
@@ -375,23 +584,44 @@ function ClassesPage() {
                   </Select>
                 </div>
               )}
-              {editLevelType !== "Secondaire" && (
+              <div className="grid gap-2">
+                <Label htmlFor="edit-teacher">
+                  {editLevelType === "Secondaire" ? "Professeur Principal" : "Enseignant titulaire"}
+                </Label>
+                <Select
+                  value={editTeacherId || "none"}
+                  onValueChange={(val) =>
+                    setEditTeacherId(val === "none" ? undefined : val)
+                  }
+                >
+                  <SelectTrigger id="edit-teacher">
+                    <SelectValue placeholder="Sélectionner un enseignant" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Aucun titulaire</SelectItem>
+                    {teachers.map((t) => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.full_name || t.email}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {campuses.length > 0 && (
                 <div className="grid gap-2">
-                  <Label htmlFor="edit-teacher">Enseignant titulaire</Label>
+                  <Label htmlFor="edit-campus">Sous-établissement / Campus</Label>
                   <Select
-                    value={editTeacherId || "none"}
-                    onValueChange={(val) =>
-                      setEditTeacherId(val === "none" ? undefined : val)
-                    }
+                    value={editCampusId || "none"}
+                    onValueChange={(val) => setEditCampusId(val === "none" ? undefined : val)}
                   >
-                    <SelectTrigger id="edit-teacher">
-                      <SelectValue placeholder="Sélectionner un enseignant" />
+                    <SelectTrigger id="edit-campus">
+                      <SelectValue placeholder="Siège principal (aucun)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Aucun titulaire</SelectItem>
-                      {teachers.map((t) => (
-                        <SelectItem key={t.id} value={t.id}>
-                          {t.full_name || t.email}
+                      <SelectItem value="none">Siège principal (aucun)</SelectItem>
+                      {campuses.map((c) => (
+                        <SelectItem key={c.id} value={c.id}>
+                          {c.name}{c.city ? ` — ${c.city}` : ''}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -462,6 +692,287 @@ function ClassesPage() {
           teachers={teachers}
         />
       )}
+
+      {/* ── DIALOG DE CRÉATION DE SOUS-ÉTABLISSEMENT (CAMPUS) ── */}
+      <Dialog open={isCreateCampusOpen} onOpenChange={setIsCreateCampusOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleCreateCampusSubmit}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Building2 className="w-5 h-5 text-emerald-600" /> Créer un Sous-Établissement (Campus)
+              </DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-3 text-xs">
+              <div className="grid gap-1.5">
+                <Label htmlFor="camp_name">Nom du sous-établissement *</Label>
+                <Input
+                  id="camp_name"
+                  required
+                  placeholder="Ex: Campus Primaire Plateau, Annexe Supérieur"
+                  value={campusName}
+                  onChange={(e) => setCampusName(e.target.value)}
+                  className="h-9 text-xs"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div className="grid gap-1.5">
+                  <Label htmlFor="camp_city">Ville / Commune</Label>
+                  <Input
+                    id="camp_city"
+                    placeholder="Ex: Abidjan - Cocody"
+                    value={campusCity}
+                    onChange={(e) => setCampusCity(e.target.value)}
+                    className="h-9 text-xs"
+                  />
+                </div>
+                <div className="grid gap-1.5">
+                  <Label htmlFor="camp_code">Code abrégé</Label>
+                  <Input
+                    id="camp_code"
+                    placeholder="Ex: CAMP-02"
+                    value={campusCode}
+                    onChange={(e) => setCampusCode(e.target.value)}
+                    className="h-9 text-xs font-mono uppercase"
+                  />
+                </div>
+              </div>
+
+              <div className="grid gap-2 pt-1">
+                <Label className="font-bold text-foreground">
+                  Niveaux d'enseignement dispensés dans ce sous-établissement :
+                </Label>
+                <p className="text-[11px] text-muted-foreground">
+                  Sélectionnez les niveaux qui seront gérés au sein de cette entité :
+                </p>
+                <div className="grid grid-cols-2 gap-2">
+                  {schoolTypes.map((type) => {
+                    const isSelected = campusSchoolTypes.includes(type);
+                    return (
+                      <button
+                        key={type}
+                        type="button"
+                        onClick={() => {
+                          setCampusSchoolTypes((prev) =>
+                            isSelected ? prev.filter((t) => t !== type) : [...prev, type]
+                          );
+                        }}
+                        className={`flex items-center gap-2 p-2.5 rounded-lg border text-left text-xs transition-all ${
+                          isSelected
+                            ? "bg-emerald-50 border-emerald-300 text-emerald-950 font-bold"
+                            : "bg-white border-border text-muted-foreground hover:bg-muted/50"
+                        }`}
+                      >
+                        <span className={`w-4 h-4 rounded flex items-center justify-center text-[10px] text-white font-bold ${isSelected ? 'bg-emerald-600' : 'border border-gray-300'}`}>
+                          {isSelected ? '✓' : ''}
+                        </span>
+                        <span className="truncate">{type}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsCreateCampusOpen(false)}>
+                Annuler
+              </Button>
+              <Button type="submit" size="sm" disabled={isSubmittingCampus} className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold">
+                {isSubmittingCampus ? "Création..." : "Enregistrer le sous-établissement"}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG D'AFFECTATION D'UN ENSEIGNANT À DES CLASSES ── */}
+      <Dialog open={isBatchAssignTeacherOpen} onOpenChange={setIsBatchAssignTeacherOpen}>
+        <DialogContent className="max-w-2xl max-h-[88vh] flex flex-col">
+          <form onSubmit={handleBatchAssignSubmit} className="flex flex-col flex-1 overflow-hidden">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-indigo-700">
+                <UserCheck className="w-5 h-5 text-indigo-600" /> Affecter un Enseignant à des Classes
+              </DialogTitle>
+            </DialogHeader>
+
+            <div className="space-y-4 py-3 overflow-y-auto flex-1 pr-1 text-xs">
+              {/* Enseignant & Rôle */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 bg-muted/20 p-3 rounded-xl border">
+                <div className="grid gap-1.5">
+                  <Label className="font-bold">Enseignant concerné *</Label>
+                  <Select value={batchTeacherId} onValueChange={setBatchTeacherId}>
+                    <SelectTrigger className="h-9 bg-background">
+                      <SelectValue placeholder="Choisir un enseignant" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {teachers.map(t => (
+                        <SelectItem key={t.id} value={t.id}>
+                          {t.full_name || t.email}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="grid gap-1.5">
+                  <Label className="font-bold">Rôle dans la/les classe(s)</Label>
+                  <Select value={batchRole} onValueChange={(val) => setBatchRole(val as any)}>
+                    <SelectTrigger className="h-9 bg-background">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="titulaire">Prof. Principal / Titulaire</SelectItem>
+                      <SelectItem value="intervenant">Enseignant de matière (Intervenant)</SelectItem>
+                      <SelectItem value="surveillant">Surveillant / Répétiteur</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Matière optionnelle */}
+                {allSubjects.length > 0 && (
+                  <div className="grid gap-1.5 sm:col-span-2">
+                    <Label className="font-bold">Matière enseignée (optionnel)</Label>
+                    <Select value={batchSubjectId} onValueChange={setBatchSubjectId}>
+                      <SelectTrigger className="h-9 bg-background">
+                        <SelectValue placeholder="Toutes matières / non précisé" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Toutes matières / Enseignant polyvalent</SelectItem>
+                        {allSubjects.map(s => (
+                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+
+              {/* Sélection des classes */}
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <Label className="font-bold text-foreground">
+                    Sélectionner les classes à attribuer ({batchSelectedClassIds.length} sélectionnée{batchSelectedClassIds.length > 1 ? 's' : ''}) *
+                  </Label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const targetClasses = batchLevelFilter === 'all'
+                          ? classesList
+                          : classesList.filter(c => c.level_type === batchLevelFilter);
+                        setBatchSelectedClassIds(targetClasses.map(c => c.id));
+                      }}
+                      className="text-[11px] text-primary hover:underline font-semibold"
+                    >
+                      Tout cocher
+                    </button>
+                    <span className="text-muted-foreground">·</span>
+                    <button
+                      type="button"
+                      onClick={() => setBatchSelectedClassIds([])}
+                      className="text-[11px] text-muted-foreground hover:text-foreground font-semibold"
+                    >
+                      Tout décocher
+                    </button>
+                  </div>
+                </div>
+
+                {/* Filtre par niveau pour sélection rapide */}
+                {schoolTypes.length > 1 && (
+                  <div className="flex flex-wrap items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setBatchLevelFilter('all')}
+                      className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                        batchLevelFilter === 'all'
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                      }`}
+                    >
+                      Toutes
+                    </button>
+                    {schoolTypes.map(t => (
+                      <button
+                        key={t}
+                        type="button"
+                        onClick={() => setBatchLevelFilter(t)}
+                        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                          batchLevelFilter === t
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                        }`}
+                      >
+                        {t}
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Grille des classes */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-52 overflow-y-auto p-1 border rounded-xl bg-background">
+                  {classesList
+                    .filter(c => batchLevelFilter === 'all' || c.level_type === batchLevelFilter)
+                    .map(c => {
+                      const isSelected = batchSelectedClassIds.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setBatchSelectedClassIds(prev =>
+                              isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                            );
+                          }}
+                          className={`flex items-start gap-2 p-2 rounded-lg border text-left text-xs transition-all ${
+                            isSelected
+                              ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-bold'
+                              : 'bg-card border-border text-muted-foreground hover:bg-muted/40'
+                          }`}
+                        >
+                          <span className={`w-4 h-4 rounded shrink-0 mt-0.5 flex items-center justify-center text-[10px] text-white font-bold ${isSelected ? 'bg-indigo-600' : 'border border-gray-300'}`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate font-semibold text-foreground">{c.name}</div>
+                            <div className="text-[10px] text-muted-foreground truncate">{c.level_type || 'Général'}</div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                </div>
+              </div>
+
+              {/* Option définir titulaire */}
+              <div className="flex items-center gap-2 p-2.5 rounded-lg bg-indigo-50/50 border border-indigo-200/60 text-xs">
+                <input
+                  id="set-titulaire-chk"
+                  type="checkbox"
+                  checked={batchSetAsTitulaire || batchRole === 'titulaire'}
+                  onChange={e => setBatchSetAsTitulaire(e.target.checked)}
+                  className="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <label htmlFor="set-titulaire-chk" className="cursor-pointer font-medium text-indigo-950">
+                  Définir également cet enseignant comme titulaire / prof. principal sur ces classes
+                </label>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2 border-t">
+              <Button type="button" variant="outline" size="sm" onClick={() => setIsBatchAssignTeacherOpen(false)}>
+                Annuler
+              </Button>
+              <Button
+                type="submit"
+                size="sm"
+                disabled={!batchTeacherId || batchSelectedClassIds.length === 0 || batchAssignMutation.isPending}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold"
+              >
+                {batchAssignMutation.isPending ? "Affectation en cours..." : `Affecter à ${batchSelectedClassIds.length} classe(s)`}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </AppShell>
   );
 }
@@ -470,6 +981,7 @@ function ClassesPage() {
 
 function ClassCard({
   c,
+  campusName,
   canManage = true,
   onEdit,
   onDelete,
@@ -477,6 +989,7 @@ function ClassCard({
   onManageTeachers,
 }: {
   c: ClassWithTeacher;
+  campusName?: string;
   canManage?: boolean;
   onEdit: (c: ClassWithTeacher) => void;
   onDelete: (c: ClassWithTeacher) => void;
@@ -541,27 +1054,32 @@ function ClassCard({
             {c.name}
           </h3>
           <div className="mt-2 flex flex-col gap-1.5 text-xs text-muted-foreground">
-            {c.level_type && (
-              <span className="inline-flex w-fit items-center rounded-md bg-secondary/50 px-2 py-0.5 font-medium text-secondary-foreground">
-                {c.level_type}
-              </span>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {c.level_type && (
+                <span className="inline-flex w-fit items-center rounded-md bg-secondary/50 px-2 py-0.5 font-medium text-secondary-foreground">
+                  {c.level_type}
+                </span>
+              )}
+              {campusName && (
+                <span className="inline-flex w-fit items-center gap-1 rounded-md bg-amber-500/10 px-2 py-0.5 font-medium text-amber-700 border border-amber-500/20 text-[11px]">
+                  <Building2 className="w-3 h-3 text-amber-600" /> {campusName}
+                </span>
+              )}
+            </div>
             {c.level_type === "Supérieur" && (
               <span className="inline-flex w-fit items-center gap-1 rounded-md bg-emerald-500/10 px-2 py-0.5 font-bold text-emerald-600 border border-emerald-500/20">
                 <Award className="w-3 h-3" /> Système LMD (ECTS)
               </span>
             )}
-            {c.level_type !== "Secondaire" && (
-              <div className="flex items-center gap-1.5 mt-1">
-                <UserCheck className="w-3.5 h-3.5 text-primary" />
-                <span>
-                  Titulaire :{" "}
-                  <b className="text-foreground">
-                    {c.user_profiles?.full_name || "Non assigné"}
-                  </b>
-                </span>
-              </div>
-            )}
+            <div className="flex items-center gap-1.5 mt-1">
+              <UserCheck className="w-3.5 h-3.5 text-primary" />
+              <span>
+                {c.level_type === "Secondaire" ? "Prof. Principal : " : "Titulaire : "}
+                <b className="text-foreground">
+                  {c.user_profiles?.full_name || "Non assigné"}
+                </b>
+              </span>
+            </div>
           </div>
         </div>
         <div className="flex h-10 w-10 mt-2 items-center justify-center rounded-xl bg-primary/10 text-primary">

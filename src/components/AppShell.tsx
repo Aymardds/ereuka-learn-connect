@@ -162,7 +162,7 @@ const ROLE_LABELS: Record<string, string> = {
   student: "Étudiant",
 };
 
-// ── Sidebar NavLink ────────────────────────────────────────────────────────
+// ── Sidebar NavLink avec effet Liquide Glass ──────────────────────────────────────────
 function SideNavLink({ item, active, collapsed }: { item: NavItem & { label: string }; active: boolean; collapsed: boolean }) {
   const Icon = item.icon;
   return (
@@ -170,18 +170,18 @@ function SideNavLink({ item, active, collapsed }: { item: NavItem & { label: str
       to={item.to}
       title={collapsed ? item.label : undefined}
       className={cn(
-        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-150",
+        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition-all duration-200 border",
         collapsed ? "justify-center px-2" : "",
         active
-          ? "bg-white/15 text-white font-semibold"
-          : "text-white/65 hover:bg-white/10 hover:text-white",
+          ? "bg-gradient-to-r from-white/22 via-white/16 to-white/10 backdrop-blur-xl text-white font-bold border-white/30 shadow-[inset_0_1px_1px_rgba(255,255,255,0.45),0_4px_14px_rgba(0,0,0,0.18)]"
+          : "border-transparent text-white/70 hover:text-white hover:bg-white/10 hover:border-white/12 backdrop-blur-sm",
       )}
     >
-      <Icon className={cn("h-[18px] w-[18px] shrink-0 transition-colors", active ? "text-white" : "text-white/60 group-hover:text-white")} />
+      <Icon className={cn("h-[18px] w-[18px] shrink-0 transition-transform duration-200 group-hover:scale-110", active ? "text-amber-300 drop-shadow-sm" : "text-white/65 group-hover:text-white")} />
       {!collapsed && <span className="truncate">{item.label}</span>}
       {/* Active indicator dot */}
       {active && !collapsed && (
-        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-white/80 shrink-0" />
+        <span className="ml-auto h-1.5 w-1.5 rounded-full bg-amber-300 shadow-[0_0_8px_rgba(252,211,77,0.8)] shrink-0" />
       )}
     </Link>
   );
@@ -265,17 +265,20 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
   // ── Sidebar JSX (shared between desktop & mobile overlay) ──
   function SidebarContent() {
     return (
-      <div className="flex h-full flex-col bg-[#1a5c2e]">
+      <div className="flex h-full flex-col bg-gradient-to-b from-[#144723]/94 via-[#0e361a]/96 to-[#082210]/98 backdrop-blur-2xl border-r border-white/15 shadow-[inset_-1px_0_0_rgba(255,255,255,0.08),inset_0_1px_1px_rgba(255,255,255,0.2),6px_0_30px_rgba(0,0,0,0.25)] relative overflow-hidden">
+        {/* Lueur liquide subtile d'arrière-plan */}
+        <div className="absolute top-0 right-0 -mr-16 -mt-16 w-48 h-48 rounded-full bg-emerald-400/10 blur-3xl pointer-events-none" />
+        <div className="absolute bottom-20 left-0 -ml-16 w-48 h-48 rounded-full bg-amber-400/10 blur-3xl pointer-events-none" />
 
         {/* ── Brand ── */}
-        <div className={cn("flex items-center gap-3 px-5 py-5", collapsed ? "justify-center px-3" : "")}>
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white/15 shadow-inner">
-            <img src="/favicon.svg" alt="Eurêka" className="h-7 w-7 object-contain" />
+        <div className={cn("relative z-10 flex items-center gap-3 px-5 py-5", collapsed ? "justify-center px-3" : "")}>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-white/15 backdrop-blur-xl border border-white/25 shadow-[0_4px_14px_rgba(0,0,0,0.15),inset_0_1px_1px_rgba(255,255,255,0.4)] p-1.5">
+            <img src="/favicon.svg" alt="Eurêka" className="h-full w-full object-contain drop-shadow" />
           </div>
           {!collapsed && (
             <div className="min-w-0">
               <div className="font-display text-lg font-bold text-white tracking-tight leading-tight">Eurêka</div>
-              <div className="text-[10px] font-semibold uppercase tracking-widest text-white/50">ERP Éducatif</div>
+              <div className="text-[10px] font-semibold uppercase tracking-widest text-amber-300/80">ERP Éducatif</div>
             </div>
           )}
           {/* Collapse toggle — desktop only */}
@@ -290,14 +293,14 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
 
         {/* ── School card ── */}
         {!collapsed && (
-          <div className="mx-3 mb-3 rounded-xl bg-white/8 border border-white/10 px-3 py-2.5 space-y-1">
+          <div className="relative z-10 mx-3 mb-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 p-3 space-y-1.5 shadow-[0_4px_16px_rgba(0,0,0,0.1),inset_0_1px_1px_rgba(255,255,255,0.25)]">
             <div className="flex items-center justify-between">
-              <span className="truncate text-xs font-semibold text-white/90">{profile?.tenant?.name || school.name}</span>
-              <span className="ml-2 shrink-0 rounded-md bg-white/15 px-1.5 py-0.5 text-[10px] font-bold text-white/70">2025-26</span>
+              <span className="truncate text-xs font-semibold text-white/95">{profile?.tenant?.name || school.name}</span>
+              <span className="ml-2 shrink-0 rounded-md bg-white/20 backdrop-blur-md px-1.5 py-0.5 text-[10px] font-bold text-white/90">2025-26</span>
             </div>
             <div className="flex items-center gap-1.5 flex-wrap">
               <span className={cn(
-                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-tight border",
+                "inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-bold tracking-tight border backdrop-blur-md",
                 estInfo.isUniversityOnly
                   ? "border-purple-400/40 bg-purple-900/40 text-purple-200"
                   : estInfo.isMixed
@@ -307,18 +310,18 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
                 {estInfo.badgeLabel}
               </span>
               {campuses.length > 0 && (
-                <span className="text-[10px] text-white/40">{campuses.length} campus</span>
+                <span className="text-[10px] text-white/50">{campuses.length} campus</span>
               )}
             </div>
             {campuses.length > 1 && (
               <select
                 value={selectedCampusId}
                 onChange={(e) => setSelectedCampusId(e.target.value)}
-                className="mt-1 w-full rounded-lg border border-white/10 bg-white/5 px-2 py-1 text-[11px] text-white/80 focus:outline-none focus:ring-1 focus:ring-white/20"
+                className="mt-1 w-full rounded-lg border border-white/15 bg-white/10 backdrop-blur-md px-2 py-1 text-[11px] text-white/90 focus:outline-none focus:ring-1 focus:ring-amber-300/40"
               >
-                <option value="all">Tous les campus ({campuses.length})</option>
+                <option value="all" className="bg-[#0e361a] text-white">Tous les campus ({campuses.length})</option>
                 {campuses.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}{c.city ? ` — ${c.city}` : ''}</option>
+                  <option key={c.id} value={c.id} className="bg-[#0e361a] text-white">{c.name}{c.city ? ` — ${c.city}` : ''}</option>
                 ))}
               </select>
             )}
@@ -326,11 +329,11 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
         )}
 
         {/* ── Navigation ── */}
-        <nav className="flex-1 overflow-y-auto px-3 pb-2 space-y-4 custom-scrollbar">
+        <nav className="relative z-10 flex-1 overflow-y-auto px-3 pb-2 space-y-4 custom-scrollbar">
           {filteredGroups.map((group) => (
             <div key={group.label}>
               {!collapsed && (
-                <div className="mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-white/30">
+                <div className="mb-1 px-2 text-[10px] font-bold uppercase tracking-widest text-white/40">
                   {group.label}
                 </div>
               )}
@@ -347,11 +350,11 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
         </nav>
 
         {/* ── Sync status ── */}
-        <div className={cn("px-3 pb-2", collapsed && "flex justify-center")}>
+        <div className={cn("relative z-10 px-3 pb-2", collapsed && "flex justify-center")}>
           <button
             onClick={() => setSyncModalOpen(true)}
             className={cn(
-              "flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-white/60 hover:bg-white/10 hover:text-white/80 transition-colors cursor-pointer",
+              "flex items-center gap-2 rounded-xl border border-white/15 bg-white/10 backdrop-blur-xl px-3 py-2 text-[11px] text-white/80 hover:bg-white/18 hover:border-white/25 hover:text-white transition-all duration-200 cursor-pointer shadow-[inset_0_1px_1px_rgba(255,255,255,0.15)]",
               collapsed ? "justify-center w-10 h-10 p-0" : "w-full"
             )}
             title="Statut synchronisation"
@@ -372,13 +375,13 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
         </div>
 
         {/* ── Bottom: Settings + User + Logout ── */}
-        <div className="border-t border-white/10 px-3 py-3 space-y-1">
+        <div className="relative z-10 border-t border-white/15 px-3 py-3 space-y-1">
           {/* Settings link */}
           {(profile?.role === 'admin' || profile?.role === 'director') && (
             <Link
               to="/parametres"
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-white transition-colors",
+                "flex items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 hover:bg-white/12 hover:text-white transition-colors",
                 collapsed && "justify-center px-2"
               )}
               title={collapsed ? "Paramètres" : undefined}
@@ -392,7 +395,7 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
           <button
             onClick={handleSignOut}
             className={cn(
-              "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/60 hover:bg-white/10 hover:text-rose-300 transition-colors",
+              "flex w-full items-center gap-3 rounded-xl px-3 py-2 text-sm text-white/70 hover:bg-rose-500/20 hover:text-rose-200 transition-colors",
               collapsed && "justify-center px-2"
             )}
             title={collapsed ? "Se déconnecter" : undefined}
@@ -403,19 +406,19 @@ export function AppShell({ children, title, subtitle, actions }: { children: Rea
 
           {/* User avatar card */}
           {!collapsed && (
-            <div className="mt-2 flex items-center gap-3 rounded-xl bg-white/8 border border-white/10 px-3 py-2.5">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white uppercase">
+            <div className="mt-2 flex items-center gap-3 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/15 px-3 py-2.5 shadow-[inset_0_1px_1px_rgba(255,255,255,0.18)]">
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md text-sm font-bold text-white uppercase shadow-sm">
                 {initials}
               </div>
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-white">{profile?.full_name || user?.email}</div>
-                <div className="truncate text-[11px] text-white/50">{roleLabel}</div>
+                <div className="truncate text-[11px] text-white/60">{roleLabel}</div>
               </div>
             </div>
           )}
           {collapsed && (
             <div className="flex justify-center mt-1">
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-white/20 text-sm font-bold text-white uppercase" title={profile?.full_name || user?.email}>
+              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/20 backdrop-blur-md text-sm font-bold text-white uppercase shadow-sm" title={profile?.full_name || user?.email}>
                 {initials}
               </div>
             </div>

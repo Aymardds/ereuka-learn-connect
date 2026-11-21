@@ -49,7 +49,7 @@ const QUICK_APPRECIATIONS = [
   "Résultats insuffisants, travail personnel insuffisant.",
 ];
 
-export function NotesPage() {
+function NotesPage() {
   const queryClient = useQueryClient();
   const { profile, user } = useAuth();
   const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);

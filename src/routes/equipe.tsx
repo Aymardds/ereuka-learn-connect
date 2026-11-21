@@ -442,7 +442,7 @@ function TeacherClassesDialog({
   isOpen: boolean;
   onClose: () => void;
 }) {
-  const { useTeacherAssignmentsForTeacher, createAssignmentMutation, deleteAssignmentMutation } =
+  const { useTeacherAssignmentsForTeacher, createAssignmentMutation, deleteAssignmentMutation, batchAssignMutation } =
     useTeacherAssignments();
   const { classes } = useClasses();
   const { subjects } = useSubjects();
@@ -451,6 +451,7 @@ function TeacherClassesDialog({
   const assignments = assignmentsQuery.data || [];
 
   const [selectedClassId, setSelectedClassId] = useState<string>('');
+  const [selectedClassIds, setSelectedClassIds] = useState<string[]>([]);
   const [selectedSubjectId, setSelectedSubjectId] = useState<string>('none');
   const [selectedRole, setSelectedRole] = useState<'titulaire' | 'intervenant' | 'surveillant'>('intervenant');
 
@@ -475,14 +476,26 @@ function TeacherClassesDialog({
   }, {});
 
   const handleAssign = async () => {
-    if (!selectedClassId) return;
-    await createAssignmentMutation.mutateAsync({
-      teacherId: teacher.id,
-      classId: selectedClassId,
-      subjectId: selectedSubjectId === 'none' ? null : selectedSubjectId,
-      roleInClass: selectedRole,
-    });
+    const targetIds = selectedClassIds.length > 0 ? selectedClassIds : (selectedClassId ? [selectedClassId] : []);
+    if (targetIds.length === 0) return;
+
+    if (targetIds.length === 1) {
+      await createAssignmentMutation.mutateAsync({
+        teacherId: teacher.id,
+        classId: targetIds[0],
+        subjectId: selectedSubjectId === 'none' ? null : selectedSubjectId,
+        roleInClass: selectedRole,
+      });
+    } else {
+      await batchAssignMutation.mutateAsync({
+        teacherId: teacher.id,
+        classIds: targetIds,
+        subjectId: selectedSubjectId === 'none' ? null : selectedSubjectId,
+        roleInClass: selectedRole,
+      });
+    }
     setSelectedClassId('');
+    setSelectedClassIds([]);
     setSelectedSubjectId('none');
     setSelectedRole('intervenant');
   };
@@ -500,10 +513,10 @@ function TeacherClassesDialog({
         <div className="space-y-6 py-4 overflow-y-auto flex-1">
           {/* Assign form */}
           <div className="p-4 bg-muted/30 rounded-xl border space-y-3">
-            <h4 className="text-sm font-semibold">Assigner une classe</h4>
+            <h4 className="text-sm font-semibold">Assigner une ou plusieurs classes</h4>
             <div className="grid grid-cols-2 gap-3">
               <div className="grid gap-2">
-                <Label>Classe *</Label>
+                <Label>Classe unique</Label>
                 <Select value={selectedClassId} onValueChange={setSelectedClassId}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir une classe" />
@@ -552,13 +565,70 @@ function TeacherClassesDialog({
                   </Select>
                 </div>
               )}
+
+              {classes.length > 0 && (
+                <div className="col-span-2 pt-2 border-t">
+                  <div className="flex items-center justify-between mb-1.5">
+                    <Label className="text-xs font-semibold text-muted-foreground">
+                      Ou cocher plusieurs classes à la fois ({selectedClassIds.length} sélectionnée{selectedClassIds.length > 1 ? 's' : ''}) :
+                    </Label>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClassIds(classes.map(c => c.id))}
+                        className="text-[11px] text-primary hover:underline font-semibold"
+                      >
+                        Tout cocher
+                      </button>
+                      <span className="text-muted-foreground">·</span>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedClassIds([])}
+                        className="text-[11px] text-muted-foreground hover:text-foreground font-semibold"
+                      >
+                        Tout décocher
+                      </button>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-36 overflow-y-auto p-1 border rounded-lg bg-background">
+                    {classes.map((c) => {
+                      const isSelected = selectedClassIds.includes(c.id);
+                      return (
+                        <button
+                          key={c.id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedClassIds(prev =>
+                              isSelected ? prev.filter(id => id !== c.id) : [...prev, c.id]
+                            );
+                          }}
+                          className={`flex items-center gap-1.5 p-1.5 rounded border text-left text-xs transition-all ${
+                            isSelected
+                              ? 'bg-indigo-50 border-indigo-300 text-indigo-950 font-bold'
+                              : 'bg-card border-border text-muted-foreground hover:bg-muted/40'
+                          }`}
+                        >
+                          <span className={`w-3.5 h-3.5 rounded shrink-0 flex items-center justify-center text-[10px] text-white font-bold ${isSelected ? 'bg-indigo-600' : 'border border-gray-300'}`}>
+                            {isSelected ? '✓' : ''}
+                          </span>
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
             <Button
               onClick={handleAssign}
-              disabled={!selectedClassId || createAssignmentMutation.isPending}
+              disabled={(!selectedClassId && selectedClassIds.length === 0) || createAssignmentMutation.isPending || batchAssignMutation.isPending}
               className="w-full"
             >
-              {createAssignmentMutation.isPending ? 'Assignation...' : 'Assigner à la classe'}
+              {createAssignmentMutation.isPending || batchAssignMutation.isPending
+                ? 'Assignation en cours...'
+                : selectedClassIds.length > 1
+                  ? `Assigner à ces ${selectedClassIds.length} classes`
+                  : 'Assigner à la classe'}
             </Button>
           </div>
 

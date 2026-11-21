@@ -243,27 +243,34 @@ function LandingPage() {
   ];
 
   return (
-    <div className="min-h-screen bg-[#FAECBE] text-stone-900 font-sans antialiased selection:bg-amber-300 selection:text-stone-950">
+    <div className="min-h-screen bg-[#FAECBE] text-stone-900 font-sans antialiased selection:bg-amber-300 selection:text-stone-950 relative overflow-x-hidden">
 
-      {/* ── NAVBAR ── */}
+      {/* ── AMBIENT LIQUID GLASS ORBS (REFLETS LIQUIDES FLUIDES) ── */}
+      <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+        <div className="absolute -top-32 left-1/4 w-[520px] h-[520px] bg-gradient-to-br from-amber-300/35 via-emerald-200/25 to-amber-100/35 rounded-full blur-3xl opacity-75 animate-pulse" />
+        <div className="absolute top-[32%] -right-24 w-[480px] h-[480px] bg-gradient-to-bl from-emerald-300/20 via-amber-200/30 to-amber-300/25 rounded-full blur-3xl opacity-60" />
+        <div className="absolute top-[68%] -left-20 w-[550px] h-[550px] bg-gradient-to-tr from-amber-300/25 via-emerald-200/20 to-transparent rounded-full blur-3xl opacity-60" />
+      </div>
+
+      {/* ── NAVBAR EFFET LIQUIDE GLASS ── */}
       <header
         className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${scrolled
-          ? "bg-[#FAECBE]/95 backdrop-blur-md border-b border-[#E3CE94] shadow-sm"
-          : "bg-[#FAECBE] border-b border-[#EBD7A4]"
+          ? "bg-[#FAECBE]/75 backdrop-blur-2xl border-b border-white/60 shadow-[0_10px_35px_rgba(180,120,40,0.08),inset_0_1px_1px_rgba(255,255,255,0.8)]"
+          : "bg-[#FAECBE]/85 backdrop-blur-xl border-b border-white/40"
           }`}
       >
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-18 items-center justify-between">
-            {/* Logo */}
+            {/* Logo avec le Favicon officiel */}
             <Link to="/landing" className="flex items-center gap-3 group">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-600 text-white shadow-sm shadow-amber-900/10 group-hover:scale-105 transition-transform">
-                <img src="/favicon.svg" alt="Eurêka ERP" className="w-6 h-6 brightness-0 invert" />
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl p-1 bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_4px_16px_rgba(27,67,50,0.15),inset_0_1px_1px_rgba(255,255,255,0.9)] group-hover:scale-105 transition-all duration-200">
+                <img src="/favicon.svg" alt="Eurêka ERP" className="h-full w-full object-contain drop-shadow-xs" />
               </div>
               <div className="flex flex-col">
                 <span className="font-display text-xl font-black tracking-tight text-stone-900 flex items-center gap-1.5">
-                  Eurêka <span className="text-amber-800 font-semibold text-xs px-1.5 py-0.5 rounded bg-amber-200/80 border border-amber-300">ERP</span>
+                  Eurêka <span className="text-amber-800 font-semibold text-xs px-2 py-0.5 rounded-full bg-amber-200/80 border border-amber-300 shadow-xs">ERP</span>
                 </span>
-                <span className="text-[10px] text-stone-600 font-medium -mt-1 hidden sm:block">
+                <span className="text-[10px] text-stone-600 font-medium -mt-0.5 hidden sm:block">
                   Maternelle · Primaire · Secondaire · Université
                 </span>
               </div>
@@ -284,16 +291,16 @@ function LandingPage() {
               {/* Login link */}
               <Link
                 to="/login"
-                className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-800 hover:text-amber-800 px-3 py-1.5 rounded-lg hover:bg-amber-200/50 transition-colors"
+                className="inline-flex items-center gap-1.5 text-sm font-bold text-stone-800 hover:text-amber-800 px-3.5 py-1.5 rounded-xl hover:bg-white/60 hover:backdrop-blur-md transition-all border border-transparent hover:border-white/60"
               >
                 <LogIn className="w-4 h-4" />
                 Connexion
               </Link>
 
-              {/* Register CTA */}
+              {/* Register CTA Liquide Glass */}
               <Link
                 to="/register"
-                className="inline-flex items-center gap-2 rounded-xl bg-amber-600 px-4 py-2 text-sm font-bold text-white shadow-sm hover:bg-amber-700 hover:scale-105 transition-all duration-200"
+                className="inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 px-4 py-2 text-sm font-bold text-white shadow-[0_4px_14px_rgba(217,119,6,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:brightness-105 hover:scale-105 transition-all duration-200 border border-amber-500/40"
               >
                 <UserPlus className="w-4 h-4" />
                 Créer un compte
@@ -302,7 +309,7 @@ function LandingPage() {
 
             {/* Mobile menu button */}
             <button
-              className="md:hidden p-2 rounded-lg text-stone-800 hover:bg-amber-200/60"
+              className="md:hidden p-2 rounded-xl text-stone-800 bg-white/50 backdrop-blur-md border border-white/60 hover:bg-white/80 transition-colors"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
               aria-label="Menu"
             >
@@ -311,9 +318,9 @@ function LandingPage() {
           </div>
         </div>
 
-        {/* Mobile Menu Dropdown */}
+        {/* Mobile Menu Dropdown Liquide Glass */}
         {mobileMenuOpen && (
-          <div className="md:hidden bg-[#FAECBE] border-b border-[#E3CE94] px-4 py-5 space-y-3 shadow-lg">
+          <div className="md:hidden bg-[#FAECBE]/90 backdrop-blur-2xl border-b border-white/60 px-4 py-5 space-y-3 shadow-2xl animate-in fade-in slide-in-from-top-2">
             <a href="#niveaux" className="block text-sm font-semibold text-stone-800 py-2" onClick={() => setMobileMenuOpen(false)}>
               Niveaux Scolaires
             </a>
@@ -323,10 +330,10 @@ function LandingPage() {
             <a href="#temoignages" className="block text-sm font-semibold text-stone-800 py-2" onClick={() => setMobileMenuOpen(false)}>
               Témoignages
             </a>
-            <div className="pt-3 border-t border-[#E3CE94] flex flex-col gap-2.5">
+            <div className="pt-3 border-t border-white/50 flex flex-col gap-2.5">
               <Link
                 to="/login"
-                className="flex items-center justify-center gap-2 rounded-xl border border-stone-400/50 bg-white/80 px-4 py-2.5 text-sm font-bold text-stone-900"
+                className="flex items-center justify-center gap-2 rounded-xl border border-white/70 bg-white/70 backdrop-blur-xl px-4 py-2.5 text-sm font-bold text-stone-900 shadow-sm"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <LogIn className="w-4 h-4" />
@@ -334,7 +341,7 @@ function LandingPage() {
               </Link>
               <Link
                 to="/register"
-                className="flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-4 py-2.5 text-sm font-bold text-white shadow-sm"
+                className="flex items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-600 to-amber-700 px-4 py-2.5 text-sm font-bold text-white shadow-[0_4px_14px_rgba(217,119,6,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)]"
                 onClick={() => setMobileMenuOpen(false)}
               >
                 <UserPlus className="w-4 h-4" />
@@ -354,8 +361,8 @@ function LandingPage() {
             <div className="lg:col-span-6 xl:col-span-6 flex flex-col justify-center py-2 lg:py-4">
 
               <div>
-                {/* Badge Catégorie */}
-                <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/60 bg-amber-100/90 px-3.5 py-1.5 text-xs font-bold text-amber-900 mb-6 shadow-sm self-start">
+                {/* Badge Catégorie Liquide Glass */}
+                <div className="inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/60 backdrop-blur-xl px-4 py-2 text-xs font-bold text-amber-950 mb-6 shadow-[0_4px_16px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] self-start">
                   <GraduationCap className="h-4 w-4 text-amber-700" />
                   <span>Système de Gestion Scolaire & Universitaire</span>
                 </div>
@@ -374,30 +381,30 @@ function LandingPage() {
                 {/* Barre de boutons d'action */}
                 <div className="mt-8 flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3">
 
-                  {/* Action 1 : Enregistrer mon établissement */}
+                  {/* Action 1 : Enregistrer mon établissement (Effet Liquide Glass) */}
                   <Link
                     to="/register"
-                    className="group inline-flex items-center justify-center gap-2.5 rounded-xl bg-amber-600 px-6 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-all duration-200 hover:scale-[1.02]"
+                    className="group inline-flex items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-amber-600 via-amber-600 to-amber-700 px-6 py-3.5 text-sm font-bold text-white shadow-[0_6px_20px_rgba(217,119,6,0.35),inset_0_1px_1px_rgba(255,255,255,0.4)] hover:brightness-105 transition-all duration-200 hover:scale-[1.02] border border-amber-500/40"
                   >
                     <Building2 className="w-4 h-4 text-white" />
                     <span>Enregistrer mon établissement</span>
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
 
-                  {/* Action 2 : Télécharger l'application Desktop */}
+                  {/* Action 2 : Télécharger l'application Desktop (Effet Liquide Glass) */}
                   <div className="relative">
                     <button
                       onClick={() => setDownloadOpen(!downloadOpen)}
-                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-xl border border-[#D5C28F] bg-white/80 px-5 py-3.5 text-sm font-semibold text-stone-900 shadow-sm hover:bg-white transition-all duration-200"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 rounded-2xl border border-white/75 bg-white/70 backdrop-blur-xl px-5 py-3.5 text-sm font-semibold text-stone-900 shadow-[0_4px_16px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,0.85)] hover:bg-white/90 hover:border-white transition-all duration-200"
                     >
                       <Download className="w-4 h-4 text-amber-700" />
                       <span>Télécharger</span>
                       <ChevronDown className={`w-3.5 h-3.5 transition-transform ${downloadOpen ? "rotate-180" : ""}`} />
                     </button>
 
-                    {/* Dropdown téléchargement */}
+                    {/* Dropdown téléchargement Liquide Glass */}
                     {downloadOpen && (
-                      <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white shadow-xl shadow-stone-900/10 border border-[#DDC994] p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                      <div className="absolute top-full left-0 mt-2 w-72 sm:w-80 rounded-2xl bg-white/90 backdrop-blur-2xl shadow-2xl shadow-stone-900/15 border border-white/80 p-3 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
                         <p className="text-xs font-bold text-amber-800 uppercase tracking-wider px-2 pb-2 border-b border-stone-100">
                           Choisir votre système
                         </p>
@@ -405,9 +412,9 @@ function LandingPage() {
                           <a
                             href="/release/Eureka ERP-1.0.0.dmg"
                             download
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50 transition-colors group"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50/80 transition-colors group"
                           >
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100 text-stone-800">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800">
                               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                             </div>
                             <div>
@@ -418,7 +425,7 @@ function LandingPage() {
                           <a
                             href="/release/Eureka ERP Setup 1.0.0.exe"
                             download
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50 transition-colors group"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50/80 transition-colors group"
                           >
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
@@ -431,7 +438,7 @@ function LandingPage() {
                           <a
                             href="/release/Eureka ERP 1.0.0.exe"
                             download
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50 transition-colors group"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50/80 transition-colors group"
                           >
                             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-blue-700">
                               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M0 3.449L9.75 2.1v9.451H0m10.949-9.602L24 0v11.4H10.949M0 12.6h9.75v9.451L0 20.699M10.949 12.6H24V24l-12.9-1.801"/></svg>
@@ -444,9 +451,9 @@ function LandingPage() {
                           <a
                             href="/release/Eureka ERP-1.0.0-mac.zip"
                             download
-                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50 transition-colors group"
+                            className="flex items-center gap-3 rounded-xl px-3 py-2 hover:bg-amber-50/80 transition-colors group"
                           >
-                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100 text-stone-800">
+                            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-stone-100/80 text-stone-800">
                               <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/></svg>
                             </div>
                             <div>
@@ -455,7 +462,7 @@ function LandingPage() {
                             </div>
                           </a>
                         </div>
-                        <div className="mt-2 rounded-xl bg-amber-50 border border-amber-200 p-2">
+                        <div className="mt-2 rounded-xl bg-amber-50/80 border border-amber-200/80 p-2">
                           <p className="text-[10px] text-amber-900 leading-tight">
                             ⚡ <strong>Détection automatique</strong> serveur local (port 8080) & Cloud.
                           </p>
@@ -468,7 +475,7 @@ function LandingPage() {
                             <span>Mobile Android & iOS (Bientôt)</span>
                           </p>
                           <div className="grid grid-cols-2 gap-1.5">
-                            <div className="flex items-center gap-2 rounded-xl bg-stone-50 border border-stone-200/80 px-2.5 py-1.5 text-stone-800">
+                            <div className="flex items-center gap-2 rounded-xl bg-stone-50/80 border border-stone-200/80 px-2.5 py-1.5 text-stone-800">
                               <svg className="w-4 h-4 text-emerald-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.4024 13.8562 8 12 8s-3.5896.4024-5.1368 1.0507L4.8409 5.5477a.416.416 0 00-.5676-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
                               </svg>
@@ -477,7 +484,7 @@ function LandingPage() {
                                 <span className="block text-[9px] text-stone-500">Google Play</span>
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 rounded-xl bg-stone-50 border border-stone-200/80 px-2.5 py-1.5 text-stone-800">
+                            <div className="flex items-center gap-2 rounded-xl bg-stone-50/80 border border-stone-200/80 px-2.5 py-1.5 text-stone-800">
                               <svg className="w-4 h-4 text-stone-900 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                                 <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                               </svg>
@@ -494,8 +501,8 @@ function LandingPage() {
 
                 </div>
 
-                {/* Badge explicite application mobile Android & iOS */}
-                <div className="mt-5 inline-flex items-center gap-2.5 rounded-2xl bg-amber-200/80 border border-amber-300 px-4 py-2.5 text-xs text-stone-900 shadow-xs">
+                {/* Badge explicite application mobile Android & iOS (Liquide Glass) */}
+                <div className="mt-5 inline-flex items-center gap-2.5 rounded-2xl bg-white/65 backdrop-blur-xl border border-white/75 px-4 py-2.5 text-xs text-stone-900 shadow-[0_4px_14px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)]">
                   <Smartphone className="w-4 h-4 text-amber-900 shrink-0" />
                   <span>
                     Application mobile pour <strong>Android</strong> & <strong>iOS</strong> prochainement disponible.
@@ -517,12 +524,12 @@ function LandingPage() {
 
             </div>
 
-            {/* ── COLONNE VISUELLE DROITE : IMAGE /Heros.jpg NATURELLE SANS TEXTE ── */}
-            <div className="lg:col-span-6 xl:col-span-6 relative overflow-hidden rounded-3xl border border-[#DFCBA0] bg-white shadow-xl min-h-[420px] sm:min-h-[500px] lg:min-h-[580px] h-full flex items-center justify-center">
+            {/* ── COLONNE VISUELLE DROITE : CADRE LIQUIDE GLASS AVEC IMAGE /Heros.jpg ── */}
+            <div className="lg:col-span-6 xl:col-span-6 relative overflow-hidden rounded-3xl border border-white/75 bg-white/60 backdrop-blur-2xl shadow-[0_20px_50px_rgba(180,120,40,0.1),inset_0_1px_2px_rgba(255,255,255,0.95)] min-h-[420px] sm:min-h-[500px] lg:min-h-[580px] h-full flex items-center justify-center group">
               <img
                 src="/Heros.jpg"
                 alt="Gestion académique et éducative Eurêka ERP"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                 loading="eager"
               />
             </div>
@@ -548,9 +555,9 @@ function LandingPage() {
             </p>
           </div>
 
-          {/* Sélecteur de TAB interactif */}
+          {/* Sélecteur de TAB interactif avec effet Liquide Glass */}
           <div className="flex justify-center mb-10">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-white/90 p-2 rounded-2xl border border-[#DFCBA0] max-w-4xl w-full shadow-sm">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 bg-white/60 backdrop-blur-2xl p-2 rounded-2xl border border-white/70 shadow-[0_8px_30px_rgba(0,0,0,0.04),inset_0_1px_2px_rgba(255,255,255,0.85)] max-w-4xl w-full">
               {educationLevels.map((lvl) => {
                 const isActive = activeTab === lvl.id;
                 return (
@@ -558,8 +565,8 @@ function LandingPage() {
                     key={lvl.id}
                     onClick={() => setActiveTab(lvl.id)}
                     className={`flex items-center justify-center gap-2.5 px-4 py-3.5 rounded-xl text-sm font-bold transition-all duration-200 ${isActive
-                      ? "bg-amber-600 text-white shadow-sm scale-[1.02]"
-                      : "text-stone-700 hover:text-stone-950 hover:bg-amber-100/60"
+                      ? "bg-amber-600 text-white shadow-md scale-[1.02] border border-amber-500/50"
+                      : "text-stone-700 hover:text-stone-950 hover:bg-white/50 backdrop-blur-sm"
                       }`}
                   >
                     <span className={isActive ? "text-white" : "text-amber-700"}>
@@ -572,14 +579,14 @@ function LandingPage() {
             </div>
           </div>
 
-          {/* Contenu du TAB Actif */}
-          <div className="bg-white rounded-3xl border border-[#DFCBA0] p-6 sm:p-10 lg:p-12 shadow-md relative overflow-hidden">
+          {/* Contenu du TAB Actif en Liquide Glass */}
+          <div className="bg-white/75 backdrop-blur-2xl rounded-3xl border border-white/80 p-6 sm:p-10 lg:p-12 shadow-[0_20px_50px_rgba(180,120,40,0.08),inset_0_1px_2px_rgba(255,255,255,0.95)] relative overflow-hidden">
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center">
 
               {/* Colonne gauche : Description, Fonctionnalités, KPI & CTA */}
               <div className="lg:col-span-6 space-y-6">
                 <div>
-                  <span className="inline-block rounded-full bg-amber-100 border border-amber-300 px-3 py-1 text-xs font-bold text-amber-900 mb-3">
+                  <span className="inline-block rounded-full bg-amber-100/90 backdrop-blur-md border border-amber-300 px-3 py-1 text-xs font-bold text-amber-900 mb-3 shadow-xs">
                     {currentLevel.badge}
                   </span>
                   <div className="text-xs text-stone-500 font-bold uppercase tracking-wider mb-2">
@@ -594,7 +601,7 @@ function LandingPage() {
                 </div>
 
                 {/* KPI Highlight Box */}
-                <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#FAF0D1] border border-[#E6D4A0]">
+                <div className="flex items-center gap-4 p-4 rounded-2xl bg-[#FAF0D1]/80 backdrop-blur-xl border border-amber-200/80 shadow-[inset_0_1px_2px_rgba(255,255,255,0.9)]">
                   <div className="font-display text-2xl sm:text-3xl font-black text-amber-800">
                     {currentLevel.highlightKpi}
                   </div>
@@ -619,14 +626,14 @@ function LandingPage() {
                 <div className="pt-2 flex flex-col sm:flex-row items-center gap-3">
                   <Link
                     to="/register"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-3.5 text-sm font-bold text-white shadow-sm hover:bg-amber-700 transition-all duration-200"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl bg-amber-600 px-6 py-3.5 text-sm font-bold text-white shadow-md hover:bg-amber-700 transition-all duration-200"
                   >
                     <span>{currentLevel.ctaText}</span>
                     <ArrowRight className="w-4 h-4" />
                   </Link>
                   <Link
                     to="/login"
-                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-[#D5C28F] bg-white px-5 py-3.5 text-sm font-semibold text-stone-800 hover:text-stone-950 hover:bg-amber-50 transition-all"
+                    className="w-full sm:w-auto inline-flex items-center justify-center gap-2 rounded-xl border border-white/80 bg-white/60 backdrop-blur-xl px-5 py-3.5 text-sm font-semibold text-stone-800 hover:text-stone-950 hover:bg-white/90 shadow-[inset_0_1px_1px_rgba(255,255,255,0.8)] transition-all"
                   >
                     <LogIn className="w-4 h-4 text-amber-700" />
                     <span>Se connecter</span>
@@ -636,18 +643,18 @@ function LandingPage() {
 
               {/* Colonne droite : Image HD représentative issue de /public */}
               <div className="lg:col-span-6">
-                <div className="relative group overflow-hidden rounded-2xl border border-[#DFCBA0] shadow-md">
+                <div className="relative group overflow-hidden rounded-2xl border border-white/80 bg-white/40 backdrop-blur-xl shadow-lg">
                   <img
                     src={currentLevel.image}
                     alt={currentLevel.imageAlt}
-                    className="w-full h-[360px] sm:h-[420px] object-cover"
+                    className="w-full h-[360px] sm:h-[420px] object-cover transition-transform duration-500 group-hover:scale-105"
                     loading="lazy"
                   />
                   <div className="absolute bottom-4 left-4 right-4 z-20 flex items-center justify-between">
-                    <span className="text-xs font-bold text-stone-900 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#DFCBA0] shadow-sm">
+                    <span className="text-xs font-bold text-stone-900 bg-white/85 backdrop-blur-xl px-3 py-1.5 rounded-xl border border-white/80 shadow-sm">
                       Module {currentLevel.label} &bull; Eurêka ERP
                     </span>
-                    <span className="text-xs font-bold text-amber-900 bg-[#FAF0D1]/95 backdrop-blur-md px-3 py-1.5 rounded-lg border border-[#DFCBA0] shadow-sm flex items-center gap-1">
+                    <span className="text-xs font-bold text-amber-900 bg-[#FAF0D1]/90 backdrop-blur-xl px-3 py-1.5 rounded-xl border border-white/80 shadow-sm flex items-center gap-1">
                       Conforme Afrique
                     </span>
                   </div>
@@ -679,9 +686,9 @@ function LandingPage() {
             {features.map((f) => (
               <div
                 key={f.title}
-                className="group rounded-2xl border border-[#DFCBA0] bg-white p-6 hover:border-amber-500 hover:shadow-md transition-all duration-200 shadow-sm"
+                className="group rounded-2xl border border-white/75 bg-white/65 hover:bg-white/85 backdrop-blur-xl p-6 hover:border-amber-400 hover:shadow-[0_16px_36px_rgba(180,120,40,0.12),inset_0_1px_2px_rgba(255,255,255,0.9)] transition-all duration-300 shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)] hover:-translate-y-1"
               >
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100 text-amber-800 border border-amber-200 group-hover:bg-amber-600 group-hover:text-white transition-colors">
+                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-amber-100/90 backdrop-blur-md text-amber-800 border border-amber-200/80 shadow-xs group-hover:bg-amber-600 group-hover:text-white transition-colors">
                   {f.icon}
                 </div>
                 <h3 className="mt-5 font-display text-lg font-bold text-stone-900 group-hover:text-amber-800 transition-colors">
@@ -740,12 +747,12 @@ function LandingPage() {
             ].map((st) => (
               <div
                 key={st.step}
-                className="relative rounded-3xl border border-[#DFCBA0] bg-white p-8 shadow-sm hover:border-amber-500 transition-all duration-200"
+                className="relative rounded-3xl border border-white/75 bg-white/70 hover:bg-white/90 backdrop-blur-xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,0.85)] hover:shadow-[0_20px_40px_rgba(180,120,40,0.12)] hover:border-amber-400 transition-all duration-300 group"
               >
-                <div className="font-display text-6xl font-black text-amber-200/80 absolute top-4 right-6">
+                <div className="font-display text-6xl font-black text-amber-200/80 absolute top-4 right-6 transition-transform duration-300 group-hover:scale-110">
                   {st.step}
                 </div>
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 text-amber-800 border border-amber-200">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100/90 backdrop-blur-md text-amber-800 border border-amber-200/80 shadow-xs">
                   {st.icon}
                 </div>
                 <h3 className="mt-6 font-display text-lg font-bold text-stone-900">{st.title}</h3>
@@ -780,7 +787,7 @@ function LandingPage() {
             {testimonials.map((t) => (
               <div
                 key={t.name}
-                className="rounded-3xl border border-[#DFCBA0] bg-white p-8 shadow-sm relative"
+                className="rounded-3xl border border-white/75 bg-white/70 backdrop-blur-xl p-8 shadow-[0_10px_30px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,0.85)] hover:shadow-[0_16px_36px_rgba(180,120,40,0.1)] hover:border-amber-300 transition-all duration-300 relative"
               >
                 <div className="flex gap-1 mb-5">
                   {Array.from({ length: t.rating }).map((_, i) => (
@@ -790,7 +797,7 @@ function LandingPage() {
                 <p className="text-sm text-stone-700 leading-relaxed italic">
                   "{t.text}"
                 </p>
-                <div className="mt-6 flex items-center gap-3 pt-4 border-t border-stone-100">
+                <div className="mt-6 flex items-center gap-3 pt-4 border-t border-stone-100/80">
                   <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-amber-600 text-white font-display font-black text-base shadow-sm">
                     {t.name.charAt(0)}
                   </div>
@@ -823,12 +830,12 @@ function LandingPage() {
             </p>
           </div>
 
-          {/* Grille des 4 statistiques clés */}
+          {/* Grille des 4 statistiques clés en Liquide Glass */}
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-16">
             {stats.map((s) => (
               <div
                 key={s.label}
-                className="rounded-3xl border border-[#DFCBA0] bg-white p-6 sm:p-8 text-center shadow-sm hover:shadow-md hover:border-amber-500 transition-all duration-200"
+                className="rounded-3xl border border-white/75 bg-white/70 backdrop-blur-xl p-6 sm:p-8 text-center shadow-[0_8px_24px_rgba(0,0,0,0.03),inset_0_1px_2px_rgba(255,255,255,0.85)] hover:shadow-[0_16px_36px_rgba(180,120,40,0.12)] hover:border-amber-400 hover:-translate-y-1 transition-all duration-300"
               >
                 <div className="font-display text-3xl sm:text-5xl font-black text-amber-800">{s.value}</div>
                 <div className="mt-2 text-xs sm:text-sm text-stone-600 font-semibold">{s.label}</div>
@@ -837,10 +844,10 @@ function LandingPage() {
           </div>
 
           {/* Showcase héros : Eurêka sur Mobile (Android & iOS) et tous les écrans */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center rounded-3xl border border-[#DFCBA0] bg-white p-6 sm:p-10 lg:p-12 shadow-md">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center rounded-3xl border border-white/80 bg-white/75 backdrop-blur-2xl p-6 sm:p-10 lg:p-12 shadow-[0_20px_50px_rgba(180,120,40,0.08),inset_0_1px_2px_rgba(255,255,255,0.95)]">
             
             <div className="lg:col-span-6 space-y-5">
-              <span className="inline-flex items-center gap-2 rounded-full bg-amber-100 border border-amber-300 px-3.5 py-1.5 text-xs font-bold text-amber-900">
+              <span className="inline-flex items-center gap-2 rounded-full bg-amber-100/90 backdrop-blur-md border border-amber-300 px-3.5 py-1.5 text-xs font-bold text-amber-900 shadow-xs">
                 <Smartphone className="w-4 h-4 text-amber-700" />
                 Écosystème Mobile & Desktop
               </span>
@@ -857,7 +864,7 @@ function LandingPage() {
 
               {/* Badges stores */}
               <div className="pt-2 flex flex-wrap items-center gap-3">
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-stone-800 shadow-xs">
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/70 backdrop-blur-xl px-4 py-2.5 text-stone-800 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)]">
                   <svg className="w-6 h-6 text-emerald-600 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M17.523 15.3414c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.551 0 .9993.4482.9993.9993.0001.5511-.4483.9997-.9993.9997m-11.046 0c-.5511 0-.9993-.4486-.9993-.9997s.4482-.9993.9993-.9993c.5511 0 .9993.4482.9993.9993 0 .5511-.4482.9997-.9993.9997m11.4045-6.02l1.9973-3.4592a.416.416 0 00-.1521-.5676.416.416 0 00-.5676.1521l-2.0223 3.503C15.5896 8.4024 13.8562 8 12 8s-3.5896.4024-5.1368 1.0507L4.8409 5.5477a.416.416 0 00-.5676-.1521.4157.4157 0 00-.1521.5676l1.9973 3.4592C2.6889 11.1867.3432 14.6589 0 18.761h24c-.3432-4.1021-2.6889-7.5743-6.1185-9.4396"/>
                   </svg>
@@ -867,7 +874,7 @@ function LandingPage() {
                   </div>
                 </div>
 
-                <div className="inline-flex items-center gap-3 rounded-2xl border border-stone-200 bg-stone-50 px-4 py-2.5 text-stone-800 shadow-xs">
+                <div className="inline-flex items-center gap-3 rounded-2xl border border-white/80 bg-white/70 backdrop-blur-xl px-4 py-2.5 text-stone-800 shadow-[0_4px_12px_rgba(0,0,0,0.03),inset_0_1px_1px_rgba(255,255,255,0.8)]">
                   <svg className="w-6 h-6 text-stone-900 shrink-0" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z"/>
                   </svg>
@@ -890,11 +897,11 @@ function LandingPage() {
               </div>
             </div>
 
-            <div className="lg:col-span-6 relative overflow-hidden rounded-2xl border border-[#DFCBA0] bg-stone-100 shadow-md aspect-[16/10] sm:aspect-[4/3] flex items-center justify-center">
+            <div className="lg:col-span-6 relative overflow-hidden rounded-2xl border border-white/80 bg-white/40 backdrop-blur-xl shadow-lg aspect-[16/10] sm:aspect-[4/3] flex items-center justify-center">
               <img
                 src="/landing1.jpg"
                 alt="Eurêka ERP sur tous les écrans"
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                 loading="lazy"
               />
             </div>
@@ -968,8 +975,8 @@ function LandingPage() {
             {/* Colonne 1 : Brand */}
             <div>
               <div className="flex items-center gap-3 mb-4">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-700 text-white shadow-sm">
-                  <img src="/favicon.svg" alt="Eurêka" className="w-5 h-5 brightness-0 invert" />
+                <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-white/70 backdrop-blur-xl border border-white/80 shadow-[0_4px_14px_rgba(0,0,0,0.06),inset_0_1px_2px_rgba(255,255,255,0.95)] p-1.5">
+                  <img src="/favicon.svg" alt="Eurêka ERP" className="h-full w-full object-contain" />
                 </div>
                 <span className="font-display font-black text-xl text-stone-900">Eurêka ERP</span>
               </div>

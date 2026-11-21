@@ -61,7 +61,7 @@ BEGIN
 
   -- 4. Absences aujourd'hui (uniquement cet établissement)
   SELECT COUNT(*) INTO v_absent_today
-  FROM public.attendance_records
+  FROM public.attendances
   WHERE tenant_id = v_tenant_id 
     AND date = CURRENT_DATE 
     AND status = 'absent';

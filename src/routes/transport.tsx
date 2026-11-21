@@ -29,7 +29,7 @@ export const Route = createFileRoute('/transport')({
   component: TransportPage,
 });
 
-export function TransportPage() {
+function TransportPage() {
   const { profile } = useAuth();
   const {
     transportRoutes,

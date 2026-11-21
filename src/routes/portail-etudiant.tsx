@@ -1,6 +1,8 @@
 import { createFileRoute, Link } from '@tanstack/react-router';
 import { useState } from 'react';
 import { AppShell } from '@/components/AppShell';
+import { useAuth } from '@/hooks/useAuth';
+import { getEstablishmentTypeInfo } from '@/lib/school-types';
 import { useTimetable } from '@/hooks/useTimetable';
 import { useCourseLogs } from '@/hooks/useCourseLogs';
 import { useGrades } from '@/hooks/useGrades';
@@ -15,6 +17,8 @@ export const Route = createFileRoute('/portail-etudiant')({
 });
 
 function StudentPortalPage() {
+  const { profile } = useAuth();
+  const estInfo = getEstablishmentTypeInfo(profile?.tenant?.school_types);
   const { slots } = useTimetable();
   const { courseLogs } = useCourseLogs();
   const { grades } = useGrades();
@@ -25,8 +29,8 @@ function StudentPortalPage() {
 
   return (
     <AppShell
-      title="Espace Étudiant / Élève"
-      subtitle="Emploi du temps du jour, devoirs à rendre, notes et bulletins"
+      title={estInfo.isUniversityOnly ? "Espace Étudiant" : "Espace Élève"}
+      subtitle={estInfo.isUniversityOnly ? "Emploi du temps du jour, devoirs, relevés et crédits LMD" : "Emploi du temps du jour, devoirs à rendre, notes et bulletins"}
     >
       {/* Student Welcome Banner */}
       <div className="mb-6 rounded-2xl bg-primary text-primary-foreground p-6 md:p-8 shadow-sm">
@@ -36,10 +40,10 @@ function StudentPortalPage() {
               <GraduationCap className="w-4 h-4" /> Année Académique 2025-2026
             </span>
             <h2 className="mt-2 font-display text-2xl md:text-3xl font-bold">
-              Bienvenue sur votre espace étudiant Eurêka
+              Bienvenue sur votre espace {estInfo.studentTerm.toLowerCase()} Eurêka
             </h2>
             <p className="mt-1 text-xs md:text-sm text-primary-foreground/70 max-w-xl">
-              Consultez vos cours de la journée, soumettez vos devoirs et suivez votre progression trimestrielle en direct.
+              Consultez vos cours de la journée, soumettez vos devoirs et suivez votre progression {estInfo.isUniversityOnly ? 'semestrielle' : 'trimestrielle'} en direct.
             </p>
           </div>
 
