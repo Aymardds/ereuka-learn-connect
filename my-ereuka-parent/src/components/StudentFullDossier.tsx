@@ -76,6 +76,7 @@ interface Props {
   student: StudentDossierData;
   onClose?: () => void;
   accentColor?: string;
+  onOpenSubscription?: (type: 'cantine' | 'transport') => void;
 }
 
 type DossierSection = 'carte' | 'bulletin' | 'fiche' | 'attestation' | 'sante' | 'services';
@@ -84,6 +85,7 @@ export function StudentFullDossier({
   student,
   onClose,
   accentColor = Brand.violet,
+  onOpenSubscription,
 }: Props) {
   const [activeSection, setActiveSection] = useState<DossierSection>('carte');
   const [cardFlipped, setCardFlipped] = useState(false);
@@ -641,6 +643,17 @@ export function StudentFullDossier({
                   </Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                style={[styles.serviceActionBtn, { backgroundColor: Brand.green }]}
+                onPress={() => onOpenSubscription?.('cantine')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="restaurant" size={15} color="#FFFFFF" />
+                <Text style={styles.serviceActionBtnTxt}>
+                  {student.cantine_subscribed ? 'Modifier la Formule Cantine' : 'Souscrire à la Cantine'}
+                </Text>
+              </TouchableOpacity>
             </View>
 
             {/* ── TRANSPORT ── */}
@@ -682,6 +695,17 @@ export function StudentFullDossier({
                   <Text style={styles.serviceDataVal}>{student.transport_vehicle}</Text>
                 </View>
               </View>
+
+              <TouchableOpacity
+                style={[styles.serviceActionBtn, { backgroundColor: Brand.blue }]}
+                onPress={() => onOpenSubscription?.('transport')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="bus" size={15} color="#FFFFFF" />
+                <Text style={styles.serviceActionBtnTxt}>
+                  {student.transport_subscribed ? 'Modifier le Circuit Transport' : 'Souscrire au Transport'}
+                </Text>
+              </TouchableOpacity>
             </View>
           </View>
         )}
@@ -992,5 +1016,19 @@ const styles = StyleSheet.create({
     flex: 1,
     textAlign: 'right',
     flexWrap: 'wrap',
+  },
+  serviceActionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: Radius.lg,
+    marginTop: 10,
+  },
+  serviceActionBtnTxt: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

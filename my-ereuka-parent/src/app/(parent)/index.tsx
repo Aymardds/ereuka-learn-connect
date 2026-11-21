@@ -9,6 +9,7 @@ import {
   StatusBar,
   RefreshControl,
   Modal,
+  Alert,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import { supabase } from '../../../lib/supabase';
 import { Brand, Radius, Shadows, Spacing } from '@/constants/theme';
 import { AppTopHeader } from '@/components/AppTopHeader';
 import { StudentFullDossier, StudentDossierData } from '@/components/StudentFullDossier';
+import { ServicesSubscriptionModal } from '@/components/ServicesSubscriptionModal';
 
 interface Child {
   id: string;
@@ -44,6 +46,30 @@ export default function ParentHome() {
   const [refreshing, setRefreshing] = useState(false);
   const [selectedChildModal, setSelectedChildModal] = useState<Child | null>(null);
   const [fullDossierStudent, setFullDossierStudent] = useState<StudentDossierData | null>(null);
+  const [servicesModalVisible, setServicesModalVisible] = useState(false);
+  const [servicesModalTab, setServicesModalTab] = useState<'cantine' | 'transport'>('cantine');
+  const [servicesModalChildId, setServicesModalChildId] = useState<string | undefined>(undefined);
+
+  const handleOpenServices = (tab: 'cantine' | 'transport', childId?: string) => {
+    setServicesModalTab(tab);
+    setServicesModalChildId(childId || (children.length > 0 ? children[0].id : undefined));
+    setServicesModalVisible(true);
+  };
+
+  const handleServicesSuccess = (
+    type: 'cantine' | 'transport',
+    sub: any,
+    payNow: boolean
+  ) => {
+    if (payNow) {
+      router.push('/(parent)/paiements' as any);
+    } else {
+      Alert.alert(
+        'Souscription validée',
+        `La souscription pour ${sub.student_name} (${type === 'cantine' ? 'Cantine' : 'Transport'}) a été enregistrée avec succès.`
+      );
+    }
+  };
 
   const openFullDossier = (child: Child | null) => {
     if (!child) return;
@@ -252,40 +278,77 @@ export default function ParentHome() {
           </TouchableOpacity>
         </View>
 
-        {/* Canteen & Meals Family Service Banner */}
-        <TouchableOpacity
-          style={[
-            Shadows.sm,
-            {
-              backgroundColor: '#FFFBEB',
-              borderColor: '#FDE68A',
-              borderWidth: 1,
-              borderRadius: Radius.lg,
-              padding: Spacing.md,
-              marginBottom: Spacing.md,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: Spacing.md,
-            }
-          ]}
-          onPress={() => children.length > 0 && openFullDossier(children[0])}
-          activeOpacity={0.8}
-        >
-          <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: '#FEF3C7', alignItems: 'center', justifyContent: 'center' }}>
-            <Ionicons name="restaurant" size={22} color="#D97706" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-              <Text style={{ fontSize: 13, fontWeight: '700', color: '#92400E' }}>Restauration & Cantine Scolaire</Text>
-              <Text style={{ fontSize: 11, fontWeight: '700', color: '#D97706' }}>Dossier repas →</Text>
+        {/* Services Périscolaires Hub Card: Cantine & Transport */}
+        <View style={[styles.servicesHubCard, Shadows.sm]}>
+          <View style={styles.servicesHubHeader}>
+            <View style={{ flex: 1 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <View style={styles.servicesDot} />
+                <Text style={styles.servicesHubTag}>SERVICES PÉRISCOLAIRES</Text>
+              </View>
+              <Text style={styles.servicesHubTitle}>Cantine & Transport Scolaire</Text>
+              <Text style={styles.servicesHubSubtitle}>
+                Souscriptions annuelles & forfaits déjeuners / ramassage
+              </Text>
             </View>
-            <Text style={{ fontSize: 11, color: '#B45309', marginTop: 2 }}>
-              {children.length > 0
-                ? `Formules et repas servis pour ${children.map(c => c.first_name).join(', ')}`
-                : 'Consultez les menus de la semaine et formules demi-pension'}
-            </Text>
           </View>
-        </TouchableOpacity>
+
+          {/* Quick Action Buttons for Subscription */}
+          <View style={styles.servicesActionRow}>
+            <TouchableOpacity
+              style={[styles.serviceActionChip, { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0' }]}
+              onPress={() => handleOpenServices('cantine')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.serviceActionIconCircle, { backgroundColor: '#D1FAE5' }]}>
+                <Ionicons name="restaurant" size={16} color={Brand.green} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.serviceActionChipTitle, { color: '#065F46' }]}>Cantine</Text>
+                <Text style={styles.serviceActionChipSub}>Souscrire / Formules →</Text>
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.serviceActionChip, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+              onPress={() => handleOpenServices('transport')}
+              activeOpacity={0.8}
+            >
+              <View style={[styles.serviceActionIconCircle, { backgroundColor: '#DBEAFE' }]}>
+                <Ionicons name="bus" size={16} color={Brand.blue} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.serviceActionChipTitle, { color: '#1E40AF' }]}>Transport</Text>
+                <Text style={styles.serviceActionChipSub}>Souscrire / Circuits →</Text>
+              </View>
+            </TouchableOpacity>
+          </View>
+
+          {/* Real-time enrollment preview per child */}
+          {children.length > 0 && (
+            <View style={styles.servicesStatusContainer}>
+              {children.map((kid) => (
+                <View key={kid.id} style={styles.childServiceStatusRow}>
+                  <Text style={styles.childServiceStatusName}>{kid.first_name} :</Text>
+                  <TouchableOpacity
+                    style={styles.childServiceBadge}
+                    onPress={() => handleOpenServices('cantine', kid.id)}
+                  >
+                    <Ionicons name="restaurant-outline" size={12} color="#059669" />
+                    <Text style={styles.childServiceBadgeTxt}>Cantine (Actif)</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.childServiceBadge, { backgroundColor: '#EFF6FF', borderColor: '#BFDBFE' }]}
+                    onPress={() => handleOpenServices('transport', kid.id)}
+                  >
+                    <Ionicons name="bus-outline" size={12} color={Brand.blue} />
+                    <Text style={[styles.childServiceBadgeTxt, { color: Brand.blue }]}>Transport (Ligne 01)</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
 
         {/* Children Section */}
         <View style={styles.sectionHeaderRow}>
@@ -441,6 +504,18 @@ export default function ParentHome() {
               </TouchableOpacity>
 
               <TouchableOpacity
+                style={[styles.modalActionBtn, { backgroundColor: '#F0FDF4' }]}
+                onPress={() => {
+                  const sId = selectedChildModal?.id;
+                  setSelectedChildModal(null);
+                  handleOpenServices('cantine', sId);
+                }}
+              >
+                <Ionicons name="restaurant-outline" size={18} color="#059669" />
+                <Text style={[styles.modalActionTxt, { color: '#059669' }]}>Souscrire Cantine / Transport</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
                 style={[styles.modalActionBtn, { backgroundColor: '#FEF3C7' }]}
                 onPress={() => {
                   setSelectedChildModal(null);
@@ -463,10 +538,29 @@ export default function ParentHome() {
               student={fullDossierStudent}
               accentColor={Brand.blue}
               onClose={() => setFullDossierStudent(null)}
+              onOpenSubscription={(type) => {
+                const sId = fullDossierStudent.id;
+                setFullDossierStudent(null);
+                handleOpenServices(type, sId);
+              }}
             />
           </View>
         )}
       </Modal>
+
+      {/* Périscolaire Subscription Modal Sheet */}
+      <ServicesSubscriptionModal
+        visible={servicesModalVisible}
+        initialTab={servicesModalTab}
+        initialChildId={servicesModalChildId}
+        childrenList={children.map((c) => ({
+          id: c.id,
+          name: `${c.first_name} ${c.last_name}`,
+          class_name: c.class_name,
+        }))}
+        onClose={() => setServicesModalVisible(false)}
+        onSuccess={handleServicesSuccess}
+      />
     </View>
   );
 }
@@ -613,4 +707,105 @@ const styles = StyleSheet.create({
     gap: 10,
   },
   modalActionTxt: { fontSize: 13, fontWeight: '800' },
+  /* Services Périscolaires Hub Card */
+  servicesHubCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: Radius.xl,
+    padding: Spacing.base,
+    marginBottom: Spacing.base,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  servicesHubHeader: {
+    marginBottom: 10,
+  },
+  servicesDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: Brand.green,
+  },
+  servicesHubTag: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#059669',
+    letterSpacing: 0.5,
+  },
+  servicesHubTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 2,
+  },
+  servicesHubSubtitle: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  servicesActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  serviceActionChip: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    padding: 10,
+    borderRadius: Radius.lg,
+    borderWidth: 1,
+  },
+  serviceActionIconCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  serviceActionChipTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  serviceActionChipSub: {
+    fontSize: 10,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 1,
+  },
+  servicesStatusContainer: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: Radius.lg,
+    padding: 8,
+    gap: 6,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  childServiceStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  childServiceStatusName: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  childServiceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: Radius.full,
+  },
+  childServiceBadgeTxt: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#059669',
+  },
 });

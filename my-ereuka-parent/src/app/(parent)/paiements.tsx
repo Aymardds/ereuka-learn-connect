@@ -15,7 +15,6 @@ import {
   Image,
   KeyboardAvoidingView,
   Platform,
-  TouchableWithoutFeedback,
   Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { supabase } from '../../../lib/supabase';
 import { Brand, Radius, Shadows, Spacing } from '@/constants/theme';
 import { AppTopHeader } from '@/components/AppTopHeader';
+import { ServicesSubscriptionModal } from '@/components/ServicesSubscriptionModal';
 
 interface PaymentRecord {
   id: string;
@@ -35,6 +35,7 @@ interface PaymentRecord {
   class_name: string;
   status: 'paid' | 'partial' | 'unpaid';
   installment_num?: number;
+  category?: 'scolarite' | 'cantine' | 'transport';
 }
 
 interface PaymentMethod {
@@ -123,6 +124,11 @@ export default function ParentPaiements() {
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
   const [children, setChildren] = useState<{ id: string; name: string }[]>([]);
   const [statusFilter, setStatusFilter] = useState<'all' | 'pending' | 'paid'>('all');
+  const [categoryFilter, setCategoryFilter] = useState<'all' | 'scolarite' | 'cantine' | 'transport'>('all');
+
+  // Services Périscolaires Modal State
+  const [servicesModalVisible, setServicesModalVisible] = useState(false);
+  const [servicesModalTab, setServicesModalTab] = useState<'cantine' | 'transport'>('cantine');
 
   // Checkout Modal State
   const [checkoutModalVisible, setCheckoutModalVisible] = useState(false);
@@ -562,6 +568,32 @@ export default function ParentPaiements() {
           </View>
         </View>
 
+        {/* Services Périscolaires Quick Access Banner */}
+        <View style={styles.servicesQuickBanner}>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.servicesQuickTitle}>🍽️ Cantine & 🚌 Transport</Text>
+            <Text style={styles.servicesQuickSub}>Gérez vos souscriptions périscolaires</Text>
+          </View>
+          <View style={styles.servicesQuickBtns}>
+            <TouchableOpacity
+              style={[styles.servicesQuickBtn, { backgroundColor: '#D1FAE5' }]}
+              onPress={() => { setServicesModalTab('cantine'); setServicesModalVisible(true); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="restaurant" size={14} color="#059669" />
+              <Text style={[styles.servicesQuickBtnTxt, { color: '#059669' }]}>Cantine</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.servicesQuickBtn, { backgroundColor: '#DBEAFE' }]}
+              onPress={() => { setServicesModalTab('transport'); setServicesModalVisible(true); }}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="bus" size={14} color={Brand.blue} />
+              <Text style={[styles.servicesQuickBtnTxt, { color: Brand.blue }]}>Transport</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Filter chips: Tous / En attente / Soldés */}
         <View style={styles.statusFilterRow}>
           {[
@@ -695,23 +727,24 @@ export default function ParentPaiements() {
           setCheckoutModalVisible(false);
         }}
       >
-        <View style={styles.modalOverlay} pointerEvents="box-none">
-          {/* Backdrop dismiss — only captures taps outside the sheet */}
-          <TouchableWithoutFeedback
+        {/* Full-screen flex container: tap backdrop (flex:1 above) closes; sheet below stays interactive */}
+        <View style={styles.modalOverlay}>
+          {/* Backdrop: flex:1 so it fills space above the sheet; tap it to close */}
+          <TouchableOpacity
+            style={{ flex: 1 }}
+            activeOpacity={1}
             onPress={() => {
               Keyboard.dismiss();
               setCheckoutModalVisible(false);
             }}
-          >
-            <View style={[StyleSheet.absoluteFill, { zIndex: 0 }]} />
-          </TouchableWithoutFeedback>
+          />
 
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             keyboardVerticalOffset={Platform.OS === 'ios' ? 10 : 0}
-            style={[styles.modalKeyboardAvoid, { zIndex: 1 }]}
+            style={styles.modalKeyboardAvoid}
           >
-            <View style={styles.modalSheet}>
+            <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
               {/* Drag handle */}
               <View style={styles.modalDragHandle} />
 
@@ -1096,6 +1129,21 @@ export default function ParentPaiements() {
           </View>
         </View>
       </Modal>
+
+      {/* Services Périscolaires Subscription Modal */}
+      <ServicesSubscriptionModal
+        visible={servicesModalVisible}
+        initialTab={servicesModalTab}
+        initialChildId={selectedChild || undefined}
+        childrenList={children.map(c => ({ id: c.id, name: c.name }))}
+        onClose={() => setServicesModalVisible(false)}
+        onSuccess={(_type, sub, _payNow) => {
+          Alert.alert(
+            'Souscription enregistrée',
+            `La souscription de ${sub.student_name} a été enregistrée. Montant : ${sub.amount_due?.toLocaleString('fr-FR')} FCFA.`
+          );
+        }}
+      />
     </View>
   );
 }
@@ -1214,6 +1262,31 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   payNowActionText: { color: '#FFFFFF', fontWeight: '800', fontSize: 14 },
+  /* Services Périscolaires Quick Banner */
+  servicesQuickBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: Radius.xl,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    marginBottom: 10,
+    gap: 8,
+  },
+  servicesQuickTitle: { fontSize: 13, fontWeight: '800', color: '#0F172A' },
+  servicesQuickSub: { fontSize: 10, color: '#64748B', fontWeight: '600', marginTop: 1 },
+  servicesQuickBtns: { flexDirection: 'row', gap: 6 },
+  servicesQuickBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: Radius.full,
+  },
+  servicesQuickBtnTxt: { fontSize: 11, fontWeight: '800' },
   /* Modal */
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
   modalKeyboardAvoid: { width: '100%', justifyContent: 'flex-end' },
